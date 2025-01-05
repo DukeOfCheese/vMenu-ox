@@ -3,8 +3,11 @@ This fork is designed to integrate with [ox_lib](https://github.com/overextended
 
 This fork introduces some new exports that work with ox_lib for better UI features and to make the menu more convenient/easier to use for players.
 
-![Medal_ErnwOZVBn9](https://github.com/user-attachments/assets/a83d965e-05f0-4125-9e9c-65d7f03c0fd0)
 Here's an example where we can move away from 3 separate input popups for rgb number values and to ox_lib's native inputDialog where the user can easily select a custom colour and visually see what they're choosing.
+![Medal_ErnwOZVBn9](https://github.com/user-attachments/assets/a83d965e-05f0-4125-9e9c-65d7f03c0fd0)
+
+
+<img src="https://github.com/user-attachments/assets/d960116b-3540-485b-ad7a-ecaa1fdd42e4" width="500"><br>
 
 --------
 
@@ -13,6 +16,8 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
   - Gives users a hex selector for custom colour setting within vehicle options (primary/secondary)
 - Input Dialog Replace
   - Replaces the base game user input and replaces with ox_lib input dialog for easier use such as copy/pasting spawncodes etc.
+- Keybinds for Thermal & Night Vision Modes
+  - This is locked to users that have the permissions assigned to them.
 
 If more are added, they will be listed here.
 
@@ -22,16 +27,9 @@ If you require support or have an issue / suggestion, feel free to join my disco
 
 --------
 
-#### Latest Builds
-
-##### Latest AppVeyor build
-
-|Latest Build|
-|:-:|
-|[![Build status](https://ci.appveyor.com/api/projects/status/inf2kinljmp8a5ul?svg=true)](https://ci.appveyor.com/project/TomGrobbe/vmenu)|
+Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone.
 
 --------
-
 
 # vMenu
 vMenu is a server-side menu for FiveM servers, including full\* permission support.
