@@ -11,7 +11,7 @@ exports(
 		return input and input[1] or ""
 	end
 )
-
+e
 function rgbToHex(r, g, b)
     -- Ensure values are within RGB bounds (0-255)
     r = math.max(0, math.min(255, r))
@@ -29,4 +29,9 @@ exports("colourDialog", function(type)
         {type = 'color', label = 'Select a Colour', default = defaultColour },
     })
     return input and input[1] or ""
+end)
+
+RegisterCommand("test", function()
+	print("das")
+	exports.vMenu:colourDialog(1)
 end)
