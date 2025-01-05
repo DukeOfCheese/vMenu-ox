@@ -17,7 +17,15 @@ using static CitizenFX.Core.UI.Screen;
 using static vMenuShared.PermissionsManager;
 
 namespace vMenuClient
-{
+{   
+    public class ExternalFunctions : BaseScript
+    {
+        public async Task<string> GetCustomInput(string windowTitle, string defaultText, int maxInputLength)
+        {
+            return await Exports["vMenu"].inputDialog(windowTitle, defaultText, maxInputLength);
+        }
+    }
+
     public static class CommonFunctions
     {
         #region Variables
@@ -1790,30 +1798,8 @@ namespace vMenuClient
         /// <returns></returns>
         public static async Task<string> GetUserInput(string windowTitle, string defaultText, int maxInputLength)
         {
-            // Create the window title string.
-            var spacer = "\t";
-            AddTextEntry($"{GetCurrentResourceName().ToUpper()}_WINDOW_TITLE", $"{windowTitle ?? "Enter"}:{spacer}(MAX {maxInputLength} Characters)");
-
-            // Display the input box.
-            DisplayOnscreenKeyboard(1, $"{GetCurrentResourceName().ToUpper()}_WINDOW_TITLE", "", defaultText ?? "", "", "", "", maxInputLength);
-            await Delay(0);
-            // Wait for a result.
-            while (true)
-            {
-                var keyboardStatus = UpdateOnscreenKeyboard();
-
-                switch (keyboardStatus)
-                {
-                    case 3: // not displaying input field anymore somehow
-                    case 2: // cancelled
-                        return null;
-                    case 1: // finished editing
-                        return GetOnscreenKeyboardResult();
-                    default:
-                        await Delay(0);
-                        break;
-                }
-            }
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.GetCustomInput(windowTitle, defaultText, maxInputLength);
         }
         #endregion
 
