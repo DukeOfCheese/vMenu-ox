@@ -1280,34 +1280,35 @@ namespace vMenuClient.menus
             {
                 Vehicle veh = GetVehicle();
                 if (veh != null && veh.Exists() && !veh.IsDead && veh.Driver == Game.PlayerPed)
-                {
-                    string rawRValue = await GetUserInput("Custom RGB - R Value (number from 0-255)", "0", 3);
-                    string rawGValue = await GetUserInput("Custom RGB - G Value (number from 0-255)", "0", 3);
-                    string rawBValue = await GetUserInput("Custom RGB - B Value (number from 0-255)", "0", 3);
-                    int rValue;
-                    int gValue;
-                    int bValue;
+                {   
 
-                    if (!int.TryParse(rawRValue, out rValue) || !int.TryParse(rawGValue, out gValue) || !int.TryParse(rawBValue, out bValue))
+                    int vehicleType = (menu == primaryColorsMenu) ? 1 : 2;
+
+                    var chosenColour = await GetUserColourInput(vehicleType);
+                    if (string.IsNullOrEmpty(chosenColour))
                     {
-                        Notify.Error("An invalid RGB value was entered, ensure you enter numbers between 0 and 255");
                         return;
                     }
 
-                    if (menu == primaryColorsMenu)
+                    chosenColour = chosenColour.Replace("#", "");
+                    int r = Convert.ToInt32(chosenColour.Substring(0, 2), 16);
+                    int g = Convert.ToInt32(chosenColour.Substring(2, 2), 16);
+                    int b = Convert.ToInt32(chosenColour.Substring(4, 2), 16);
+
+                    if (vehicleType == 1)
                     {
-                        SetVehicleCustomPrimaryColour(veh.Handle, rValue, gValue, bValue);
+                        SetVehicleCustomPrimaryColour(veh.Handle, r, g, b);
                     }
-                    else if (menu == secondaryColorsMenu)
+                    else
                     {
-                        SetVehicleCustomSecondaryColour(veh.Handle, rValue, gValue, bValue);
+                        SetVehicleCustomSecondaryColour(veh.Handle, r, g, b);
                     }
                 }
             }
 
             for (var i = 0; i < 2; i++)
             {
-                var customColour = new MenuItem("Custom RGB") { Label = ">>>" };
+                var customColour = new MenuItem("Custom Colour") { Label = ">>>" };
                 var pearlescentList = new MenuListItem("Pearlescent", classic, 0);
                 var classicList = new MenuListItem("Classic", classic, 0);
                 var metallicList = new MenuListItem("Metallic", classic, 0);

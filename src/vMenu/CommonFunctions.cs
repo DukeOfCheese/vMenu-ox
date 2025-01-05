@@ -24,6 +24,10 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].inputDialog(windowTitle, defaultText, maxInputLength);
         }
+        public async Task<string> GetCustomColourInput(int type)
+        {
+            return await Exports["vMenu"].colourDialog(type);
+        }
     }
 
     public static class CommonFunctions
@@ -1800,6 +1804,11 @@ namespace vMenuClient
         {
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetCustomInput(windowTitle, defaultText, maxInputLength);
+        }
+        public static async Task<string> GetUserColourInput(int type)
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.GetCustomColourInput(type);
         }
         #endregion
 
