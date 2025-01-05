@@ -1,3 +1,19 @@
+# vMenu: ox_lib Support
+This fork is designed to integrate with [ox_lib](https://github.com/overextended/ox_lib/releases/latest) you will require it for this to work.
+
+This fork introduces some new exports that work with ox_lib for better UI features and to make the menu more convenient/easier to use for players.
+
+![Medal_ErnwOZVBn9](https://github.com/user-attachments/assets/a83d965e-05f0-4125-9e9c-65d7f03c0fd0)
+Here's an example where we can move away from 3 separate input popups for rgb number values and to ox_lib's native inputDialog where the user can easily select a custom colour and visually see what they're choosing.
+
+### List of Changes that this fork does:
+- Colour Selector
+  - Gives users a hex selector for custom colour setting within vehicle options (primary/secondary)
+- Input Dialog Replace
+  - Replaces the base game user input and replaces with ox_lib input dialog for easier use such as copy/pasting spawncodes etc.
+
+If more are added, they will be listed here.
+
 #### Latest Builds
 
 ##### Latest AppVeyor build
