@@ -105,6 +105,7 @@ namespace vMenuShared
             VOInfiniteFuel,
             VOFlares,
             VOPlaneBombs,
+            VOBulletproofTires,
             #endregion
 
             // Vehicle Spawner

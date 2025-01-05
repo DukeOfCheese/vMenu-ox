@@ -2025,7 +2025,10 @@ namespace vMenuClient.menus
                 var headlightColor = new MenuListItem("Headlight Color", new List<string>() { "White", "Blue", "Electric Blue", "Mint Green", "Lime Green", "Yellow", "Golden Shower", "Orange", "Red", "Pony Pink", "Hot Pink", "Purple", "Blacklight", "Default Xenon" }, currentHeadlightColor, "New in the Arena Wars GTA V update: Colored headlights. Note you must enable Xenon Headlights first.");
                 VehicleModMenu.AddMenuItem(headlightColor);
                 VehicleModMenu.AddMenuItem(turbo);
-                VehicleModMenu.AddMenuItem(bulletProofTires);
+                if (IsAllowed(Permission.VOBulletproofTires)) // BULLETPROOF TIRES
+                {
+                    VehicleModMenu.AddMenuItem(bulletProofTires);
+                }
 
                 bool isLowGripAvailable = GetGameBuildNumber() >= 2372;
                 var lowGripTires = new MenuCheckboxItem("Low Grip Tires", "Enable or disable ~y~low grip tires~s~ for this vehicle.", isLowGripAvailable ? GetDriftTyresEnabled(veh.Handle) : false);
