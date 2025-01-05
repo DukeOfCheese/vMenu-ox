@@ -14,6 +14,9 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 
 If more are added, they will be listed here.
 
+If you require support or have an issue / suggestion, feel free to join my discord!
+[discord.gg/chromalabs](https://discord.gg/chromalabs)
+
 #### Latest Builds
 
 ##### Latest AppVeyor build
