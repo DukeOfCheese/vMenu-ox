@@ -611,10 +611,28 @@ namespace vMenuClient.menus
             if (IsAllowed(Permission.MSNightVision))
             {
                 menu.AddMenuItem(nightVision);
+                RegisterKeyMapping("toggle-nv", "Night Vision", "keyboard", "");
+                bool nvEnabled = false;
+                RegisterCommand("toggle-nv", new Action<int, List<object>, string>((source, args, rawCommand) =>
+                {
+                    nvEnabled = !nvEnabled;
+                    nightVision.Checked = nvEnabled;
+                    SetNightvision(nvEnabled);
+
+                }), false);
             }
             if (IsAllowed(Permission.MSThermalVision))
             {
                 menu.AddMenuItem(thermalVision);
+                RegisterKeyMapping("toggle-tv", "Thermal Vision", "keyboard", "");
+                bool tvEnabled = false;
+                RegisterCommand("toggle-tv", new Action<int, List<object>, string>((source, args, rawCommand) =>
+                {
+                    tvEnabled = !tvEnabled;
+                    thermalVision.Checked = tvEnabled;
+                    SetSeethrough(tvEnabled);
+
+                }), false);
             }
             if (IsAllowed(Permission.MSLocationBlips))
             {
