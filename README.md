@@ -6,6 +6,8 @@ This fork introduces some new exports that work with ox_lib for better UI featur
 ![Medal_ErnwOZVBn9](https://github.com/user-attachments/assets/a83d965e-05f0-4125-9e9c-65d7f03c0fd0)
 Here's an example where we can move away from 3 separate input popups for rgb number values and to ox_lib's native inputDialog where the user can easily select a custom colour and visually see what they're choosing.
 
+--------
+
 ### List of Changes that this fork does:
 - Colour Selector
   - Gives users a hex selector for custom colour setting within vehicle options (primary/secondary)
@@ -14,8 +16,11 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 
 If more are added, they will be listed here.
 
+### Support/Issues with my Fork
 If you require support or have an issue / suggestion, feel free to join my discord!
 [discord.gg/chromalabs](https://discord.gg/chromalabs)
+
+--------
 
 #### Latest Builds
 
