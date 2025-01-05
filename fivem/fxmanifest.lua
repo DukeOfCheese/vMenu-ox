@@ -1,7 +1,6 @@
-
 -- Manifest data
 fx_version 'bodacious'
-games {'gta5'}
+games { 'gta5' }
 
 -- Resource stuff
 name 'vMenu'
@@ -11,11 +10,14 @@ author 'Tom Grobbe'
 url 'https://github.com/TomGrobbe/vMenu/'
 ui_page 'storage.html'
 
+lua54 "yes"
+shared_script "@ox_lib/init.lua"
+
 -- Adds additional logging, useful when debugging issues.
 client_debug_mode 'false'
 server_debug_mode 'false'
 
--- Leave this set to '0' to prevent compatibility issues 
+-- Leave this set to '0' to prevent compatibility issues
 -- and to keep the save files your users.
 experimental_features_enabled '0'
 
@@ -28,5 +30,8 @@ files {
     'storage.html'
 }
 
-client_script 'vMenuClient.net.dll'
+client_scripts {
+    'vMenuClient.net.dll',
+    'client.lua'
+}
 server_script 'vMenuServer.net.dll'
