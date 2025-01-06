@@ -11,7 +11,7 @@ exports(
 		return input and input[1] or ""
 	end
 )
-e
+
 function rgbToHex(r, g, b)
     -- Ensure values are within RGB bounds (0-255)
     r = math.max(0, math.min(255, r))
