@@ -27,11 +27,11 @@ If you require support or have an issue / suggestion, feel free to join my disco
 
 --------
 
-Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone.
+# Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone.
 
 --------
 
-# vMenu
+# vMenu (Original)
 vMenu is a server-side menu for FiveM servers, including full\* permission support.
 
 
