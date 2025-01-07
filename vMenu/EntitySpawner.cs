@@ -99,6 +99,7 @@ namespace vMenuClient
             }
 
             SetEntityAsMissionEntity(handle, true, true); // Set As mission to prevent despawning
+            FreezeEntityPosition(handle, true); // Freeze entity to prevent it from falling under the map
 
             Active = true;
         }
