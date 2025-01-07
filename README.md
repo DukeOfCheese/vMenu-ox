@@ -18,6 +18,11 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
   - Replaces the base game user input and replaces with ox_lib input dialog for easier use such as copy/pasting spawncodes etc.
 - Keybinds for Thermal & Night Vision Modes
   - This is locked to users that have the permissions assigned to them.
+- Extra Permissions
+  - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires`
+- Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
+- Patched vulnerability on weather events that could easily be exploited - thanks to [this pull](https://github.com/TomGrobbe/vMenu/pull/430/) that isn't merged still as of 7th jan
+
 
 If more are added, they will be listed here.
 
