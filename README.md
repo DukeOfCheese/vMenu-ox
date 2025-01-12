@@ -23,9 +23,13 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 - Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
 - Patched vulnerability on weather events that could easily be exploited - thanks to [this pull](https://github.com/TomGrobbe/vMenu/pull/430/) that isn't merged still as of 7th jan
 - Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
-
+- Added convar `vmenu_blackout_affect_vehicles` (default: false) so that vehicle headlights/police lightbars continue to operate during blackouts
 
 If more are added, they will be listed here.
+
+### To:Do
+- [ ] Sync Time/Weather into GlobalStates
+
 
 ### Support/Issues with my Fork
 If you require support or have an issue / suggestion, feel free to join my discord!

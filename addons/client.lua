@@ -26,7 +26,7 @@ end
 exports("colourDialog", function(type)
 	if not cache.vehicle then return "" end -- edge case
 	local defaultColour = type == 1 and rgbToHex(GetVehicleCustomPrimaryColour(cache.vehicle)) or
-	rgbToHex(GetVehicleCustomSecondaryColour(cache.vehicle))
+		rgbToHex(GetVehicleCustomSecondaryColour(cache.vehicle))
 	local input = lib.inputDialog("vMenu", {
 		{ type = 'color', label = 'Select a Colour', default = defaultColour },
 	})
@@ -34,15 +34,22 @@ exports("colourDialog", function(type)
 end)
 --#endregion
 
--- # Sets whether or not players can lose their head props when they are hit/pushed.
--- # true = Props will stay on player (default vMenu and GTA Online behavior)
--- # false = vMenu will not touch this feature, by default this means that head props will fall off when the player is hit, which is the default behavior for GTA V Single Player peds.
--- setr keep_player_head_props false (this is configured in your permissions.cfg)
+CreateThread(function()
+	-- # Sets whether or not players can lose their head props when they are hit/pushed.
+	-- # true = Props will stay on player (default vMenu and GTA Online behavior)
+	-- # false = vMenu will not touch this feature, by default this means that head props will fall off when the player is hit, which is the default behavior for GTA V Single Player peds.
+	-- setr keep_player_head_props false (this is configured in your permissions.cfg)
 
--- this is just to replace needing to run a constant thread loop on the client
-if GetConvar("keep_player_head_props", "false") == "false" then
-	lib.onCache("ped", function(value)
-		SetPedCanLosePropsOnDamage(value, false, 0)
-		SetPedConfigFlag(value, 427, true)
-	end)
-end
+	-- this is just to replace needing to run a constant thread loop on the client
+	if GetConvar("keep_player_head_props", "false") == "false" then
+		lib.onCache("ped", function(value)
+			SetPedCanLosePropsOnDamage(value, false, 0)
+			SetPedConfigFlag(value, 427, true)
+		end)
+	end
+
+	-- so blackouts dont affect vehicle headlights
+	if GetConvar("vmenu_blackout_affect_vehicles", "false") == "false" then
+		SetArtificialLightsStateAffectsVehicles(false)
+	end
+end)
