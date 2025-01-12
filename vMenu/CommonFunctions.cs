@@ -3329,7 +3329,7 @@ namespace vMenuClient
                 SetModelAsNoLongerNeeded(KeyFobHashKey); // cleanup model from memory
 
                 ClearPedTasks(player.Character.Handle);
-                SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("WEAPON_UNARMED"), true);
+                //SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("WEAPON_UNARMED"), true);
                 //if (player.Character.Weapons.Current.Hash != WeaponHash.Unarmed)
                 //{
                 //    player.Character.Weapons.Give(WeaponHash.Unarmed, 1, true, true);

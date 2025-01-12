@@ -22,6 +22,7 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
   - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires`
 - Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
 - Patched vulnerability on weather events that could easily be exploited - thanks to [this pull](https://github.com/TomGrobbe/vMenu/pull/430/) that isn't merged still as of 7th jan
+- Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
 
 
 If more are added, they will be listed here.
