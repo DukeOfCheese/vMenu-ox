@@ -34,6 +34,13 @@ exports("colourDialog", function(type)
 end)
 --#endregion
 
+--#region Misc Exports
+exports("CopyToClipboard", function(text)
+	lib.setClipboard(text)
+end)
+--#endregion
+
+--#region Client Stuff
 CreateThread(function()
 	-- # Sets whether or not players can lose their head props when they are hit/pushed.
 	-- # true = Props will stay on player (default vMenu and GTA Online behavior)
@@ -53,3 +60,4 @@ CreateThread(function()
 		SetArtificialLightsStateAffectsVehicles(false)
 	end
 end)
+--#endregion
