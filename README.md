@@ -11,19 +11,35 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 
 --------
 
-### List of Changes that this fork does:
-- Colour Selector
-  - Gives users a hex selector for custom colour setting within vehicle options (primary/secondary)
+### Fork Features
+
+# Core/UI
 - Input Dialog Replace
   - Replaces the base game user input and replaces with ox_lib input dialog for easier use such as copy/pasting spawncodes etc.
+
+# Vehicle
+- Colour Selector
+  - Gives users a hex selector for custom colour setting within vehicle options (primary/secondary)
+- New Permissions
+  - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires` (default: denied)
+- Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
+
+# Weather
+- Added convar `vmenu_blackout_affect_vehicles` (default: false) so that vehicle headlights/police lightbars continue to operate during blackouts
+
+# Misc
 - Keybinds for Thermal & Night Vision Modes
   - This is locked to users that have the permissions assigned to them.
-- Extra Permissions
-  - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires`
-- Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
 - Patched vulnerability on weather events that could easily be exploited - thanks to [this pull](https://github.com/TomGrobbe/vMenu/pull/430/) that isn't merged still as of 7th jan
-- Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
-- Added convar `vmenu_blackout_affect_vehicles` (default: false) so that vehicle headlights/police lightbars continue to operate during blackouts
+
+# Devtools
+- Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
+- Copy Coordinates Button (vector4)
+
+# Changelogs
+- 13th Jan
+  - Copy Coords (DevTools)
+  - Version Checking
 
 If more are added, they will be listed here.
 
