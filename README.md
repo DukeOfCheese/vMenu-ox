@@ -38,7 +38,7 @@ If more are added, they will be listed here.
 - [ ] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
 - [ ] Separate branch (maybe?) for outfit/weapon/vehicle code system
 - [ ] Update weapon attachment right button if it is equipped (checkmark)
-- [ ] Copy Coords Button (devtools)
+- [x] Copy Coords Button (devtools)
 - [ ] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
 - [ ] Remove voice chat completely, pma voice or alternatives just easier/up-to-date
 - [ ] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
