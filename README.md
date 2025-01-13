@@ -46,6 +46,19 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
   - Copy Coords (DevTools)
   - Version Checking
 
+# Developer Integrations
+Below is information related to exposed events/functions you can use in your resources to integrate your server better with vMenu.
+In the FiveM resource, head to `addons` folder and you will see files labelled `integrations`. Here you will find any events/exports for use.
+
+Example Client Event:
+```lua
+---@class infiniteFuelToggled
+---@field enabled boolean
+AddEventHandler("vMenu:InfiniteFuel", function(enabled)
+    lib.print.debug("Infinite Fuel: " .. tostring(enabled))
+end)
+```
+
 ### To-Do
 - [ ] Sync Time/Weather into GlobalStates
 - [ ] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
@@ -59,12 +72,11 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
 - [ ] Update weapon attachment right button if it is equipped (checkmark)
 - [x] Copy Coords Button (devtools)
 - [ ] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
-- [ ] Remove voice chat completely, pma voice or alternatives just easier/up-to-date
-- [ ] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
+- [x] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
 
 --------
 
-# Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone. If you have an issue with a feature/ox_lib integrations of THIS FORK, please use my discord as they will not be able to provide support for you.
+### Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone. If you have an issue with a feature/ox_lib integrations of THIS FORK, please use my discord as they will not be able to provide support for you.
 
 --------
 
