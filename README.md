@@ -11,6 +11,11 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 
 --------
 
+### Download & Install
+Click [here](https://github.com/Gravxd/vMenu/releases/) to go to the releases page and download `vMenu.zip` - this will be your fivem resource folder.
+
+--------
+
 ### Support/Issues with my Fork
 If you require support or have an issue / suggestion, feel free to join my discord!
 I have a direct suggestions channel so you can give ideas and request stuff to be added.
@@ -83,11 +88,6 @@ end)
 
 # vMenu (Original)
 vMenu is a server-side menu for FiveM servers created by Vespura - find the original repository [here](https://github.com/TomGrobbe/vMenu)
-
---------
-
-### Download & Install
-Click [here](https://github.com/Gravxd/vMenu/releases/) to go to the releases page and download `vMenu.zip` - this will be your fivem resource folder.
 
 --------
 
