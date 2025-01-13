@@ -117,6 +117,7 @@ namespace vMenuClient.menus
             var speedKmh = new MenuCheckboxItem("Show Speed KM/H", "Show a speedometer on your screen indicating your speed in KM/h.", ShowSpeedoKmh);
             var speedMph = new MenuCheckboxItem("Show Speed MPH", "Show a speedometer on your screen indicating your speed in MPH.", ShowSpeedoMph);
             var coords = new MenuCheckboxItem("Show Coordinates", "Show your current coordinates at the top of your screen.", ShowCoordinates);
+            var copyCoords = new MenuItem("Copy Coordinates", "Copy your current coordinates to your clipboard.");
             var hideRadar = new MenuCheckboxItem("Hide Radar", "Hide the radar/minimap.", HideRadar);
             var hideHud = new MenuCheckboxItem("Hide Hud", "Hide all hud elements.", HideHud);
             var showLocation = new MenuCheckboxItem("Location Display", "Shows your current location and heading, as well as the nearest cross road. Similar like PLD. ~r~Warning: This feature (can) take(s) up to -4.6 FPS when running at 60 Hz.", ShowLocation) { LeftIcon = MenuItem.Icon.WARNING };
@@ -405,6 +406,7 @@ namespace vMenuClient.menus
             if (IsAllowed(Permission.MSShowCoordinates))
             {
                 developerToolsMenu.AddMenuItem(coords);
+                developerToolsMenu.AddMenuItem(copyCoords);
             }
 
             // model outlines
@@ -467,6 +469,14 @@ namespace vMenuClient.menus
                 {
                     var pos = Game.PlayerPed.Position;
                     BaseScript.TriggerServerEvent("vMenu:ClearArea", pos.X, pos.Y, pos.Z);
+                }
+                else if (item == copyCoords)
+                {
+                    var pos = Game.PlayerPed.Position;
+                    var heading = Game.PlayerPed.Heading;
+                    var text = $"{Math.Round(pos.X, 2)}, {Math.Round(pos.Y, 2)}, {Math.Round(pos.Z, 2)}, {Math.Round(heading, 2)}";
+                    CopyToClipboard(text);
+                    Notify.Info("Coordinates copied to clipboard.");
                 }
             };
 
