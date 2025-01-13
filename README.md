@@ -16,32 +16,32 @@ If you require support or have an issue / suggestion, feel free to join my disco
 I have a direct suggestions channel so you can give ideas and request stuff to be added.
 [discord.gg/chromalabs](https://discord.gg/chromalabs)
 
-### Fork Features
+# Fork Features/Changes
 
-# Core/UI
+### Core/UI
 - Input Dialog Replace
   - Replaces the base game user input and replaces with ox_lib input dialog for easier use such as copy/pasting spawncodes etc.
 
-# Vehicle
+### Vehicle
 - Colour Selector
   - Gives users a hex selector for custom colour setting within vehicle options (primary/secondary)
 - New Permissions
   - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires` (default: denied)
 - Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
 
-# Weather
+### Weather
 - Added convar `vmenu_blackout_affect_vehicles` (default: false) so that vehicle headlights/police lightbars continue to operate during blackouts
 
-# Misc
+### Misc
 - Keybinds for Thermal & Night Vision Modes
   - This is locked to users that have the permissions assigned to them.
 - Patched vulnerability on weather events that could easily be exploited - thanks to [this pull](https://github.com/TomGrobbe/vMenu/pull/430/) that isn't merged still as of 7th jan
 
-# Devtools
+### Devtools
 - Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
 - Copy Coordinates Button (vector4)
 
-# Changelogs
+## Changelogs
 - 13th Jan
   - Copy Coords (DevTools)
   - Version Checking
@@ -64,7 +64,7 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
 
 --------
 
-# Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone.
+# Below is the information for the source project, all credit to the creation goes to Vespura, thank you to him for making an easy to use open source project for everyone. If you have an issue with a feature/ox_lib integrations of THIS FORK, please use my discord as they will not be able to provide support for you.
 
 --------
 
