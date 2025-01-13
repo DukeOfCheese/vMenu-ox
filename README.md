@@ -11,6 +11,11 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 
 --------
 
+### Support/Issues with my Fork
+If you require support or have an issue / suggestion, feel free to join my discord!
+I have a direct suggestions channel so you can give ideas and request stuff to be added.
+[discord.gg/chromalabs](https://discord.gg/chromalabs)
+
 ### Fork Features
 
 # Core/UI
@@ -41,8 +46,6 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
   - Copy Coords (DevTools)
   - Version Checking
 
-If more are added, they will be listed here.
-
 ### To-Do
 - [ ] Sync Time/Weather into GlobalStates
 - [ ] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
@@ -58,11 +61,6 @@ If more are added, they will be listed here.
 - [ ] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
 - [ ] Remove voice chat completely, pma voice or alternatives just easier/up-to-date
 - [ ] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
-
-
-### Support/Issues with my Fork
-If you require support or have an issue / suggestion, feel free to join my discord!
-[discord.gg/chromalabs](https://discord.gg/chromalabs)
 
 --------
 
