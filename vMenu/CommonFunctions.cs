@@ -28,6 +28,10 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].colourDialog(type);
         }
+        public void SetPlayerClipboard(string text)
+        {
+            Exports["vMenu"].copyToClipboard(text);
+        }
     }
 
     public static class CommonFunctions
@@ -1809,6 +1813,11 @@ namespace vMenuClient
         {
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetCustomColourInput(type);
+        }
+        public static void CopyToClipboard(string text)
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            ExternalFunctions.SetPlayerClipboard(text);
         }
         #endregion
 
