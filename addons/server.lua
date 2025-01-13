@@ -1,1 +1,1 @@
-lib.versionCheck("Gravxd/vMenu")
+lib.versionCheck("Gravxd/vMenu-ox")
