@@ -1,9 +1,10 @@
-# vMenu: ox_lib Support
-This fork is designed to integrate with [ox_lib](https://github.com/overextended/ox_lib/releases/latest) you will require it for this to work.
+# vMenu-OX 
+This is a fork of vMenu designed to integrate with [ox_lib](https://github.com/overextended/ox_lib/releases/latest) you will require it for this to work.
 
 This fork introduces some new exports that work with ox_lib for better UI features and to make the menu more convenient/easier to use for players.
 
 Here's an example where we can move away from 3 separate input popups for rgb number values and to ox_lib's native inputDialog where the user can easily select a custom colour and visually see what they're choosing.
+
 ![Medal_ErnwOZVBn9](https://github.com/user-attachments/assets/a83d965e-05f0-4125-9e9c-65d7f03c0fd0)
 
 
@@ -12,7 +13,7 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 --------
 
 ### Download & Install
-Click [here](https://github.com/Gravxd/vMenu/releases/) to go to the releases page and download `vMenu.zip` - this will be your fivem resource folder.
+Click [here](https://github.com/Gravxd/vMenu-ox/releases/) to go to the releases page and download `vMenu.zip` - this will be your fivem resource folder.
 
 --------
 
