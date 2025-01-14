@@ -804,19 +804,6 @@ namespace vMenuClient
                 AddMenu(PlayerSubmenu, menu, button);
             }
 
-            if (IsAllowed(Permission.NoClip))
-            {
-                var toggleNoclip = new MenuItem("Toggle NoClip", "Toggle NoClip on or off.");
-                PlayerSubmenu.AddMenuItem(toggleNoclip);
-                PlayerSubmenu.OnItemSelect += (sender, item, index) =>
-                {
-                    if (item == toggleNoclip)
-                    {
-                        NoClipEnabled = !NoClipEnabled;
-                    }
-                };
-            }
-
             // Add Voice Chat Menu.
             if (IsAllowed(Permission.VCMenu))
             {
