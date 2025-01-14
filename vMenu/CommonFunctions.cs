@@ -32,6 +32,10 @@ namespace vMenuClient
         {
             Exports["vMenu"].copyToClipboard(text);
         }
+        public bool CanDoInteraction()
+        {
+            return Exports["vMenu"].canDoInteraction();
+        }
     }
 
     public static class CommonFunctions
@@ -1221,11 +1225,12 @@ namespace vMenuClient
         public static async Task<int> SpawnVehicle(string vehicleName = "custom", bool spawnInside = false, bool replacePrevious = false)
         {
 
-            if (VehicleSpawnerCooldownEnabled)
+            if (!CanDoInteraction())
             {
-                Notify.Error("Vehicle spawner is on cooldown.");
+                Notify.Error("You cannot spawn this vehicle at this time.");
                 return 0;
             }
+
 
             if (vehicleName == "custom")
             {
@@ -1234,8 +1239,16 @@ namespace vMenuClient
                 // If the result was not invalid.
                 if (!string.IsNullOrEmpty(result))
                 {
+
+                    if (VehicleSpawnerCooldownEnabled)
+                    {
+                        Notify.Error("Vehicle spawner is on cooldown.");
+                        return 0;
+                    }
+
                     // Convert it into a model hash.
                     var model = (uint)GetHashKey(result);
+
                     var handle = await SpawnVehicle(vehicleHash: model, spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false, vehicleInfo: new VehicleInfo(),
                          saveName: null);
 
@@ -1267,9 +1280,9 @@ namespace vMenuClient
         public static async Task<int> SpawnVehicle(uint vehicleHash, bool spawnInside, bool replacePrevious, bool skipLoad, VehicleInfo vehicleInfo, string saveName = null, float x = 0f, float y = 0f, float z = 0f, float heading = -1f)
         {
 
-            if (VehicleSpawnerCooldownEnabled)
+            if (!CanDoInteraction())
             {
-                Notify.Error("Vehicle spawner is on cooldown.");
+                Notify.Error("You cannot spawn this vehicle at this time.");
                 return 0;
             }
 
@@ -1298,6 +1311,12 @@ namespace vMenuClient
                     Notify.Error(CommonErrors.InvalidModel);
                     return 0;
                 }
+            }
+
+            if (VehicleSpawnerCooldownEnabled)
+            {
+                Notify.Error("Vehicle spawner is on cooldown.");
+                return 0;
             }
 
             Log("Spawning of vehicle is NOT cancelled, if this model is invalid then there's something wrong.");
@@ -1850,6 +1869,11 @@ namespace vMenuClient
         {
             var ExternalFunctions = new ExternalFunctions();
             ExternalFunctions.SetPlayerClipboard(text);
+        }
+        public static bool CanDoInteraction()
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return ExternalFunctions.CanDoInteraction();
         }
         #endregion
 
