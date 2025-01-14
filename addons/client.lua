@@ -1,4 +1,9 @@
 --#region Input Dialogs
+---@class inputDialog
+---@param windowTitle string
+---@param defaultText string
+---@param maxLength integer | 30
+---@return string
 exports(
 	"inputDialog",
 	function(windowTitle, defaultText, maxLength)
@@ -23,6 +28,9 @@ function rgbToHex(r, g, b)
 	return string.format("#%02X%02X%02X", r, g, b)
 end
 
+---@class colourDialog
+---@param type integer 1 for primary, 2 for secondary
+---@return string
 exports("colourDialog", function(type)
 	if not cache.vehicle then return "" end -- edge case
 	local defaultColour = type == 1 and rgbToHex(GetVehicleCustomPrimaryColour(cache.vehicle)) or
@@ -35,8 +43,12 @@ end)
 --#endregion
 
 --#region Misc Exports
-exports("CopyToClipboard", function(text)
+---@class copyToClipboard
+---@param text string
+exports("copyToClipboard", function(text)
+	print("Copied to clipboard: " .. text)
 	lib.setClipboard(text)
+	return ""
 end)
 --#endregion
 
