@@ -17,7 +17,7 @@ using static CitizenFX.Core.UI.Screen;
 using static vMenuShared.PermissionsManager;
 
 namespace vMenuClient
-{   
+{
     public class ExternalFunctions : BaseScript
     {
         public async Task<string> GetCustomInput(string windowTitle, string defaultText, int maxInputLength)
@@ -39,6 +39,11 @@ namespace vMenuClient
         #region Variables
         private static string _currentScenario = "";
         private static Vehicle _previousVehicle;
+
+        public static bool VehicleSpawnerCooldownEnabled = false;
+        public static int VehicleSpawnerCooldown = vMenuShared.ConfigManager.GetSettingsInt(vMenuShared.ConfigManager.Setting.vmenu_vehicle_spawner_cooldown) != -1
+            ? vMenuShared.ConfigManager.GetSettingsInt(vMenuShared.ConfigManager.Setting.vmenu_vehicle_spawner_cooldown)
+            : 1000;
 
         internal static bool DriveToWpTaskActive = false;
         internal static bool DriveWanderTaskActive = false;
@@ -230,6 +235,15 @@ namespace vMenuClient
         /// <param name="vehicle">Entity/vehicle.</param>
         /// <returns>Returns the (uint) model hash from a (vehicle) entity.</returns>
         public static uint GetVehicleModel(int vehicle) => (uint)GetHashKey(GetEntityModel(vehicle).ToString());
+        #endregion
+
+        #region Cooldown function to block any more vehicle spawns.
+        private static async Task StartVehicleCooldown()
+        {
+            VehicleSpawnerCooldownEnabled = true;
+            await Delay(VehicleSpawnerCooldown);
+            VehicleSpawnerCooldownEnabled = false;
+        }
         #endregion
 
         #region Is ped pointing
@@ -1206,6 +1220,13 @@ namespace vMenuClient
         /// <param name="replacePrevious">Replace the previous vehicle of the player.</param>
         public static async Task<int> SpawnVehicle(string vehicleName = "custom", bool spawnInside = false, bool replacePrevious = false)
         {
+
+            if (VehicleSpawnerCooldownEnabled)
+            {
+                Notify.Error("Vehicle spawner is on cooldown.");
+                return 0;
+            }
+
             if (vehicleName == "custom")
             {
                 // Get the result.
@@ -1215,8 +1236,11 @@ namespace vMenuClient
                 {
                     // Convert it into a model hash.
                     var model = (uint)GetHashKey(result);
-                    return await SpawnVehicle(vehicleHash: model, spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false, vehicleInfo: new VehicleInfo(),
-                        saveName: null);
+                    var handle = await SpawnVehicle(vehicleHash: model, spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false, vehicleInfo: new VehicleInfo(),
+                         saveName: null);
+
+                    _ = StartVehicleCooldown();
+                    return handle;
                 }
                 // Result was invalid.
                 else
@@ -1242,6 +1266,13 @@ namespace vMenuClient
         /// <param name="saveName">Used to get/set info about the saved vehicle data.</param>
         public static async Task<int> SpawnVehicle(uint vehicleHash, bool spawnInside, bool replacePrevious, bool skipLoad, VehicleInfo vehicleInfo, string saveName = null, float x = 0f, float y = 0f, float z = 0f, float heading = -1f)
         {
+
+            if (VehicleSpawnerCooldownEnabled)
+            {
+                Notify.Error("Vehicle spawner is on cooldown.");
+                return 0;
+            }
+
             var speed = 0f;
             var rpm = 0f;
             if (Game.PlayerPed.IsInVehicle())
@@ -1359,7 +1390,6 @@ namespace vMenuClient
 
                 // Set the ped into the vehicle.
                 Game.PlayerPed.SetIntoVehicle(vehicle, VehicleSeat.Driver);
-                
 
                 // If the vehicle is a helicopter and the player is in the air, set the blades to be full speed.
                 if (vehicle.ClassType == VehicleClass.Helicopters && GetEntityHeightAboveGround(Game.PlayerPed.Handle) > 10.0f)
@@ -1396,6 +1426,8 @@ namespace vMenuClient
 
             // Discard the model.
             SetModelAsNoLongerNeeded(vehicleHash);
+
+            _ = StartVehicleCooldown();
 
             return vehicle.Handle;
         }
