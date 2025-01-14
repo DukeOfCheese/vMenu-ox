@@ -17,3 +17,16 @@ AddEventHandler("vMenu:Integrations:LicensePlateUpdated", function(handle, plate
         end
     --]]
 end)
+
+---@class canDoInteraction
+---@return boolean Returns true if the player can do the interaction, false otherwise
+exports("canDoInteraction", function()
+    --[[
+        Example Usage:
+        if LocalPlayer.state.dead then
+            return false
+        end
+    --]]
+
+    return true
+end)
