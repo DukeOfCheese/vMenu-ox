@@ -57,6 +57,8 @@ namespace vMenuClient.menus
         public float VehicleTorqueMultiplierAmount { get; private set; } = 2f;
         public float VehiclePowerMultiplierAmount { get; private set; } = 2f;
 
+        public bool VehicleCloseAllDoorsCooldown { get; private set; } = false;
+
         private readonly Dictionary<MenuItem, int> vehicleExtras = new();
         #endregion
 
@@ -1409,7 +1411,7 @@ namespace vMenuClient.menus
             };
 
             // Handle button presses.
-            VehicleDoorsMenu.OnItemSelect += (sender, item, index) =>
+            VehicleDoorsMenu.OnItemSelect += async (sender, item, index) =>
             {
                 // Get the vehicle.
                 var veh = GetVehicle();
@@ -1450,11 +1452,20 @@ namespace vMenuClient.menus
                     else if (item == closeAll)
                     {
                         // Close all doors.
+                        if(VehicleCloseAllDoorsCooldown)
+                        {
+                            Notify.Error("You must wait a few seconds before closing all doors again.");
+                            return;
+                        }
                         SetVehicleDoorsShut(veh.Handle, false);
                         if (veh.HasBombBay)
                         {
                             veh.CloseBombBay();
                         }
+                        VehicleCloseAllDoorsCooldown = true;
+                        await Delay(2000);
+                        VehicleCloseAllDoorsCooldown = false;
+
                     }
                     // If bomb bay doors button is pressed and the vehicle has bomb bay doors.
                     else if (item == BB && veh.HasBombBay)
