@@ -1841,6 +1841,7 @@ namespace vMenuClient
                     {
                         // Set the license plate.
                         SetVehicleNumberPlateText(veh.Handle, text);
+                        TriggerEvent("vMenu:Integrations:LicensePlateUpdated", veh, text);
                     }
                     // No valid text was given.
                     else
