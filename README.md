@@ -69,7 +69,7 @@ end)
 - [ ] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
 - [ ] Create separate branch for pre-category version of vMenu with same features/improvements
 - [x] Ratelimit on close all/open all doors (exploit to make cars fly)
-- [ ] Configurable vehicle spawn cooldown
+- [x] Configurable vehicle spawn cooldown
 - [ ] Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory
 - [ ] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
 - [ ] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
