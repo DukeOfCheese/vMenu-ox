@@ -118,6 +118,7 @@ namespace vMenuClient.menus
             var speedMph = new MenuCheckboxItem("Show Speed MPH", "Show a speedometer on your screen indicating your speed in MPH.", ShowSpeedoMph);
             var coords = new MenuCheckboxItem("Show Coordinates", "Show your current coordinates at the top of your screen.", ShowCoordinates);
             var copyCoords = new MenuItem("Copy Coordinates", "Copy your current coordinates to your clipboard.");
+            var copyVehicleHash = new MenuItem("Copy Vehicle Hash", "Copy your current vehicle's model hash to your clipboard.");
             var hideRadar = new MenuCheckboxItem("Hide Radar", "Hide the radar/minimap.", HideRadar);
             var hideHud = new MenuCheckboxItem("Hide Hud", "Hide all hud elements.", HideHud);
             var showLocation = new MenuCheckboxItem("Location Display", "Shows your current location and heading, as well as the nearest cross road. Similar like PLD. ~r~Warning: This feature (can) take(s) up to -4.6 FPS when running at 60 Hz.", ShowLocation) { LeftIcon = MenuItem.Icon.WARNING };
@@ -407,6 +408,7 @@ namespace vMenuClient.menus
             {
                 developerToolsMenu.AddMenuItem(coords);
                 developerToolsMenu.AddMenuItem(copyCoords);
+                developerToolsMenu.AddMenuItem(copyVehicleHash);
             }
 
             // model outlines
@@ -478,6 +480,21 @@ namespace vMenuClient.menus
                     CopyToClipboard(text);
                     Notify.Info("Coordinates copied to clipboard.");
                 }
+                else if (item == copyVehicleHash)
+                {
+                    if (!Game.PlayerPed.IsInVehicle())
+                    {
+                        Notify.Error("You are not in a vehicle.");
+                        return;
+                    }
+
+                    var veh = Game.PlayerPed.CurrentVehicle;
+                    var model = veh.Model.Hash;
+                    var text = $"{model}";
+                    CopyToClipboard(text);
+                    Notify.Info("Vehicle hash copied to clipboard.");
+
+                };
             };
 
             developerToolsMenu.OnCheckboxChange += (sender, item, index, _checked) =>
