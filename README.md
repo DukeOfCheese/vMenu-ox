@@ -46,22 +46,28 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
 ### Devtools
 - Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
 - Copy Coordinates Button (vector4)
+- Copy Vehicle Model Hash
 
 ## Changelog
 - 13th Jan
   - Copy Coords (DevTools)
   - Version Checking
   - Infinite Fuel Event Trigger
+  - Updated Integrations File (external folder in fivem resource)
+- 14th Jan
+  - Copy Vehicle Hash (DevTools)
 
 # Developer Integrations
 Below is information related to exposed events/functions you can use in your resources to integrate your server better with vMenu.
-In the FiveM resource, head to `addons` folder and you will see files labelled `integrations`. Here you will find any events/exports for use.
+In the FiveM resource, head to `addons` folder and you will see files labelled `integrations_client` & `integrations_server`. 
+
+Here you will find any events/exports for use and you can implement your server specific needs.
 
 Example Client Event:
 ```lua
 ---@class infiniteFuelToggled
 ---@field enabled boolean
-AddEventHandler("vMenu:InfiniteFuel", function(enabled)
+AddEventHandler("vMenu:Integrations:InfiniteFuel", function(enabled)
     lib.print.debug("Infinite Fuel: " .. tostring(enabled))
 end)
 ```
@@ -75,7 +81,7 @@ end)
 - [ ] Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory
 - [ ] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
 - [ ] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
-- [ ] Separate branch (maybe?) for outfit/weapon/vehicle code system
+- [ ] ~~Separate branch (maybe?) for outfit/weapon/vehicle code system~~ Planned to go ahead in main fork and add dependency of oxmysql as most servers use it. Maybe ill just do a resource check so if the resource isnt installed the buttons just error and say plugin not installed or smth?
 - [ ] Update weapon attachment right button if it is equipped (checkmark)
 - [x] Copy Coords Button (devtools)
 - [ ] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
