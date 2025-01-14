@@ -34,6 +34,7 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
 - New Permissions
   - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires` (default: denied)
 - Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
+- Implemented cooldown between usage of close all doors to patch exploit to make cars float/fly
 
 ### Weather
 - Added convar `vmenu_blackout_affect_vehicles` (default: false) so that vehicle headlights/police lightbars continue to operate during blackouts
@@ -47,15 +48,6 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
 - Auto freeze entites created with the entity spawner menu (to avoid them falling through map automatically on contact)
 - Copy Coordinates Button (vector4)
 - Copy Vehicle Model Hash
-
-## Changelog
-- 13th Jan
-  - Copy Coords (DevTools)
-  - Version Checking
-  - Infinite Fuel Event Trigger
-  - Updated Integrations File (external folder in fivem resource)
-- 14th Jan
-  - Copy Vehicle Hash (DevTools)
 
 # Developer Integrations
 Below is information related to exposed events/functions you can use in your resources to integrate your server better with vMenu.
@@ -76,7 +68,7 @@ end)
 - [ ] Sync Time/Weather into GlobalStates
 - [ ] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
 - [ ] Create separate branch for pre-category version of vMenu with same features/improvements
-- [ ] Ratelimit on close all/open all doors (exploit to make cars fly)
+- [x] Ratelimit on close all/open all doors (exploit to make cars fly)
 - [ ] Configurable vehicle spawn cooldown
 - [ ] Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory
 - [ ] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
