@@ -32,9 +32,9 @@ namespace vMenuClient
         {
             Exports["vMenu"].copyToClipboard(text);
         }
-        public bool CanDoInteraction()
+        public bool CanDoInteraction(string type)
         {
-            return Exports["vMenu"].canDoInteraction();
+            return Exports["vMenu"].canDoInteraction(type);
         }
     }
 
@@ -1224,46 +1224,45 @@ namespace vMenuClient
         /// <param name="replacePrevious">Replace the previous vehicle of the player.</param>
         public static async Task<int> SpawnVehicle(string vehicleName = "custom", bool spawnInside = false, bool replacePrevious = false)
         {
-
-            if (!CanDoInteraction())
+            if (!CanDoInteraction("spawnvehicle"))
             {
-                Notify.Error("You cannot spawn this vehicle at this time.");
                 return 0;
             }
 
+            if (VehicleSpawnerCooldownEnabled)
+            {
+                Notify.Error("Vehicle spawner is on cooldown.");
+                return 0;
+            }
 
             if (vehicleName == "custom")
             {
-                // Get the result.
                 var result = await GetUserInput(windowTitle: "Enter Vehicle Name");
-                // If the result was not invalid.
                 if (!string.IsNullOrEmpty(result))
                 {
-
-                    if (VehicleSpawnerCooldownEnabled)
-                    {
-                        Notify.Error("Vehicle spawner is on cooldown.");
-                        return 0;
-                    }
-
-                    // Convert it into a model hash.
                     var model = (uint)GetHashKey(result);
 
-                    var handle = await SpawnVehicle(vehicleHash: model, spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false, vehicleInfo: new VehicleInfo(),
+                    var vehicleHandle = await SpawnVehicle(vehicleHash: model, spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false, vehicleInfo: new VehicleInfo(),
                          saveName: null);
 
-                    _ = StartVehicleCooldown();
-                    return handle;
+                    if (vehicleHandle != 0)
+                    {
+                        _ = StartVehicleCooldown();
+                    }
+                    return vehicleHandle;
                 }
-                // Result was invalid.
                 else
                 {
                     Notify.Error(CommonErrors.InvalidInput);
                     return 0;
                 }
             }
-            return await SpawnVehicle(vehicleHash: (uint)GetHashKey(vehicleName), spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false,
-                    vehicleInfo: new VehicleInfo(), saveName: null);
+
+            var handle = await SpawnVehicle(vehicleHash: (uint)GetHashKey(vehicleName), spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false,
+                     vehicleInfo: new VehicleInfo(), saveName: null);
+
+            _ = StartVehicleCooldown();
+            return handle;
         }
         #endregion
 
@@ -1280,9 +1279,8 @@ namespace vMenuClient
         public static async Task<int> SpawnVehicle(uint vehicleHash, bool spawnInside, bool replacePrevious, bool skipLoad, VehicleInfo vehicleInfo, string saveName = null, float x = 0f, float y = 0f, float z = 0f, float heading = -1f)
         {
 
-            if (!CanDoInteraction())
+            if (!CanDoInteraction("spawnvehicle"))
             {
-                Notify.Error("You cannot spawn this vehicle at this time.");
                 return 0;
             }
 
@@ -1870,10 +1868,10 @@ namespace vMenuClient
             var ExternalFunctions = new ExternalFunctions();
             ExternalFunctions.SetPlayerClipboard(text);
         }
-        public static bool CanDoInteraction()
+        public static bool CanDoInteraction(string type)
         {
             var ExternalFunctions = new ExternalFunctions();
-            return ExternalFunctions.CanDoInteraction();
+            return ExternalFunctions.CanDoInteraction(type);
         }
         #endregion
 
@@ -2663,6 +2661,11 @@ namespace vMenuClient
         /// </summary>
         public static async void SpawnCustomWeapon()
         {
+            if (!CanDoInteraction("spawnweapon"))
+            {
+                return;
+            }
+
             var ammo = 900;
             var inputName = await GetUserInput(windowTitle: "Enter Weapon Model Name", maxInputLength: 30);
             if (!string.IsNullOrEmpty(inputName))
@@ -2733,6 +2736,11 @@ namespace vMenuClient
         /// <param name="appendWeapons"></param>
         public static async Task SpawnWeaponLoadoutAsync(string saveName, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify)
         {
+
+            if (!CanDoInteraction("spawnloadout"))
+            {
+                return;
+            }
 
             var loadout = GetSavedWeaponLoadout(saveName);
 
