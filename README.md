@@ -35,6 +35,7 @@ I have a direct suggestions channel so you can give ideas and request stuff to b
   - Bulletproof Tires `vMenu.VehicleOptions.BulletproofTires` (default: denied)
 - Fixed getting disarmed (weapon taken away) when locking/unlocking personal vehicles
 - Implemented cooldown between usage of close all doors to patch exploit to make cars float/fly
+- Cooldown when spawning vehicles to prevent players from spam spawning vehicles
 
 ### Weather
 - Added convar `vmenu_blackout_affect_vehicles` (default: false) so that vehicle headlights/police lightbars continue to operate during blackouts
@@ -69,10 +70,10 @@ end)
 - [ ] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
 - [ ] Create separate branch for pre-category version of vMenu with same features/improvements
 - [x] Ratelimit on close all/open all doors (exploit to make cars fly)
-- [ ] Configurable vehicle spawn cooldown
+- [x] Configurable vehicle spawn cooldown
 - [ ] Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory
 - [ ] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
-- [ ] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
+- [x] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
 - [ ] ~~Separate branch (maybe?) for outfit/weapon/vehicle code system~~ Planned to go ahead in main fork and add dependency of oxmysql as most servers use it. Maybe ill just do a resource check so if the resource isnt installed the buttons just error and say plugin not installed or smth?
 - [ ] Update weapon attachment right button if it is equipped (checkmark)
 - [x] Copy Coords Button (devtools)

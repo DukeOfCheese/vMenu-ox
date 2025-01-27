@@ -34,6 +34,8 @@ namespace vMenuShared
             vmenu_disable_entity_outlines_tool,
             vmenu_disable_player_stats_setup,
 
+            vmenu_vehicle_spawner_cooldown,
+
             // Vehicle Chameleon Colours
             vmenu_using_chameleon_colours,
 

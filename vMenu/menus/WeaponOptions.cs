@@ -8,6 +8,7 @@ using vMenuClient.data;
 
 using static CitizenFX.Core.Native.API;
 using static vMenuClient.CommonFunctions;
+using static vMenuClient.ExternalFunctions;
 using static vMenuShared.PermissionsManager;
 
 namespace vMenuClient.menus
@@ -180,6 +181,11 @@ namespace vMenuClient.menus
                             }
                             else
                             {
+                                if (!CanDoInteraction("spawnweapon"))
+                                {
+                                    return;
+                                }
+
                                 var ammo = 255;
                                 GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
                                 GiveWeaponToPed(Game.PlayerPed.Handle, hash, ammo, false, true);
@@ -190,6 +196,11 @@ namespace vMenuClient.menus
                         {
                             if (HasPedGotWeapon(Game.PlayerPed.Handle, hash, false))
                             {
+                                if (!CanDoInteraction("refillammo"))
+                                {
+                                    return;
+                                }
+
                                 var ammo = 900;
                                 GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
                                 SetPedAmmo(Game.PlayerPed.Handle, hash, ammo);
@@ -595,6 +606,11 @@ namespace vMenuClient.menus
                             }
                             else
                             {
+                                if (!CanDoInteraction("spawnweapon"))
+                                {
+                                    return;
+                                }
+
                                 var ammo = 255;
                                 GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
                                 GiveWeaponToPed(Game.PlayerPed.Handle, hash, ammo, false, true);
@@ -603,6 +619,11 @@ namespace vMenuClient.menus
                         }
                         else if (item == fillAmmo)
                         {
+                            if (!CanDoInteraction("refillammo"))
+                            {
+                                return;
+                            }
+
                             if (HasPedGotWeapon(Game.PlayerPed.Handle, hash, false))
                             {
                                 var ammo = 900;
@@ -778,6 +799,7 @@ namespace vMenuClient.menus
                 var ped = Game.PlayerPed;
                 if (item == getAllWeapons)
                 {
+
                     foreach (var vw in ValidWeapons.WeaponList)
                     {
                         if (IsAllowed(vw.Perm))
@@ -813,6 +835,11 @@ namespace vMenuClient.menus
                 }
                 else if (item == refillMaxAmmo)
                 {
+                    if (!CanDoInteraction("refillammo"))
+                    {
+                        return;
+                    }
+
                     foreach (var vw in ValidWeapons.WeaponList)
                     {
                         if (HasPedGotWeapon(Game.PlayerPed.Handle, vw.Hash, false))
