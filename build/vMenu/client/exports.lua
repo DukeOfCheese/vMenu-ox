@@ -1,3 +1,7 @@
+-- You should not be editing this file unless you know what you are doing. This shouldn't need to be changed.
+
+
+
 --#region Input Dialogs
 ---@class inputDialog
 ---@param windowTitle string
