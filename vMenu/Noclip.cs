@@ -7,6 +7,7 @@ using CitizenFX.Core;
 using static CitizenFX.Core.Native.API;
 
 using static vMenuShared.ConfigManager;
+using static vMenuClient.CommonFunctions;
 
 namespace vMenuClient
 {
@@ -37,7 +38,14 @@ namespace vMenuClient
 
         internal static void SetNoclipActive(bool active)
         {
+
+            if (!CanDoInteraction("noclip"))
+            {
+                return;
+            }
+
             NoclipActive = active;
+            TriggerEvent("vMenu:Integrations:NoClip", active);
 
             if (!active)
             {
