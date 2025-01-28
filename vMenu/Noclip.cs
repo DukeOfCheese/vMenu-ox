@@ -243,12 +243,14 @@ namespace vMenuClient
                 FreezeEntityPosition(noclipEntity, false);
                 SetEntityInvincible(noclipEntity, false);
                 SetEntityCollision(noclipEntity, true, true);
+                TriggerServerEvent("vMenu:noclip", true);
 
                 // If the player is not set as invisible by PlayerOptions or if the noclip entity is not the player ped, reset the visibility
                 if (MainMenu.PlayerOptionsMenu == null || !MainMenu.PlayerOptionsMenu.PlayerInvisible || (MainMenu.PlayerOptionsMenu.PlayerInvisible && noclipEntity == Game.PlayerPed.Handle))
                 {
                     SetEntityVisible(noclipEntity, true, false);
                     SetLocalPlayerVisibleLocally(true);
+                    TriggerServerEvent("vMenu:noclip", false);
                 }
 
                 // Always reset the alpha.
