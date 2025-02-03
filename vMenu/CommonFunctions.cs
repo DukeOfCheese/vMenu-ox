@@ -35,11 +35,24 @@ namespace vMenuClient
         public bool CanDoInteraction(string type)
         {
             return Exports["vMenu"].canDoInteraction(type);
+
+        }
+        public async Task<bool> LoadSharedOutfit(string outfitName)
+        {
+            return await Exports["vMenu"].loadSharedOutfit(outfitName);
+        }
+        public async Task<bool> LoadSharedVehicle()
+        {
+            return await Exports["vMenu"].loadSharedVehicle();
+        }
+        public async Task<bool> GetUserConfirmation(string windowTitle, string description)
+        {
+            return await Exports["vMenu"].getUserConfirmation(windowTitle, description);
         }
     }
 
-    public static class CommonFunctions
-    {
+        public static class CommonFunctions
+        {
         #region Variables
         private static string _currentScenario = "";
         private static Vehicle _previousVehicle;
@@ -1510,17 +1523,29 @@ namespace vMenuClient
 
                 SetVehicleWindowTint(vehicle.Handle, vehicleInfo.windowTint);
 
-                vehicle.CanTiresBurst = !vehicleInfo.bulletProofTires;
+                if (IsAllowed(Permission.VOBulletproofTires))
+                {
+                    // fix for bulletproof tires applying to people that dont have bulletproof tyre permissions
+                    vehicle.CanTiresBurst = !vehicleInfo.bulletProofTires;
+                } 
+                else
+                {
+                    vehicle.CanTiresBurst = true;
+                }
 
                 SetVehicleEnveffScale(vehicle.Handle, vehicleInfo.enveffScale);
 
                 VehicleOptions.SetHeadlightsColorForVehicle(vehicle, vehicleInfo.headlightColor);
 
-                vehicle.Mods.NeonLightsColor = System.Drawing.Color.FromArgb(red: vehicleInfo.colors["neonR"], green: vehicleInfo.colors["neonG"], blue: vehicleInfo.colors["neonB"]);
-                vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Left, vehicleInfo.neonLeft);
-                vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Right, vehicleInfo.neonRight);
-                vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Front, vehicleInfo.neonFront);
-                vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Back, vehicleInfo.neonBack);
+                if (IsAllowed(Permission.VOUnderglow))
+                {
+                    // fix for neon applying without underglow permission given to user
+                    vehicle.Mods.NeonLightsColor = System.Drawing.Color.FromArgb(red: vehicleInfo.colors["neonR"], green: vehicleInfo.colors["neonG"], blue: vehicleInfo.colors["neonB"]);
+                    vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Left, vehicleInfo.neonLeft);
+                    vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Right, vehicleInfo.neonRight);
+                    vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Front, vehicleInfo.neonFront);
+                    vehicle.Mods.SetNeonLightsOn(VehicleNeonLight.Back, vehicleInfo.neonBack);
+                }
 
                 void DoMods()
                 {
@@ -1873,6 +1898,21 @@ namespace vMenuClient
             var ExternalFunctions = new ExternalFunctions();
             return ExternalFunctions.CanDoInteraction(type);
         }
+        public static async Task<bool> LoadSharedOutfit(string outfitName)
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.LoadSharedOutfit(outfitName);
+        }
+        public static async Task<bool> LoadSharedVehicle()
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.LoadSharedVehicle();
+        }
+        public static async Task<bool> GetUserConfirmation(string windowTitle, string description)
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.GetUserConfirmation(windowTitle, description);
+        }
         #endregion
 
         #region Set License Plate Text
@@ -1895,7 +1935,12 @@ namespace vMenuClient
                     {
                         // Set the license plate.
                         SetVehicleNumberPlateText(veh.Handle, text);
-                        TriggerEvent("vMenu:Integrations:LicensePlateUpdated", veh.Handle, text);
+                        var actionData = new Dictionary<string, object>
+                        {
+                            ["handle"] = veh.Handle,
+                            ["plate"] = text,
+                        };
+                        TriggerEvent("vMenu:Integrations:Action", "licenseplate", actionData);
                     }
                     // No valid text was given.
                     else

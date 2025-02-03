@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 
 using static CitizenFX.Core.Native.API;
 using static vMenuClient.CommonFunctions;
+using static vMenuShared.ConfigManager;
 
 namespace vMenuClient.menus
 {
@@ -28,6 +29,8 @@ namespace vMenuClient.menus
         private int deleteButtonPressedCount = 0;
         private int replaceButtonPressedCount = 0;
         private SavedVehicleCategory currentCategory;
+
+        public static bool vehicleCodesEnabled = GetSettingsBool(Setting.vmenu_vehiclecodes);
 
         // Need to be editable from other functions
         private readonly MenuListItem setCategoryBtn = new("Set Vehicle Category", new List<string> { }, 0, "Sets this Vehicle's category. Select to save.");
@@ -422,10 +425,20 @@ namespace vMenuClient.menus
 
             var spawnVehicle = new MenuItem("Spawn Vehicle", "Spawn this saved vehicle.");
             var renameVehicle = new MenuItem("Rename Vehicle", "Rename your saved vehicle.");
+            var generateVehicleCode = new MenuItem("Generate Vehicle Code", "Generate a share code for this vehicle to give to other players.");
+
+            if (!vehicleCodesEnabled)
+            {
+                generateVehicleCode.Enabled = false;
+                generateVehicleCode.Description = "This feature is currently disabled by the server owner.";
+                generateVehicleCode.RightIcon = MenuItem.Icon.LOCK;
+            }
+
             var replaceVehicle = new MenuItem("~r~Replace Vehicle", "Your saved vehicle will be replaced with the vehicle you are currently sitting in. ~r~Warning: this can NOT be undone!");
             var deleteVehicle = new MenuItem("~r~Delete Vehicle", "~r~This will delete your saved vehicle. Warning: this can NOT be undone!");
             selectedVehicleMenu.AddMenuItem(spawnVehicle);
             selectedVehicleMenu.AddMenuItem(renameVehicle);
+            selectedVehicleMenu.AddMenuItem(generateVehicleCode);
             selectedVehicleMenu.AddMenuItem(setCategoryBtn);
             selectedVehicleMenu.AddMenuItem(replaceVehicle);
             selectedVehicleMenu.AddMenuItem(deleteVehicle);
@@ -459,7 +472,8 @@ namespace vMenuClient.menus
                 }
                 else if (item == renameVehicle)
                 {
-                    var newName = await GetUserInput(windowTitle: "Enter a new name for this vehicle.", maxInputLength: 30);
+                    string currentlySelectedVehicleSaveName = currentlySelectedVehicle.Key.Substring(4); // gets rid of the veh_ prefix used to store in KVP
+                    var newName = await GetUserInput(windowTitle: "Enter a new name for this vehicle.", defaultText: currentlySelectedVehicleSaveName);
                     if (string.IsNullOrEmpty(newName))
                     {
                         Notify.Error(CommonErrors.InvalidInput);
@@ -483,6 +497,12 @@ namespace vMenuClient.menus
                             Notify.Error("This name is already in use or something unknown failed. Contact the server owner if you believe something is wrong.");
                         }
                     }
+                }
+                else if (item == generateVehicleCode)
+                {
+
+                    string currentlySelectedVehicleSaveName = currentlySelectedVehicle.Key.Substring(4); // gets rid of the veh_ prefix used to store in KVP
+                    TriggerEvent("vMenu:Vehicles:GenerateCode", currentlySelectedVehicleSaveName);
                 }
                 else if (item == replaceVehicle)
                 {
@@ -664,6 +684,15 @@ namespace vMenuClient.menus
             {
                 LeftIcon = MenuItem.Icon.CAR
             };
+
+            var loadVehicleButton = new MenuItem("Load Vehicle Code", "Load a vehicle by sharing code.");
+            if (!vehicleCodesEnabled)
+            {
+                loadVehicleButton.Enabled = false;
+                loadVehicleButton.Description = "This feature is currently disabled by the server owner.";
+                loadVehicleButton.RightIcon = MenuItem.Icon.LOCK;
+            }
+
             var classButton = new MenuItem("Vehicle Class", "Selected a saved vehicle by its class.")
             {
                 Label = "→→→"
@@ -674,10 +703,11 @@ namespace vMenuClient.menus
             };
 
             savedVehicleTypeMenu.AddMenuItem(saveVehicle);
+            savedVehicleTypeMenu.AddMenuItem(loadVehicleButton);
             savedVehicleTypeMenu.AddMenuItem(classButton);
             savedVehicleTypeMenu.AddMenuItem(categoryButton);
 
-            savedVehicleTypeMenu.OnItemSelect += (sender, item, index) =>
+            savedVehicleTypeMenu.OnItemSelect += async (sender, item, index) =>
             {
                 if (item == saveVehicle)
                 {
@@ -689,6 +719,10 @@ namespace vMenuClient.menus
                     {
                         Notify.Error("You are currently not in any vehicle. Please enter a vehicle before trying to save it.");
                     }
+                }
+                else if (item == loadVehicleButton)
+                {
+                    bool success = await LoadSharedVehicle();
                 }
                 else if (item == classButton)
                 {

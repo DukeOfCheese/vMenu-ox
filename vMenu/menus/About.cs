@@ -13,11 +13,11 @@ namespace vMenuClient.menus
             menu = new Menu("vMenu", "About vMenu");
 
             // Create menu items.
-            var version = new MenuItem("vMenu Version", $"This server is using vMenu ~b~~h~{MainMenu.Version}~h~~s~.")
+            var version = new MenuItem("vMenu Version", $"This server is using vMenu-ox ~b~~h~{MainMenu.Version}~h~~s~.")
             {
                 Label = $"~h~{MainMenu.Version}~h~"
             };
-            var credits = new MenuItem("About vMenu / Credits", "vMenu is made by ~b~Vespura~s~. For more info, checkout ~b~www.vespura.com/vmenu~s~. Thank you to: Deltanic, Brigliar, IllusiveTea, Shayan Doust, zr0iq and Golden for your contributions!");
+            var credits = new MenuItem("About vMenu / Credits", "vMenu is made by ~b~Vespura~s~.\n\nThis version is a fork designed by ~g~Grav~s~ to work with ox_lib and integrate other external features.\n\nFor more info, check out: ~b~github.com/Gravxd/vMenu-ox~s~.\n\nOriginal Project: ~b~vespura.com/vmenu~s~\n\nThank you to: Deltanic, Brigliar, IllusiveTea, Shayan Doust, zr0iq and Golden for your contributions!");
 
             var serverInfoMessage = vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_server_info_message);
             if (!string.IsNullOrEmpty(serverInfoMessage))

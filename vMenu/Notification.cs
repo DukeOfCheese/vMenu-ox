@@ -4,6 +4,8 @@ using CitizenFX.Core;
 
 using static CitizenFX.Core.Native.API;
 using static CitizenFX.Core.UI.Screen;
+using static vMenuShared.ConfigManager;
+using static vMenuClient.CommonFunctions;
 
 namespace vMenuClient
 {
@@ -75,6 +77,9 @@ namespace vMenuClient
     /// </summary>
     public static class Notify
     {
+
+        static bool usingCustomNotifications = GetSettingsBool(Setting.vmenu_using_custom_notify);
+
         /// <summary>
         /// Show a custom notification above the minimap.
         /// </summary>
@@ -82,7 +87,7 @@ namespace vMenuClient
         /// <param name="blink">Should the notification blink 3 times?</param>
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Custom(string message, bool blink = true, bool saveToBrief = true)
-        {
+        {   
             SetNotificationTextEntry("CELL_EMAIL_BCON"); // 10x ~a~
             foreach (var s in CitizenFX.Core.UI.Screen.StringToArray(message))
             {
@@ -99,6 +104,11 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Alert(string message, bool blink = true, bool saveToBrief = true)
         {
+            if (usingCustomNotifications)
+            {
+                TriggerEvent("vMenu:CustomNotify", message, "alert");
+                return;
+            }
             Custom("~y~~h~Alert~h~~s~: " + message, blink, saveToBrief);
         }
 
@@ -123,6 +133,11 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Error(string message, bool blink = true, bool saveToBrief = true)
         {
+            if (usingCustomNotifications)
+            {
+                TriggerEvent("vMenu:CustomNotify", message, "error");
+                return;
+            }
             Custom("~r~~h~Error~h~~s~: " + message, blink, saveToBrief);
             Debug.Write("[vMenu] [ERROR] " + message + "\n");
         }
@@ -148,6 +163,11 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Info(string message, bool blink = true, bool saveToBrief = true)
         {
+            if (usingCustomNotifications)
+            {
+                TriggerEvent("vMenu:CustomNotify", message, "inform");
+                return;
+            }
             Custom("~b~~h~Info~h~~s~: " + message, blink, saveToBrief);
         }
 
@@ -159,6 +179,11 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Success(string message, bool blink = true, bool saveToBrief = true)
         {
+            if (usingCustomNotifications)
+            {
+                TriggerEvent("vMenu:CustomNotify", message, "success");
+                return;
+            }
             Custom("~g~~h~Success~h~~s~: " + message, blink, saveToBrief);
         }
 

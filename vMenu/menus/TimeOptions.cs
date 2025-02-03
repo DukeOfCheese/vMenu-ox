@@ -91,7 +91,7 @@ namespace vMenuClient.menus
             }
 
             // Handle button presses.
-            menu.OnItemSelect += (sender, item, index) =>
+            menu.OnItemSelect += async (sender, item, index) =>
             {
                 // If it's the freeze time button.
                 if (item == freezeTimeToggle)
@@ -115,14 +115,19 @@ namespace vMenuClient.menus
                     }
 
                     var newMinute = 0;
-                    Subtitle.Info($"Time set to ~y~{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}~s~:~y~" +
+                    string time = $"**{item.Text} - {item.Label}**";
+                    bool confirmed = await GetUserConfirmation("Change Time", $"Please confirm that you want to change the time to: {time}");
+                    if (confirmed)
+                    {
+                        Subtitle.Info($"Time set to ~y~{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}~s~:~y~" +
                         $"{(newMinute < 10 ? $"0{newMinute}" : newMinute.ToString())}~s~.", prefix: "Info:");
-                    UpdateServerTime(newHour, newMinute, EventManager.IsServerTimeFrozen);
+                        UpdateServerTime(newHour, newMinute, EventManager.IsServerTimeFrozen);
+                    }
                 }
 
             };
 
-            menu.OnListItemSelect += (sender, item, listIndex, itemIndex) =>
+            menu.OnListItemSelect += async (sender, item, listIndex, itemIndex) =>
             {
                 var newHour = EventManager.GetServerHours;
                 var newMinute = EventManager.GetServerMinutes;
@@ -135,9 +140,14 @@ namespace vMenuClient.menus
                     newMinute = item.ListIndex;
                 }
 
-                Subtitle.Info($"Time set to ~y~{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}~s~:~y~" +
+                string time = $"{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}:{(newMinute < 10 ? $"0{newMinute}" : newMinute.ToString())}";
+                bool confirmed = await GetUserConfirmation("Change Time", $"Please confirm that you want to change the time to: {time}");
+                if (confirmed)
+                {
+                    Subtitle.Info($"Time set to ~y~{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}~s~:~y~" +
                         $"{(newMinute < 10 ? $"0{newMinute}" : newMinute.ToString())}~s~.", prefix: "Info:");
-                UpdateServerTime(newHour, newMinute, EventManager.IsServerTimeFrozen);
+                    UpdateServerTime(newHour, newMinute, EventManager.IsServerTimeFrozen);
+                }
             };
         }
 

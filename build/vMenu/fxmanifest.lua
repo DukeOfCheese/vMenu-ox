@@ -3,14 +3,13 @@ fx_version 'bodacious'
 games { 'gta5' }
 
 description 'vMenu Fork - github.com/Gravxd/vMenu-ox'
-version '1.2.0'
+version '2.0.0'
 author 'Tom Grobbe (vMenu), Gravxd (vMenu-ox)'
 ui_page 'storage.html'
 
 lua54 "yes"
 shared_scripts {
-    "@ox_lib/init.lua",
-    "config/config_shared.lua",
+    "@ox_lib/init.lua"
 }
 
 -- Adds additional logging, useful when debugging issues.
@@ -37,7 +36,10 @@ client_scripts {
 }
 server_scripts {
     'vMenuServer.net.dll',
-    '@oxmysql/lib/MySQL.lua', -- Only uncomment if you are using outfit system
     'config/config_server.lua',
     'server/*.lua'
+}
+
+dependencies {
+    'ox_lib'
 }

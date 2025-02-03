@@ -137,6 +137,7 @@ namespace vMenuClient.data
                     _weaponsList.Add(vw);
                 }
             }
+            _weaponsList.Sort((x, y) => string.Compare(x.Name, y.Name));
         }
 
         #region Weapon names, hashes and localized names (+ all components & tints).

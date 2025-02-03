@@ -45,7 +45,11 @@ namespace vMenuClient
             }
 
             NoclipActive = active;
-            TriggerEvent("vMenu:Integrations:NoClip", active);
+            var actionData = new Dictionary<string, object>
+            {
+                ["enabled"] = NoclipActive
+            };
+            TriggerEvent("vMenu:Integrations:Action", "noclip", actionData);
 
             if (!active)
             {
