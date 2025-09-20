@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 
 using CitizenFX.Core;
-using CitizenFX.Core.Native;
-using CitizenFX.Core.UI;
 
 using MenuAPI;
 
@@ -1704,7 +1702,7 @@ namespace vMenuClient.menus
                 if (vehicleExtras.TryGetValue(item, out var extra))
                 {
                     var veh = GetVehicle();
-                    if (veh != null && veh.Exists())
+                    if (Entity.Exists(veh))
                     {
                         // If vmenu_prevent_extras_when_damaged is enabled, check vehicle engine and body health
                         if (GetSettingsBool(Setting.vmenu_prevent_extras_when_damaged) && 
@@ -1713,15 +1711,13 @@ namespace vMenuClient.menus
                         {
                             if (GetSettingsBool(Setting.vmenu_prevent_extras_notification_enabled))
                             {
-                                Screen.ShowNotification(GetSettingsString(Setting.vmenu_prevent_extras_notification_text));
+                                Notify.Alert("Vehicle is too damaged to change extra, repair it first!", true, false);
                             }
                            
                             // Revert checkbox back to original state
                             ((MenuCheckboxItem)item).Checked = veh.IsExtraOn(extra);
                             return;
                         }
-
-                        veh.ToggleExtra(extra, _checked);
                     }
                 }
             };
