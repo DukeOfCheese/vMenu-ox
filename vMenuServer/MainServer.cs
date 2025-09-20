@@ -662,7 +662,7 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerWeather")]
         internal void UpdateWeather([FromSource] Player source, string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
         {
-            if (source != null && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.Menu") && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.All"))
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WOSetWeather, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
             {
                 BanManager.BanCheater(source);
                 return;
@@ -691,18 +691,26 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerWeatherCloudsType")]
         internal void UpdateWeatherCloudsType([FromSource] Player source, bool removeClouds)
         {
-            if (source != null && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.RemoveClouds") && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.RandomizeClouds"))
-            {
-                BanManager.BanCheater(source);
-                return;
-            }
+            bool allWOPermissions = PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source);
 
             if (removeClouds)
             {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORemoveClouds, source) && !allWOPermissions)
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
+
                 TriggerClientEvent("vMenu:SetClouds", 0f, "removed");
             }
             else
             {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORandomizeClouds, source) && !allWOPermissions)
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
+
                 var opacity = float.Parse(new Random().NextDouble().ToString());
                 var type = CloudTypes[new Random().Next(0, CloudTypes.Count)];
                 TriggerClientEvent("vMenu:SetClouds", opacity, type);
@@ -718,10 +726,23 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerTime")]
         internal void UpdateTime([FromSource] Player source, int newHours, int newMinutes, bool freezeTimeNew)
         {
-            if (source != null && !IsPlayerAceAllowed(source.Handle, "vMenu.TimeOptions.Menu") && !IsPlayerAceAllowed(source.Handle, "vMenu.TimeOptions.All"))
+            bool allTOPermissions = PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source);
+
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source) && !allTOPermissions)
             {
                 BanManager.BanCheater(source);
                 return;
+            }
+
+            // Chris: This logic is inherently problematic, as players WITHOUT `TOFreezeTime` can still *un*freeze time, even if they can't freeze time
+            // TODO: Move time freezing to separate event, so `TOFreezeTime` can be checked regardless of the boolean value?
+            if (freezeTimeNew)
+            {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOFreezeTime, source) && !allTOPermissions)
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
             }
 
             CurrentHours = newHours;
