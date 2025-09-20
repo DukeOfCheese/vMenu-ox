@@ -2046,8 +2046,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="hours">Hours (0-23)</param>
         /// <param name="minutes">Minutes (0-59)</param>
-        /// <param name="freezeTime">Should the time be frozen?</param>
-        public static void UpdateServerTime(int hours, int minutes, bool freezeTime)
+        public static void UpdateServerTime(int hours, int minutes)
         {
             var realHours = hours;
             var realMinutes = minutes;
@@ -2059,8 +2058,14 @@ namespace vMenuClient
             {
                 realMinutes = 0;
             }
-            TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes, freezeTime);
+            TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes);
         }
+
+        /// <summary>
+        /// Updates the server on if time should be frozen or not.
+        /// </summary>
+        /// <param name="freezeTime">`true` to freeze time, `false` to unfreeze time</param>
+        public static void FreezeServerTime(bool freezeTime) => TriggerServerEvent("vMenu:FreezeServerTime", freezeTime);
         #endregion
 
         #region StringToStringArray
