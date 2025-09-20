@@ -1534,7 +1534,7 @@ namespace vMenuClient
                     #region new saving method
                     var mods = new Dictionary<int, int>();
 
-                    foreach (var mod in veh.Mods.GetAllMods())
+                    foreach (var mod in GetAllVehicleMods(veh))
                     {
                         mods.Add((int)mod.ModType, mod.Index);
                     }
@@ -3464,6 +3464,27 @@ namespace vMenuClient
             }
             TriggerServerEvent("vMenu:SaveTeleportLocation", JsonConvert.SerializeObject(new vMenuShared.ConfigManager.TeleportLocation(locationName, pos, heading)));
             Notify.Success("The location was successfully saved.");
+        }
+        #endregion
+
+        #region Get all vehicle mods
+        public static VehicleMod[] GetAllVehicleMods(Vehicle vehicle)
+        {
+            int vehicleHandle = vehicle.Handle;
+
+            bool HasVehicleMod(VehicleData.ModType modType)
+            {
+                return GetNumVehicleMods(vehicleHandle, (int)modType) > 0;
+            }
+
+            return
+            [
+                .. Enum.GetValues(typeof(VehicleData.ModType))
+                    .Cast<VehicleData.ModType>()
+                    .Where(HasVehicleMod)
+                    // The cast to `VehicleModType` is fine here because `VehicleMod` casts `VehicleModType` to `int`
+                    .Select(modType => vehicle.Mods[(VehicleModType)modType])
+            ];
         }
         #endregion
     }
