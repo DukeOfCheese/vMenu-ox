@@ -734,32 +734,34 @@ namespace vMenuServer
         /// </summary>
         /// <param name="newHours"></param>
         /// <param name="newMinutes"></param>
-        /// <param name="freezeTimeNew"></param>
         [EventHandler("vMenu:UpdateServerTime")]
-        internal void UpdateTime([FromSource] Player source, int newHours, int newMinutes, bool freezeTimeNew)
+        internal void UpdateTime([FromSource] Player source, int newHours, int newMinutes)
         {
-            bool allTOPermissions = PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source);
-
-            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source) && !allTOPermissions)
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
             {
                 BanManager.BanCheater(source);
                 return;
             }
 
-            // Chris: This logic is inherently problematic, as players WITHOUT `TOFreezeTime` can still *un*freeze time, even if they can't freeze time
-            // TODO: Move time freezing to separate event, so `TOFreezeTime` can be checked regardless of the boolean value?
-            if (freezeTimeNew)
-            {
-                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOFreezeTime, source) && !allTOPermissions)
-                {
-                    BanManager.BanCheater(source);
-                    return;
-                }
-            }
-
             CurrentHours = newHours;
             CurrentMinutes = newMinutes;
-            FreezeTime = freezeTimeNew;
+        }
+
+        /// <summary>
+        /// Set and sync if time is frozen for all clients.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="freezeTime"></param>
+        [EventHandler("vMenu:FreezeServerTime")]
+        internal void FreezeServerTime([FromSource] Player source, bool freezeTime)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOFreezeTime, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            FreezeTime = freezeTime;
         }
         #endregion
 
