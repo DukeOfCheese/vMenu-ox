@@ -1706,8 +1706,8 @@ namespace vMenuClient.menus
                     {
                         // If vmenu_prevent_extras_when_damaged is enabled, check vehicle engine and body health
                         if (GetSettingsBool(Setting.vmenu_prevent_extras_when_damaged) && 
-                        (API.GetVehicleBodyHealth(veh.Handle) < GetSettingsInt(Setting.vmenu_prevent_extras_engine_damage) || 
-                        API.GetVehicleEngineHealth(veh.Handle) < GetSettingsInt(Setting.vmenu_prevent_extras_body_damage)))
+                        (GetVehicleBodyHealth(veh.Handle) < GetSettingsInt(Setting.vmenu_prevent_extras_engine_damage) || 
+                        GetVehicleEngineHealth(veh.Handle) < GetSettingsInt(Setting.vmenu_prevent_extras_body_damage)))
                         {
                             if (GetSettingsBool(Setting.vmenu_prevent_extras_notification_enabled))
                             {
@@ -1718,6 +1718,7 @@ namespace vMenuClient.menus
                             ((MenuCheckboxItem)item).Checked = veh.IsExtraOn(extra);
                             return;
                         }
+                        veh.ToggleExtra(extra, _checked);
                     }
                 }
             };
