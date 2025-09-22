@@ -672,8 +672,13 @@ namespace vMenuServer
         /// <param name="blackoutNew"></param>
         /// <param name="dynamicWeatherNew"></param>
         [EventHandler("vMenu:UpdateServerWeather")]
-        internal void UpdateWeather(string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
+        internal void UpdateWeather([FromSource] Player source, string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
         {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WOSetWeather, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
 
             // Automatically enable snow effects whenever one of the snow weather types is selected.
             if (newWeather is "XMAS" or "SNOWLIGHT" or "SNOW" or "BLIZZARD")
@@ -696,14 +701,28 @@ namespace vMenuServer
         /// </summary>
         /// <param name="removeClouds"></param>
         [EventHandler("vMenu:UpdateServerWeatherCloudsType")]
-        internal void UpdateWeatherCloudsType(bool removeClouds)
+        internal void UpdateWeatherCloudsType([FromSource] Player source, bool removeClouds)
         {
+            bool allWOPermissions = PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source);
+
             if (removeClouds)
             {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORemoveClouds, source) && !allWOPermissions)
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
+
                 TriggerClientEvent("vMenu:SetClouds", 0f, "removed");
             }
             else
             {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORandomizeClouds, source) && !allWOPermissions)
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
+
                 var opacity = float.Parse(new Random().NextDouble().ToString());
                 var type = CloudTypes[new Random().Next(0, CloudTypes.Count)];
                 TriggerClientEvent("vMenu:SetClouds", opacity, type);
@@ -715,13 +734,34 @@ namespace vMenuServer
         /// </summary>
         /// <param name="newHours"></param>
         /// <param name="newMinutes"></param>
-        /// <param name="freezeTimeNew"></param>
         [EventHandler("vMenu:UpdateServerTime")]
-        internal void UpdateTime(int newHours, int newMinutes, bool freezeTimeNew)
+        internal void UpdateTime([FromSource] Player source, int newHours, int newMinutes)
         {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
             CurrentHours = newHours;
             CurrentMinutes = newMinutes;
-            FreezeTime = freezeTimeNew;
+        }
+
+        /// <summary>
+        /// Set and sync if time is frozen for all clients.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="freezeTime"></param>
+        [EventHandler("vMenu:FreezeServerTime")]
+        internal void FreezeServerTime([FromSource] Player source, bool freezeTime)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOFreezeTime, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            FreezeTime = freezeTime;
         }
         #endregion
 
