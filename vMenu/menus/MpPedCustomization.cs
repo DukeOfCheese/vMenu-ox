@@ -179,6 +179,17 @@ namespace vMenuClient.menus
             propsMenu.ClearMenuItems();
 
             #region appearance menu.
+            // Clears any saved appearance values from prior peds
+            _hairSelection = 0;
+            _hairColorSelection = 0;
+            _hairHighlightColorSelection = 0;
+            _eyeColorSelection = 0;
+
+            for (int i = 0; i < 12; i++)
+            {
+                appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
+            }
+
             var opacity = new List<string>() { "0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%" };
 
             var maxHairStyles = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, 2);
@@ -837,11 +848,6 @@ namespace vMenuClient.menus
             for (int i = 0; i < GetNumHeadOverlayValues(11); i++)
             {
                 bodyBlemishesList.Add($"Style #{i + 1}");
-            }
-
-            for (int i = 0; i < 12; i++)
-            {
-                appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
             }
 
             // Create the menu.
@@ -2047,6 +2053,8 @@ namespace vMenuClient.menus
                     ((MenuListItem)items[32]).ListIndex = (int)(appearanceValues[11].Item3 * 10);
 
                     appearanceMenu.RefreshIndex();
+
+                    SetHeadBlend();
                 }
             };
 
@@ -2083,9 +2091,8 @@ namespace vMenuClient.menus
                     ClearPedDecorations(Game.PlayerPed.Handle);
                     ClearPedFacialDecorations(Game.PlayerPed.Handle);
                     SetPedDefaultComponentVariation(Game.PlayerPed.Handle);
-                    SetPedHairColor(Game.PlayerPed.Handle, 0, 0);
-                    SetPedEyeColor(Game.PlayerPed.Handle, 0);
                     ClearAllPedProps(Game.PlayerPed.Handle);
+                    DefaultPlayerColors();
 
                     MakeCreateCharacterMenu(male: true);
                 }
@@ -2119,9 +2126,8 @@ namespace vMenuClient.menus
                     ClearPedDecorations(Game.PlayerPed.Handle);
                     ClearPedFacialDecorations(Game.PlayerPed.Handle);
                     SetPedDefaultComponentVariation(Game.PlayerPed.Handle);
-                    SetPedHairColor(Game.PlayerPed.Handle, 0, 0);
-                    SetPedEyeColor(Game.PlayerPed.Handle, 0);
                     ClearAllPedProps(Game.PlayerPed.Handle);
+                    DefaultPlayerColors();
 
                     MakeCreateCharacterMenu(male: false);
                 }
@@ -3101,6 +3107,50 @@ namespace vMenuClient.menus
                 SetPedComponentVariation(Game.PlayerPed.Handle, 6, 35, 0, 0);
 
                 currentCharacter.DrawableVariations.clothes[6] = new KeyValuePair<int, int>(35, 0);
+            }
+        }
+
+        /// <summary>
+        /// Sets all the ped's overlay colors to their default (0) entry.
+        /// When called, prevents default color being bright green.
+        /// </summary>
+        internal void DefaultPlayerColors()
+        {
+            SetHeadBlend();
+
+            for (int i = 0; i < 12; i++)
+            {
+                int color = 0;
+                int colorIndex = 0;
+
+                switch (i)
+                {
+                    case 1:
+                        colorIndex = 1;
+                        break;
+
+                    case 2:
+                        colorIndex = 1;
+                        break;
+
+                    case 8:
+                        colorIndex = 2;
+                        break;
+
+                    case 10:
+                        colorIndex = 1;
+                        break;
+
+                    default:
+                        continue;
+                }
+
+                SetPedHeadOverlay(Game.PlayerPed.Handle, i, 0, 0f);
+
+                if (colorIndex > 0)
+                {
+                    SetPedHeadOverlayColor(Game.PlayerPed.Handle, i, colorIndex, color, color);
+                }
             }
         }
 
