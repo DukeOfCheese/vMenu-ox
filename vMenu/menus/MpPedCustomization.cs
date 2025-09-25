@@ -1020,13 +1020,14 @@ namespace vMenuClient.menus
 
             var inheritanceDads = new MenuListItem("Father", dads.Keys.ToList(), 0, "Select a father.");
             var inheritanceMoms = new MenuListItem("Mother", moms.Keys.ToList(), 0, "Select a mother.");
-            var inheritanceShapeMix = new MenuSliderItem("Head Shape Mix", "Select how much of your head shape should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE };
-            var inheritanceSkinMix = new MenuSliderItem("Body Skin Mix", "Select how much of your body skin tone should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE };
+            var inheritanceShapeMix = new MenuSliderItem("Head Shape Mix", "Select how much of your head shape should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", -10, 10, 0, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE };
+            var inheritanceSkinMix = new MenuSliderItem("Body Skin Mix", "Select how much of your body skin tone should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", -10, 10, 0, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE };
 
             inheritanceMenu.AddMenuItem(inheritanceDads);
             inheritanceMenu.AddMenuItem(inheritanceMoms);
             inheritanceMenu.AddMenuItem(inheritanceShapeMix);
             inheritanceMenu.AddMenuItem(inheritanceSkinMix);
+
 
             // formula from maintransition.#sc
             float GetMinimum()
@@ -1067,9 +1068,8 @@ namespace vMenuClient.menus
 
             inheritanceMenu.OnSliderPositionChange += (sender, item, oldPosition, newPosition, itemIndex) =>
             {
-                _shapeMixValue = inheritanceShapeMix.Position;
-                _skinMixValue = inheritanceSkinMix.Position;
-
+                _shapeMixValue = ((float)inheritanceShapeMix.Position) / 10.0f ;
+                _skinMixValue = ((float)inheritanceSkinMix.Position) / 10.0f;
                 SetHeadBlend();
             };
             #endregion
@@ -1772,8 +1772,9 @@ namespace vMenuClient.menus
                 {
                     _dadSelection = _random.Next(parents.Count);
                     _mumSelection = _random.Next(parents.Count);
-                    _skinMixValue = _random.Next(2, 8);
-                    _shapeMixValue = _random.Next(2, 8);
+                    // These equations are needed to get random float values
+                    _skinMixValue = (float)(_random.NextDouble() * 2 -1) * 10.0f;
+                    _shapeMixValue = (float)(_random.NextDouble() * 2 - 1) * 10.0f;
 
                     SetHeadBlend();
 
