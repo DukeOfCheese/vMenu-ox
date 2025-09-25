@@ -42,7 +42,6 @@ namespace vMenuShared
             vmenu_prevent_extras_when_damaged,
             vmenu_prevent_extras_engine_damage,
             vmenu_prevent_extras_body_damage,
-            vmenu_prevent_extras_notification_enabled,
 
             // MP Ped preview setting,
             vmenu_mp_ped_preview,
