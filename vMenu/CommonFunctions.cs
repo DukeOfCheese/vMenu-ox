@@ -1534,7 +1534,7 @@ namespace vMenuClient
                     #region new saving method
                     var mods = new Dictionary<int, int>();
 
-                    foreach (var mod in veh.Mods.GetAllMods())
+                    foreach (var mod in GetAllVehicleMods(veh))
                     {
                         mods.Add((int)mod.ModType, mod.Index);
                     }
@@ -2046,8 +2046,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="hours">Hours (0-23)</param>
         /// <param name="minutes">Minutes (0-59)</param>
-        /// <param name="freezeTime">Should the time be frozen?</param>
-        public static void UpdateServerTime(int hours, int minutes, bool freezeTime)
+        public static void UpdateServerTime(int hours, int minutes)
         {
             var realHours = hours;
             var realMinutes = minutes;
@@ -2059,8 +2058,14 @@ namespace vMenuClient
             {
                 realMinutes = 0;
             }
-            TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes, freezeTime);
+            TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes);
         }
+
+        /// <summary>
+        /// Updates the server on if time should be frozen or not.
+        /// </summary>
+        /// <param name="freezeTime">`true` to freeze time, `false` to unfreeze time</param>
+        public static void FreezeServerTime(bool freezeTime) => TriggerServerEvent("vMenu:FreezeServerTime", freezeTime);
         #endregion
 
         #region StringToStringArray
@@ -3459,6 +3464,27 @@ namespace vMenuClient
             }
             TriggerServerEvent("vMenu:SaveTeleportLocation", JsonConvert.SerializeObject(new vMenuShared.ConfigManager.TeleportLocation(locationName, pos, heading)));
             Notify.Success("The location was successfully saved.");
+        }
+        #endregion
+
+        #region Get all vehicle mods
+        public static VehicleMod[] GetAllVehicleMods(Vehicle vehicle)
+        {
+            int vehicleHandle = vehicle.Handle;
+
+            bool HasVehicleMod(VehicleData.ModType modType)
+            {
+                return GetNumVehicleMods(vehicleHandle, (int)modType) > 0;
+            }
+
+            return
+            [
+                .. Enum.GetValues(typeof(VehicleData.ModType))
+                    .Cast<VehicleData.ModType>()
+                    .Where(HasVehicleMod)
+                    // The cast to `VehicleModType` is fine here because `VehicleMod` casts `VehicleModType` to `int`
+                    .Select(modType => vehicle.Mods[(VehicleModType)modType])
+            ];
         }
         #endregion
     }

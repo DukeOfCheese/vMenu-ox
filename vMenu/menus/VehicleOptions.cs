@@ -1961,7 +1961,7 @@ namespace vMenuClient.menus
                 SetVehicleModKit(veh.Handle, 0);
 
                 // Get all mods available on this vehicle.
-                var mods = veh.Mods.GetAllMods();
+                var mods = GetAllVehicleMods(veh);
 
                 // Loop through all the mods.
                 foreach (var mod in mods)

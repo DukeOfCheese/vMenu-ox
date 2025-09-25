@@ -121,7 +121,7 @@ namespace vMenuClient.menus
         private float _shapeMixValue;
         private float _skinMixValue;
         private readonly Dictionary<int, int> shapeFaceValues = [];
-        private readonly Dictionary<int, Tuple<int, int, float>> apperanceValues = [];
+        private readonly Dictionary<int, Tuple<int, int, float>> appearanceValues = [];
         private int _hairSelection;
         private int _hairColorSelection;
         private int _hairHighlightColorSelection;
@@ -179,6 +179,17 @@ namespace vMenuClient.menus
             propsMenu.ClearMenuItems();
 
             #region appearance menu.
+            // Clears any saved appearance values from prior peds
+            _hairSelection = 0;
+            _hairColorSelection = 0;
+            _hairHighlightColorSelection = 0;
+            _eyeColorSelection = 0;
+
+            for (int i = 0; i < 12; i++)
+            {
+                appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
+            }
+
             var opacity = new List<string>() { "0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%" };
 
             var maxHairStyles = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, 2);
@@ -1805,6 +1816,7 @@ namespace vMenuClient.menus
                             case 1:
                                 if (!currentCharacter.IsMale)
                                 {
+                                    appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
                                     continue;
                                 }
 
@@ -1837,6 +1849,7 @@ namespace vMenuClient.menus
                             case 8:
                                 if (currentCharacter.IsMale)
                                 {
+                                    appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
                                     continue;
                                 }
 
@@ -1859,6 +1872,7 @@ namespace vMenuClient.menus
                             case 10:
                                 if (!currentCharacter.IsMale)
                                 {
+                                    appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
                                     continue;
                                 }
 
@@ -1879,16 +1893,16 @@ namespace vMenuClient.menus
                                 break;
 
                             default:
-                                apperanceValues[i] = new Tuple<int, int, float>(0, 0, 0);
+                                appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0);
                                 continue;
                         }
 
-                        apperanceValues[i] = new Tuple<int, int, float>(value, color, opacity);
-                        SetPedHeadOverlay(Game.PlayerPed.Handle, i, apperanceValues[i].Item1, apperanceValues[i].Item3);
+                        appearanceValues[i] = new Tuple<int, int, float>(value, color, opacity);
+                        SetPedHeadOverlay(Game.PlayerPed.Handle, i, appearanceValues[i].Item1, appearanceValues[i].Item3);
 
                         if (colorRequired)
                         {
-                            SetPedHeadOverlayColor(Game.PlayerPed.Handle, i, colorIndex, apperanceValues[i].Item2, apperanceValues[i].Item2);
+                            SetPedHeadOverlayColor(Game.PlayerPed.Handle, i, colorIndex, appearanceValues[i].Item2, appearanceValues[i].Item2);
                         }
                     }
 
@@ -1988,54 +2002,59 @@ namespace vMenuClient.menus
                 {
                     List<MenuItem> items = appearanceMenu.GetMenuItems();
 
+                    // Chris:   This is so, so terrible... (and I wrote it)
+                    //          This needs to be re-done at some point.
+                    // TODO:    Make not trash
                     ((MenuListItem)items[0]).ListIndex = _hairSelection;
                     ((MenuListItem)items[1]).ListIndex = _hairColorSelection;
                     ((MenuListItem)items[2]).ListIndex = _hairHighlightColorSelection;
                     ((MenuListItem)items[33]).ListIndex = _eyeColorSelection;
 
-                    ((MenuListItem)items[3]).ListIndex = apperanceValues[0].Item1;
-                    ((MenuListItem)items[4]).ListIndex = (int)(apperanceValues[0].Item3 * 10);
+                    ((MenuListItem)items[3]).ListIndex = appearanceValues[0].Item1;
+                    ((MenuListItem)items[4]).ListIndex = (int)(appearanceValues[0].Item3 * 10);
 
-                    ((MenuListItem)items[5]).ListIndex = apperanceValues[1].Item1;
-                    ((MenuListItem)items[6]).ListIndex = (int)(apperanceValues[1].Item3 * 10);
-                    ((MenuListItem)items[7]).ListIndex = apperanceValues[1].Item1;
+                    ((MenuListItem)items[5]).ListIndex = appearanceValues[1].Item1;
+                    ((MenuListItem)items[6]).ListIndex = (int)(appearanceValues[1].Item3 * 10);
+                    ((MenuListItem)items[7]).ListIndex = appearanceValues[1].Item1;
 
-                    ((MenuListItem)items[8]).ListIndex = apperanceValues[2].Item1;
-                    ((MenuListItem)items[9]).ListIndex = (int)(apperanceValues[2].Item3 * 10);
-                    ((MenuListItem)items[10]).ListIndex = apperanceValues[2].Item1;
+                    ((MenuListItem)items[8]).ListIndex = appearanceValues[2].Item1;
+                    ((MenuListItem)items[9]).ListIndex = (int)(appearanceValues[2].Item3 * 10);
+                    ((MenuListItem)items[10]).ListIndex = appearanceValues[2].Item1;
 
-                    ((MenuListItem)items[11]).ListIndex = apperanceValues[3].Item1;
-                    ((MenuListItem)items[12]).ListIndex = (int)(apperanceValues[3].Item3 * 10);
+                    ((MenuListItem)items[11]).ListIndex = appearanceValues[3].Item1;
+                    ((MenuListItem)items[12]).ListIndex = (int)(appearanceValues[3].Item3 * 10);
 
-                    ((MenuListItem)items[13]).ListIndex = apperanceValues[4].Item1;
-                    ((MenuListItem)items[14]).ListIndex = (int)(apperanceValues[4].Item3 * 10);
-                    ((MenuListItem)items[15]).ListIndex = apperanceValues[4].Item1;
+                    ((MenuListItem)items[13]).ListIndex = appearanceValues[4].Item1;
+                    ((MenuListItem)items[14]).ListIndex = (int)(appearanceValues[4].Item3 * 10);
+                    ((MenuListItem)items[15]).ListIndex = appearanceValues[4].Item1;
 
-                    ((MenuListItem)items[16]).ListIndex = apperanceValues[5].Item1;
-                    ((MenuListItem)items[17]).ListIndex = (int)(apperanceValues[5].Item3 * 10);
-                    ((MenuListItem)items[18]).ListIndex = apperanceValues[5].Item1;
+                    ((MenuListItem)items[16]).ListIndex = appearanceValues[5].Item1;
+                    ((MenuListItem)items[17]).ListIndex = (int)(appearanceValues[5].Item3 * 10);
+                    ((MenuListItem)items[18]).ListIndex = appearanceValues[5].Item1;
 
-                    ((MenuListItem)items[19]).ListIndex = apperanceValues[6].Item1;
-                    ((MenuListItem)items[20]).ListIndex = (int)(apperanceValues[6].Item3 * 10);
+                    ((MenuListItem)items[19]).ListIndex = appearanceValues[6].Item1;
+                    ((MenuListItem)items[20]).ListIndex = (int)(appearanceValues[6].Item3 * 10);
 
-                    ((MenuListItem)items[21]).ListIndex = apperanceValues[7].Item1;
-                    ((MenuListItem)items[22]).ListIndex = (int)(apperanceValues[7].Item3 * 10);
+                    ((MenuListItem)items[21]).ListIndex = appearanceValues[7].Item1;
+                    ((MenuListItem)items[22]).ListIndex = (int)(appearanceValues[7].Item3 * 10);
 
-                    ((MenuListItem)items[23]).ListIndex = apperanceValues[8].Item1;
-                    ((MenuListItem)items[24]).ListIndex = (int)(apperanceValues[8].Item3 * 10);
-                    ((MenuListItem)items[25]).ListIndex = apperanceValues[8].Item1;
+                    ((MenuListItem)items[23]).ListIndex = appearanceValues[8].Item1;
+                    ((MenuListItem)items[24]).ListIndex = (int)(appearanceValues[8].Item3 * 10);
+                    ((MenuListItem)items[25]).ListIndex = appearanceValues[8].Item1;
 
-                    ((MenuListItem)items[26]).ListIndex = apperanceValues[9].Item1;
-                    ((MenuListItem)items[27]).ListIndex = (int)(apperanceValues[9].Item3 * 10);
+                    ((MenuListItem)items[26]).ListIndex = appearanceValues[9].Item1;
+                    ((MenuListItem)items[27]).ListIndex = (int)(appearanceValues[9].Item3 * 10);
 
-                    ((MenuListItem)items[28]).ListIndex = apperanceValues[10].Item1;
-                    ((MenuListItem)items[29]).ListIndex = (int)(apperanceValues[10].Item3 * 10);
-                    ((MenuListItem)items[30]).ListIndex = apperanceValues[10].Item1;
+                    ((MenuListItem)items[28]).ListIndex = appearanceValues[10].Item1;
+                    ((MenuListItem)items[29]).ListIndex = (int)(appearanceValues[10].Item3 * 10);
+                    ((MenuListItem)items[30]).ListIndex = appearanceValues[10].Item1;
 
-                    ((MenuListItem)items[31]).ListIndex = apperanceValues[11].Item1;
-                    ((MenuListItem)items[32]).ListIndex = (int)(apperanceValues[11].Item3 * 10);
+                    ((MenuListItem)items[31]).ListIndex = appearanceValues[11].Item1;
+                    ((MenuListItem)items[32]).ListIndex = (int)(appearanceValues[11].Item3 * 10);
 
                     appearanceMenu.RefreshIndex();
+
+                    SetHeadBlend();
                 }
             };
 
@@ -2072,9 +2091,8 @@ namespace vMenuClient.menus
                     ClearPedDecorations(Game.PlayerPed.Handle);
                     ClearPedFacialDecorations(Game.PlayerPed.Handle);
                     SetPedDefaultComponentVariation(Game.PlayerPed.Handle);
-                    SetPedHairColor(Game.PlayerPed.Handle, 0, 0);
-                    SetPedEyeColor(Game.PlayerPed.Handle, 0);
                     ClearAllPedProps(Game.PlayerPed.Handle);
+                    DefaultPlayerColors();
 
                     MakeCreateCharacterMenu(male: true);
                 }
@@ -2108,9 +2126,8 @@ namespace vMenuClient.menus
                     ClearPedDecorations(Game.PlayerPed.Handle);
                     ClearPedFacialDecorations(Game.PlayerPed.Handle);
                     SetPedDefaultComponentVariation(Game.PlayerPed.Handle);
-                    SetPedHairColor(Game.PlayerPed.Handle, 0, 0);
-                    SetPedEyeColor(Game.PlayerPed.Handle, 0);
                     ClearAllPedProps(Game.PlayerPed.Handle);
+                    DefaultPlayerColors();
 
                     MakeCreateCharacterMenu(male: false);
                 }
@@ -3090,6 +3107,50 @@ namespace vMenuClient.menus
                 SetPedComponentVariation(Game.PlayerPed.Handle, 6, 35, 0, 0);
 
                 currentCharacter.DrawableVariations.clothes[6] = new KeyValuePair<int, int>(35, 0);
+            }
+        }
+
+        /// <summary>
+        /// Sets all the ped's overlay colors to their default (0) entry.
+        /// When called, prevents default color being bright green.
+        /// </summary>
+        internal void DefaultPlayerColors()
+        {
+            SetHeadBlend();
+
+            for (int i = 0; i < 12; i++)
+            {
+                int color = 0;
+                int colorIndex = 0;
+
+                switch (i)
+                {
+                    case 1:
+                        colorIndex = 1;
+                        break;
+
+                    case 2:
+                        colorIndex = 1;
+                        break;
+
+                    case 8:
+                        colorIndex = 2;
+                        break;
+
+                    case 10:
+                        colorIndex = 1;
+                        break;
+
+                    default:
+                        continue;
+                }
+
+                SetPedHeadOverlay(Game.PlayerPed.Handle, i, 0, 0f);
+
+                if (colorIndex > 0)
+                {
+                    SetPedHeadOverlayColor(Game.PlayerPed.Handle, i, colorIndex, color, color);
+                }
             }
         }
 
