@@ -1,4 +1,4 @@
-using System;
+_using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -1773,8 +1773,8 @@ namespace vMenuClient.menus
                     _dadSelection = _random.Next(parents.Count);
                     _mumSelection = _random.Next(parents.Count);
                     // These equations are needed to get random float values
-                    _skinMixValue = (float)(_random.NextDouble() * 2 -1) * 10.0f;
-                    _shapeMixValue = (float)(_random.NextDouble() * 2 - 1) * 10.0f;
+                    _skinMixValue = (float)_random.NextDouble() * 2 -1 * 10.0f;
+                    _shapeMixValue = (float)_random.NextDouble() * 2 - 1 * 10.0f;
 
                     SetHeadBlend();
 
