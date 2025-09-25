@@ -1709,10 +1709,8 @@ namespace vMenuClient.menus
                         (GetVehicleBodyHealth(veh.Handle) < GetSettingsInt(Setting.vmenu_prevent_extras_engine_damage) || 
                         GetVehicleEngineHealth(veh.Handle) < GetSettingsInt(Setting.vmenu_prevent_extras_body_damage)))
                         {
-                            if (GetSettingsBool(Setting.vmenu_prevent_extras_notification_enabled))
-                            {
-                                Notify.Alert("Vehicle is too damaged to change extra, repair it first!", true, false);
-                            }
+                            // Send message to player when extra change is denied
+                            Notify.Alert("Vehicle is too damaged to change extra, repair it first!", true, false);
                            
                             // Revert checkbox back to original state
                             ((MenuCheckboxItem)item).Checked = veh.IsExtraOn(extra);
