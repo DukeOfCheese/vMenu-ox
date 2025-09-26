@@ -151,6 +151,10 @@ namespace vMenuClient.menus
                 currentCharacter.ModelHash = male ? (uint)GetHashKey("mp_m_freemode_01") : (uint)GetHashKey("mp_f_freemode_01");
                 currentCharacter.IsMale = male;
 
+                // Places the sliders in the middle by default
+                _shapeMixValue = 0.5f;
+                _skinMixValue = 0.5f;
+
                 SetPlayerClothing();
             }
             currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
@@ -1020,8 +1024,8 @@ namespace vMenuClient.menus
 
             var inheritanceDads = new MenuListItem("Father", dads.Keys.ToList(), 0, "Select a father.");
             var inheritanceMoms = new MenuListItem("Mother", moms.Keys.ToList(), 0, "Select a mother.");
-            var inheritanceShapeMix = new MenuSliderItem("Head Shape Mix", "Select how much of your head shape should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE };
-            var inheritanceSkinMix = new MenuSliderItem("Body Skin Mix", "Select how much of your body skin tone should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE };
+            var inheritanceShapeMix = new MenuSliderItem("Head Shape Mix", "Select how much of your head shape should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE, ItemData = "shape_mix" };
+            var inheritanceSkinMix = new MenuSliderItem("Body Skin Mix", "Select how much of your body skin tone should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true) { SliderLeftIcon = MenuItem.Icon.MALE, SliderRightIcon = MenuItem.Icon.FEMALE, ItemData = "skin_mix" };
 
             inheritanceMenu.AddMenuItem(inheritanceDads);
             inheritanceMenu.AddMenuItem(inheritanceMoms);
@@ -1067,8 +1071,20 @@ namespace vMenuClient.menus
 
             inheritanceMenu.OnSliderPositionChange += (sender, item, oldPosition, newPosition, itemIndex) =>
             {
-                _shapeMixValue = inheritanceShapeMix.Position;
-                _skinMixValue = inheritanceSkinMix.Position;
+                // Chris: We can't call `.Position` on the slider items here because it returns the value *prior* to the change
+                switch (item.ItemData)
+                {
+                    case "shape_mix":
+                        _shapeMixValue = newPosition / 10f;
+                        break;
+
+                    case "skin_mix":
+                        _skinMixValue = newPosition / 10f;
+                        break;
+
+                    default:
+                        break;
+                }
 
                 SetHeadBlend();
             };
@@ -1772,8 +1788,8 @@ namespace vMenuClient.menus
                 {
                     _dadSelection = _random.Next(parents.Count);
                     _mumSelection = _random.Next(parents.Count);
-                    _skinMixValue = _random.Next(2, 8);
-                    _shapeMixValue = _random.Next(2, 8);
+                    _skinMixValue = (float)_random.NextDouble();
+                    _shapeMixValue = (float)_random.NextDouble();
 
                     SetHeadBlend();
 
@@ -1980,8 +1996,8 @@ namespace vMenuClient.menus
                 {
                     inheritanceDads.ListIndex = _dadSelection;
                     inheritanceMoms.ListIndex = _mumSelection;
-                    inheritanceShapeMix.Position = (int)_shapeMixValue;
-                    inheritanceSkinMix.Position = (int)_skinMixValue;
+                    inheritanceShapeMix.Position = (int)(_shapeMixValue * 10f);
+                    inheritanceSkinMix.Position = (int)(_skinMixValue * 10f);
                     inheritanceMenu.RefreshIndex();
                 }
                 else if (item == faceButton)
