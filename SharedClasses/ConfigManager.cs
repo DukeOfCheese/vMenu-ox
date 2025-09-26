@@ -40,8 +40,8 @@ namespace vMenuShared
 
             // Prevent Extras Abuse
             vmenu_prevent_extras_when_damaged,
-            vmenu_prevent_extras_engine_damage,
-            vmenu_prevent_extras_body_damage,
+            vmenu_allowed_engine_damage_for_extra_change,
+            vmenu_allowed_body_damage_for_extra_change,
 
             // MP Ped preview setting,
             vmenu_mp_ped_preview,
