@@ -1,4 +1,4 @@
-_using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -1068,8 +1068,9 @@ namespace vMenuClient.menus
 
             inheritanceMenu.OnSliderPositionChange += (sender, item, oldPosition, newPosition, itemIndex) =>
             {
-                _shapeMixValue = ((float)inheritanceShapeMix.Position) / 10.0f ;
-                _skinMixValue = ((float)inheritanceSkinMix.Position) / 10.0f;
+                // Converts the position to a float which is required by the Native
+                _shapeMixValue = (float)inheritanceShapeMix.Position;
+                _skinMixValue = (float)inheritanceSkinMix.Position;
                 SetHeadBlend();
             };
             #endregion
@@ -1773,8 +1774,8 @@ namespace vMenuClient.menus
                     _dadSelection = _random.Next(parents.Count);
                     _mumSelection = _random.Next(parents.Count);
                     // These equations are needed to get random float values
-                    _skinMixValue = ((float)_random.NextDouble() * 2 -1) * 10.0f;
-                    _shapeMixValue = ((float)_random.NextDouble() * 2 - 1) * 10.0f;
+                    _skinMixValue = (float)_random.NextDouble() * 10.0f;
+                    _shapeMixValue = (float)_random.NextDouble() * 10.0f;
 
                     SetHeadBlend();
 
@@ -3015,7 +3016,10 @@ namespace vMenuClient.menus
 
         internal void SetHeadBlend()
         {
-            SetPedHeadBlendData(Game.PlayerPed.Handle, _dadSelection, _mumSelection, 0, _dadSelection, _mumSelection, 0, _shapeMixValue, _skinMixValue, 0f, false);
+            // Scales down from 10 then clamps the value between 0.0f - 1.0f and assigns to _shape/skinValue to prevent menu from breaking
+            float _shapeValue = (((_shapeMixValue) / 10.0f) + 1) / 2;
+            float _skinValue = (((_skinMixValue) / 10.0f) + 1) / 2;
+            SetPedHeadBlendData(Game.PlayerPed.Handle, _dadSelection, _mumSelection, 0, _dadSelection, _mumSelection, 0, _shapeValue, _skinValue, 0f, false);
         }
 
         internal void ChangePlayerHair(int newHairIndex)
