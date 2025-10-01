@@ -1574,17 +1574,32 @@ namespace vMenuClient
                     colors.Add("tyresmokeR", tyresmokeR);
                     colors.Add("tyresmokeG", tyresmokeG);
                     colors.Add("tyresmokeB", tyresmokeB);
+
                     int customPrimaryR = -1;
                     int customPrimaryG = -1;
                     int customPrimaryB = -1;
-                    GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                    bool primaryColorIsCustom = GetIsVehiclePrimaryColourCustom(veh.Handle);
+
+                    if (primaryColorIsCustom)
+                    {
+                        GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                    }
+                    
                     colors.Add("customPrimaryR", customPrimaryR);
                     colors.Add("customPrimaryG", customPrimaryG);
                     colors.Add("customPrimaryB", customPrimaryB);
+
                     int customSecondaryR = -1;
                     int customSecondaryG = -1;
                     int customSecondaryB = -1;
-                    GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+
+                    bool secondaryColorIsCustom = GetIsVehicleSecondaryColourCustom(veh.Handle);
+
+                    if (secondaryColorIsCustom)
+                    {
+                        GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+                    }
+
                     colors.Add("customSecondaryR", customSecondaryR);
                     colors.Add("customSecondaryG", customSecondaryG);
                     colors.Add("customSecondaryB", customSecondaryB);
