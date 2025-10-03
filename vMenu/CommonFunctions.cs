@@ -1574,17 +1574,32 @@ namespace vMenuClient
                     colors.Add("tyresmokeR", tyresmokeR);
                     colors.Add("tyresmokeG", tyresmokeG);
                     colors.Add("tyresmokeB", tyresmokeB);
+
                     int customPrimaryR = -1;
                     int customPrimaryG = -1;
                     int customPrimaryB = -1;
-                    GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                    bool primaryColorIsCustom = GetIsVehiclePrimaryColourCustom(veh.Handle);
+
+                    if (primaryColorIsCustom)
+                    {
+                        GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                    }
+                    
                     colors.Add("customPrimaryR", customPrimaryR);
                     colors.Add("customPrimaryG", customPrimaryG);
                     colors.Add("customPrimaryB", customPrimaryB);
+
                     int customSecondaryR = -1;
                     int customSecondaryG = -1;
                     int customSecondaryB = -1;
-                    GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+
+                    bool secondaryColorIsCustom = GetIsVehicleSecondaryColourCustom(veh.Handle);
+
+                    if (secondaryColorIsCustom)
+                    {
+                        GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+                    }
+
                     colors.Add("customSecondaryR", customSecondaryR);
                     colors.Add("customSecondaryG", customSecondaryG);
                     colors.Add("customSecondaryB", customSecondaryB);
@@ -2029,9 +2044,12 @@ namespace vMenuClient
         /// Update the server with the new weather type, blackout status and dynamic weather changes enabled status.
         /// </summary>
         /// <param name="newWeather">The new weather type.</param>
-        /// <param name="blackout">Manual blackout mode enabled/disabled.</param>
         /// <param name="dynamicChanges">Dynamic weather changes enabled/disabled.</param>
-        public static void UpdateServerWeather(string newWeather, bool blackout, bool dynamicChanges, bool isSnowEnabled) => TriggerServerEvent("vMenu:UpdateServerWeather", newWeather, blackout, dynamicChanges, isSnowEnabled);
+        public static void UpdateServerWeather(string newWeather, bool dynamicChanges, bool isSnowEnabled) => TriggerServerEvent("vMenu:UpdateServerWeather", newWeather, dynamicChanges, isSnowEnabled);
+
+        public static void UpdateServerBlackout(bool value) => TriggerServerEvent("vMenu:UpdateServerBlackout", value);
+
+        public static void UpdateServerVehicleBlackout(bool value) => TriggerServerEvent("vMenu:UpdateServerVehicleBlackout", value);
 
         /// <summary>
         /// Modify the clouds for everyone. If removeClouds is true, then remove all clouds. If it's false, then randomize the clouds.

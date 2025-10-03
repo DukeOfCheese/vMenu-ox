@@ -133,6 +133,11 @@ namespace vMenuServer
             get { return GetSettingsBool(Setting.vmenu_blackout_enabled); }
             set { SetConvarReplicated(Setting.vmenu_blackout_enabled.ToString(), value.ToString().ToLower()); }
         }
+        private bool VehicleBlackoutEnabled
+        {
+            get { return GetSettingsBool(Setting.vmenu_vehicle_blackout_enabled); }
+            set { SetConvarReplicated(Setting.vmenu_vehicle_blackout_enabled.ToString(), value.ToString().ToLower()); }
+        }
         private int DynamicWeatherMinutes
         {
             get { return Math.Max(GetSettingsInt(Setting.vmenu_dynamic_weather_timer), 1); }
@@ -321,7 +326,7 @@ namespace vMenuServer
                             var wtype = args[1].ToString().ToUpper();
                             if (WeatherTypes.Contains(wtype))
                             {
-                                TriggerEvent("vMenu:UpdateServerWeather", wtype, BlackoutEnabled, DynamicWeatherEnabled, ManualSnowEnabled);
+                                TriggerEvent("vMenu:UpdateServerWeather", wtype, DynamicWeatherEnabled, ManualSnowEnabled);
                                 Debug.WriteLine($"[vMenu] Weather is now set to: {wtype}");
                             }
                             else if (wtype.ToLower() == "dynamic")
@@ -330,12 +335,12 @@ namespace vMenuServer
                                 {
                                     if ((args[2].ToString().ToLower() ?? $"{DynamicWeatherEnabled}") == "true")
                                     {
-                                        TriggerEvent("vMenu:UpdateServerWeather", CurrentWeather, BlackoutEnabled, true, ManualSnowEnabled);
+                                        TriggerEvent("vMenu:UpdateServerWeather", CurrentWeather, true, ManualSnowEnabled);
                                         Debug.WriteLine("[vMenu] Dynamic weather is now turned on.");
                                     }
                                     else if ((args[2].ToString().ToLower() ?? $"{DynamicWeatherEnabled}") == "false")
                                     {
-                                        TriggerEvent("vMenu:UpdateServerWeather", CurrentWeather, BlackoutEnabled, false, ManualSnowEnabled);
+                                        TriggerEvent("vMenu:UpdateServerWeather", CurrentWeather, false, ManualSnowEnabled);
                                         Debug.WriteLine("[vMenu] Dynamic weather is now turned off.");
                                     }
                                     else
@@ -669,10 +674,9 @@ namespace vMenuServer
         /// Update the weather for all clients.
         /// </summary>
         /// <param name="newWeather"></param>
-        /// <param name="blackoutNew"></param>
         /// <param name="dynamicWeatherNew"></param>
         [EventHandler("vMenu:UpdateServerWeather")]
-        internal void UpdateWeather([FromSource] Player source, string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
+        internal void UpdateWeather([FromSource] Player source, string newWeather, bool dynamicWeatherNew, bool enableSnow)
         {
             if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WOSetWeather, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
             {
@@ -688,12 +692,35 @@ namespace vMenuServer
 
             // Update the new weather related variables.
             CurrentWeather = newWeather;
-            BlackoutEnabled = blackoutNew;
             DynamicWeatherEnabled = dynamicWeatherNew;
             ManualSnowEnabled = enableSnow;
 
             // Reset the dynamic weather loop timer to another (default) 10 mintues.
             lastWeatherChange = GetGameTimer();
+        }
+
+        [EventHandler("vMenu:UpdateServerBlackout")]
+        internal void UpdateBlackout([FromSource] Player source, bool value)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WOBlackout, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            BlackoutEnabled = value;
+        }
+
+        [EventHandler("vMenu:UpdateServerVehicleBlackout")]
+        internal void UpdateVehicleBlackout([FromSource] Player source, bool value)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WOVehBlackout, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            VehicleBlackoutEnabled = value;
         }
 
         /// <summary>
