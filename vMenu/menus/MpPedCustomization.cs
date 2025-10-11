@@ -157,6 +157,16 @@ namespace vMenuClient.menus
 
                 SetPlayerClothing();
             }
+            else
+            {
+                PedHeadBlendData headBlendData = currentCharacter.PedHeadBlendData;
+
+                _dadSelection = headBlendData.FirstFaceShape;
+                _mumSelection = headBlendData.SecondFaceShape;
+                _shapeMixValue = headBlendData.ParentFaceShapePercent;
+                _skinMixValue = headBlendData.ParentSkinTonePercent;
+            }
+
             currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
             currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
 
