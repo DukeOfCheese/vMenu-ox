@@ -121,6 +121,7 @@ namespace vMenuClient.menus
         private float _shapeMixValue;
         private float _skinMixValue;
         private readonly Dictionary<int, int> shapeFaceValues = [];
+        // TODO: Chris: Replace with enums or something more sane - updating with index/magic numbers is nuts
         private readonly Dictionary<int, Tuple<int, int, float>> appearanceValues = [];
         private int _hairSelection;
         private int _hairColorSelection;
@@ -157,6 +158,28 @@ namespace vMenuClient.menus
 
                 SetPlayerClothing();
             }
+            else
+            {
+                PedHeadBlendData headBlendData = currentCharacter.PedHeadBlendData;
+
+                _dadSelection = headBlendData.FirstFaceShape;
+                _mumSelection = headBlendData.SecondFaceShape;
+                _shapeMixValue = headBlendData.ParentFaceShapePercent;
+                _skinMixValue = headBlendData.ParentSkinTonePercent;
+
+                if (_shapeMixValue > 1f)
+                {
+                    Log("Shape mix value was incorrectly saved with a value higher than the possible maximum. Resetting to max value");
+                    _shapeMixValue = 1f;
+                }
+
+                if (_skinMixValue > 1f)
+                {
+                    Log("Skin mix value was incorrectly saved with a value higher than the possible maximum. Resetting to max value");
+                    _skinMixValue = 1f;
+                }
+            }
+
             currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
             currentCharacter.PropVariations.props ??= new Dictionary<int, KeyValuePair<int, int>>();
 
@@ -183,15 +206,41 @@ namespace vMenuClient.menus
             propsMenu.ClearMenuItems();
 
             #region appearance menu.
-            // Clears any saved appearance values from prior peds
-            _hairSelection = 0;
-            _hairColorSelection = 0;
-            _hairHighlightColorSelection = 0;
-            _eyeColorSelection = 0;
-
-            for (int i = 0; i < 12; i++)
+            if (!editPed)
             {
-                appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
+                // Clears any saved appearance values from prior peds
+                _hairSelection = 0;
+                _hairColorSelection = 0;
+                _hairHighlightColorSelection = 0;
+                _eyeColorSelection = 0;
+
+                for (int i = 0; i < 12; i++)
+                {
+                    appearanceValues[i] = new Tuple<int, int, float>(0, 0, 0f);
+                }
+            }
+            else
+            {
+                PedAppearance appearanceData = currentCharacter.PedAppearance;
+
+                _hairSelection = appearanceData.hairStyle;
+                _hairColorSelection = appearanceData.hairColor;
+                _hairHighlightColorSelection = appearanceData.hairHighlightColor;
+
+                appearanceValues[0] = new(appearanceData.blemishesStyle, 0, appearanceData.blemishesOpacity);
+                appearanceValues[1] = new(appearanceData.beardStyle, appearanceData.beardColor, appearanceData.beardOpacity);
+                appearanceValues[2] = new(appearanceData.eyebrowsStyle, appearanceData.eyebrowsColor, appearanceData.eyebrowsOpacity);
+                appearanceValues[3] = new(appearanceData.ageingStyle, 0, appearanceData.ageingOpacity);
+                appearanceValues[4] = new(appearanceData.makeupStyle, appearanceData.makeupColor, appearanceData.makeupOpacity);
+                appearanceValues[5] = new(appearanceData.blushStyle, appearanceData.blushColor, appearanceData.blushOpacity);
+                appearanceValues[6] = new(appearanceData.complexionStyle, 0, appearanceData.complexionOpacity);
+                appearanceValues[7] = new(appearanceData.sunDamageStyle, 0, appearanceData.sunDamageOpacity);
+                appearanceValues[8] = new(appearanceData.lipstickStyle, appearanceData.lipstickColor, appearanceData.lipstickOpacity);
+                appearanceValues[9] = new(appearanceData.molesFrecklesStyle, 0, appearanceData.molesFrecklesOpacity);
+                appearanceValues[10] = new(appearanceData.chestHairStyle, appearanceData.chestHairColor, appearanceData.chestHairOpacity);
+                appearanceValues[11] = new(appearanceData.bodyBlemishesStyle, 0, appearanceData.bodyBlemishesOpacity);
+
+                _eyeColorSelection = appearanceData.eyeColor;
             }
 
             var opacity = new List<string>() { "0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%" };
@@ -719,8 +768,19 @@ namespace vMenuClient.menus
             List<MenuItem.Icon> categoryIcons = GetCategoryIcons(categoryNames);
 
             categoryBtn.ItemData = new Tuple<List<string>, List<MenuItem.Icon>>(categoryNames, categoryIcons);
-            categoryBtn.ListItems = categoryNames;
-            categoryBtn.ListIndex = 0;
+            categoryBtn.ListItems = categoryNames;            
+
+            if (editPed)
+            {
+                int characterCategoryIndex = categoryNames.IndexOf(currentCharacter.Category);
+
+                categoryBtn.ListIndex = characterCategoryIndex;
+            }
+            else
+            {
+                categoryBtn.ListIndex = 0;
+            }
+
             categoryBtn.RightIcon = categoryIcons[categoryBtn.ListIndex];
 
             createCharacterMenu.RefreshIndex();
@@ -2016,57 +2076,55 @@ namespace vMenuClient.menus
                 }
                 else if (item == appearanceButton)
                 {
-                    List<MenuItem> items = appearanceMenu.GetMenuItems();
+                    List<MenuListItem> menuListItems = [.. appearanceMenu.GetMenuItems().OfType<MenuListItem>()];
 
-                    // Chris:   This is so, so terrible... (and I wrote it)
-                    //          This needs to be re-done at some point.
-                    // TODO:    Make not trash
-                    ((MenuListItem)items[0]).ListIndex = _hairSelection;
-                    ((MenuListItem)items[1]).ListIndex = _hairColorSelection;
-                    ((MenuListItem)items[2]).ListIndex = _hairHighlightColorSelection;
-                    ((MenuListItem)items[33]).ListIndex = _eyeColorSelection;
+                    menuListItems.First(i => i.Text == "Hair Style").ListIndex = _hairSelection;
+                    menuListItems.First(i => i.Text == "Hair Color").ListIndex = _hairColorSelection;
+                    menuListItems.First(i => i.Text == "Hair Highlight Color").ListIndex = _hairHighlightColorSelection;
 
-                    ((MenuListItem)items[3]).ListIndex = appearanceValues[0].Item1;
-                    ((MenuListItem)items[4]).ListIndex = (int)(appearanceValues[0].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Blemishes Style").ListIndex = appearanceValues[0].Item1;
+                    menuListItems.First(i => i.Text == "Blemishes Opacity").ListIndex = (int)(appearanceValues[0].Item3 * 10);
 
-                    ((MenuListItem)items[5]).ListIndex = appearanceValues[1].Item1;
-                    ((MenuListItem)items[6]).ListIndex = (int)(appearanceValues[1].Item3 * 10);
-                    ((MenuListItem)items[7]).ListIndex = appearanceValues[1].Item1;
+                    menuListItems.First(i => i.Text == "Beard Style").ListIndex = appearanceValues[1].Item1;
+                    menuListItems.First(i => i.Text == "Beard Opacity").ListIndex = (int)(appearanceValues[1].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Beard Color").ListIndex = appearanceValues[1].Item2;
 
-                    ((MenuListItem)items[8]).ListIndex = appearanceValues[2].Item1;
-                    ((MenuListItem)items[9]).ListIndex = (int)(appearanceValues[2].Item3 * 10);
-                    ((MenuListItem)items[10]).ListIndex = appearanceValues[2].Item1;
+                    menuListItems.First(i => i.Text == "Eyebrows Style").ListIndex = appearanceValues[2].Item1;
+                    menuListItems.First(i => i.Text == "Eyebrows Opacity").ListIndex = (int)(appearanceValues[2].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Eyebrows Color").ListIndex = appearanceValues[2].Item2;
 
-                    ((MenuListItem)items[11]).ListIndex = appearanceValues[3].Item1;
-                    ((MenuListItem)items[12]).ListIndex = (int)(appearanceValues[3].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Ageing Style").ListIndex = appearanceValues[3].Item1;
+                    menuListItems.First(i => i.Text == "Ageing Opacity").ListIndex = (int)(appearanceValues[3].Item3 * 10);
 
-                    ((MenuListItem)items[13]).ListIndex = appearanceValues[4].Item1;
-                    ((MenuListItem)items[14]).ListIndex = (int)(appearanceValues[4].Item3 * 10);
-                    ((MenuListItem)items[15]).ListIndex = appearanceValues[4].Item1;
+                    menuListItems.First(i => i.Text == "Makeup Style").ListIndex = appearanceValues[4].Item1;
+                    menuListItems.First(i => i.Text == "Makeup Opacity").ListIndex = (int)(appearanceValues[4].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Makeup Color").ListIndex = appearanceValues[4].Item2;
 
-                    ((MenuListItem)items[16]).ListIndex = appearanceValues[5].Item1;
-                    ((MenuListItem)items[17]).ListIndex = (int)(appearanceValues[5].Item3 * 10);
-                    ((MenuListItem)items[18]).ListIndex = appearanceValues[5].Item1;
+                    menuListItems.First(i => i.Text == "Blush Style").ListIndex = appearanceValues[5].Item1;
+                    menuListItems.First(i => i.Text == "Blush Opacity").ListIndex = (int)(appearanceValues[5].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Blush Color").ListIndex = appearanceValues[5].Item2;
 
-                    ((MenuListItem)items[19]).ListIndex = appearanceValues[6].Item1;
-                    ((MenuListItem)items[20]).ListIndex = (int)(appearanceValues[6].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Complexion Style").ListIndex = appearanceValues[6].Item1;
+                    menuListItems.First(i => i.Text == "Complexion Opacity").ListIndex = (int)(appearanceValues[6].Item3 * 10);
 
-                    ((MenuListItem)items[21]).ListIndex = appearanceValues[7].Item1;
-                    ((MenuListItem)items[22]).ListIndex = (int)(appearanceValues[7].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Sun Damage Style").ListIndex = appearanceValues[7].Item1;
+                    menuListItems.First(i => i.Text == "Sun Damage Opacity").ListIndex = (int)(appearanceValues[7].Item3 * 10);
 
-                    ((MenuListItem)items[23]).ListIndex = appearanceValues[8].Item1;
-                    ((MenuListItem)items[24]).ListIndex = (int)(appearanceValues[8].Item3 * 10);
-                    ((MenuListItem)items[25]).ListIndex = appearanceValues[8].Item1;
+                    menuListItems.First(i => i.Text == "Lipstick Style").ListIndex = appearanceValues[8].Item1;
+                    menuListItems.First(i => i.Text == "Lipstick Opacity").ListIndex = (int)(appearanceValues[8].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Lipstick Color").ListIndex = appearanceValues[8].Item2;
 
-                    ((MenuListItem)items[26]).ListIndex = appearanceValues[9].Item1;
-                    ((MenuListItem)items[27]).ListIndex = (int)(appearanceValues[9].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Moles and Freckles Style").ListIndex = appearanceValues[9].Item1;
+                    menuListItems.First(i => i.Text == "Moles and Freckles Opacity").ListIndex = (int)(appearanceValues[9].Item3 * 10);
 
-                    ((MenuListItem)items[28]).ListIndex = appearanceValues[10].Item1;
-                    ((MenuListItem)items[29]).ListIndex = (int)(appearanceValues[10].Item3 * 10);
-                    ((MenuListItem)items[30]).ListIndex = appearanceValues[10].Item1;
+                    menuListItems.First(i => i.Text == "Chest Hair Style").ListIndex = appearanceValues[10].Item1;
+                    menuListItems.First(i => i.Text == "Chest Hair Opacity").ListIndex = (int)(appearanceValues[10].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Chest Hair Color").ListIndex = appearanceValues[10].Item2;
 
-                    ((MenuListItem)items[31]).ListIndex = appearanceValues[11].Item1;
-                    ((MenuListItem)items[32]).ListIndex = (int)(appearanceValues[11].Item3 * 10);
+                    menuListItems.First(i => i.Text == "Body Blemishes Style").ListIndex = appearanceValues[11].Item1;
+                    menuListItems.First(i => i.Text == "Body Blemishes Opacity").ListIndex = (int)(appearanceValues[11].Item3 * 10);
+
+                    menuListItems.First(i => i.Text == "Eye Colors").ListIndex = _eyeColorSelection;
 
                     appearanceMenu.RefreshIndex();
 
