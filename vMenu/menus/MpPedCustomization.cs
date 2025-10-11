@@ -768,8 +768,19 @@ namespace vMenuClient.menus
             List<MenuItem.Icon> categoryIcons = GetCategoryIcons(categoryNames);
 
             categoryBtn.ItemData = new Tuple<List<string>, List<MenuItem.Icon>>(categoryNames, categoryIcons);
-            categoryBtn.ListItems = categoryNames;
-            categoryBtn.ListIndex = 0;
+            categoryBtn.ListItems = categoryNames;            
+
+            if (editPed)
+            {
+                int characterCategoryIndex = categoryNames.IndexOf(currentCharacter.Category);
+
+                categoryBtn.ListIndex = characterCategoryIndex;
+            }
+            else
+            {
+                categoryBtn.ListIndex = 0;
+            }
+
             categoryBtn.RightIcon = categoryIcons[categoryBtn.ListIndex];
 
             createCharacterMenu.RefreshIndex();
