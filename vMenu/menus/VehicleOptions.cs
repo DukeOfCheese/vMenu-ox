@@ -1699,7 +1699,7 @@ namespace vMenuClient.menus
             VehicleComponentsMenu.OnMenuOpen += (menu) =>
             {
                 Vehicle vehicle;
-                bool checkDamageBeforeChangingExtras = GetSettingsBool(Setting.vmenu_prevent_extras_when_damaged);
+                bool checkDamageBeforeChangingExtras = GetSettingsBool(Setting.vmenu_prevent_extras_when_damaged) && !IsAllowed(Permission.VOBypassExtraDamage);
 
                 if (!checkDamageBeforeChangingExtras || !Entity.Exists(vehicle = GetVehicle()))
                 {
@@ -1755,7 +1755,7 @@ namespace vMenuClient.menus
                         return;
                     }
 
-                    bool checkDamageBeforeChangingExtras = GetSettingsBool(Setting.vmenu_prevent_extras_when_damaged);
+                    bool checkDamageBeforeChangingExtras = GetSettingsBool(Setting.vmenu_prevent_extras_when_damaged) && !IsAllowed(Permission.VOBypassExtraDamage);
 
                     if (checkDamageBeforeChangingExtras)
                     {
