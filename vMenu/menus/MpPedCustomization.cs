@@ -165,6 +165,18 @@ namespace vMenuClient.menus
                 _mumSelection = headBlendData.SecondFaceShape;
                 _shapeMixValue = headBlendData.ParentFaceShapePercent;
                 _skinMixValue = headBlendData.ParentSkinTonePercent;
+
+                if (_shapeMixValue > 1f)
+                {
+                    Log("Shape mix value was incorrectly saved with a value higher than the possible maximum. Resetting to max value");
+                    _shapeMixValue = 1f;
+                }
+
+                if (_skinMixValue > 1f)
+                {
+                    Log("Skin mix value was incorrectly saved with a value higher than the possible maximum. Resetting to max value");
+                    _skinMixValue = 1f;
+                }
             }
 
             currentCharacter.DrawableVariations.clothes ??= new Dictionary<int, KeyValuePair<int, int>>();
