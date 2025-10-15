@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -222,8 +222,6 @@ namespace vMenuServer
                     });
                     CallbackFunction(JsonConvert.SerializeObject(data));
                 }));
-                EventHandlers.Add("vMenu:RequestPermissions", new Action<Player>(PermissionsManager.SetPermissionsForPlayer));
-                EventHandlers.Add("vMenu:RequestServerState", new Action<Player>(RequestServerStateFromPlayer));
 
                 // check addons file for errors
                 var addons = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
@@ -267,6 +265,8 @@ namespace vMenuServer
                 {
                     Tick += TimeLoop;
                 }
+
+                GlobalState.Set("vmenu_onesync", GetConvar("onesync", "off") == "on", true);
             }
         }
         #endregion
@@ -960,14 +960,6 @@ namespace vMenuServer
         #endregion
 
         #region Infinity bits
-        private void RequestServerStateFromPlayer([FromSource] Player player)
-        {
-            player.TriggerEvent("vMenu:SetServerState", new
-            {
-                IsInfinity = GetConvar("onesync_enableInfinity", "false") == "true"
-            });
-        }
-
         [EventHandler("vMenu:RequestPlayerList")]
         internal void RequestPlayerListFromPlayer([FromSource] Player player)
         {
@@ -994,22 +986,27 @@ namespace vMenuServer
         #region Player join/quit
         private readonly HashSet<string> joinedPlayers = new();
 
-        private Task PlayersFirstTick()
+        private async Task PlayersFirstTick()
         {
             Tick -= PlayersFirstTick;
+
+            // Allow plenty of time for the connected clients to restart their client scripts
+            await Delay(5_000);
 
             foreach (var player in Players)
             {
                 joinedPlayers.Add(player.Handle);
-            }
 
-            return Task.FromResult(0);
+                PermissionsManager.SetPermissionsForPlayer(player);
+            }
         }
 
         [EventHandler("playerJoining")]
         internal void OnPlayerJoining([FromSource] Player sourcePlayer)
         {
             joinedPlayers.Add(sourcePlayer.Handle);
+
+            PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
 
             foreach (var player in Players)
             {
