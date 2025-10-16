@@ -832,34 +832,31 @@ namespace vMenuServer
         [EventHandler("vMenu:KickPlayer")]
         internal void KickPlayer([FromSource] Player source, int target, string kickReason = "You have been kicked from the server.")
         {
-            if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.Kick") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything") ||
-                IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All"))
-            {
-                // If the player is allowed to be kicked.
-                var targetPlayer = Players[target];
-                if (targetPlayer != null)
-                {
-                    if (!IsPlayerAceAllowed(targetPlayer.Handle, "vMenu.DontKickMe"))
-                    {
-                        TriggerEvent("vMenu:KickSuccessful", source.Name, kickReason, targetPlayer.Name);
-
-                        KickLog($"Player: {source.Name} has kicked: {targetPlayer.Name} for: {kickReason}.");
-                        TriggerClientEvent(player: source, eventName: "vMenu:Notify", args: $"The target player (<C>{targetPlayer.Name}</C>) has been kicked.");
-
-                        // Kick the player from the server using the specified reason.
-                        DropPlayer(targetPlayer.Handle, kickReason);
-                        return;
-                    }
-                    // Trigger the client event on the source player to let them know that kicking this player is not allowed.
-                    TriggerClientEvent(player: source, eventName: "vMenu:Notify", args: "Sorry, this player can ~r~not ~w~be kicked.");
-                    return;
-                }
-                TriggerClientEvent(player: source, eventName: "vMenu:Notify", args: "An unknown error occurred. Report it here: vespura.com/vmenu");
-            }
-            else
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPKick, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.POAll, source))
             {
                 BanManager.BanCheater(source);
+                return;
             }
+
+            Player targetPlayer = GetPlayerFromServerId(target);
+
+            if (targetPlayer is null)
+            {
+                source.TriggerEvent("vMenu:Notify", "Failed to kick target, because the target could not be found. Did they already leave?");
+                return;
+            }
+
+            if (PermissionsManager.IsAllowed(PermissionsManager.Permission.DontKickMe, targetPlayer))
+            {
+                source.TriggerEvent("vMenu:Notify", "Sorry, this player can ~r~not ~w~be kicked.");
+                return;
+            }
+
+            KickLog($"Player: {source.Name} has kicked: {targetPlayer.Name} for: {kickReason}.");
+
+            source.TriggerEvent("vMenu:Notify", $"The target player (<C>{targetPlayer.Name}</C>) has been kicked.");
+
+            targetPlayer.Drop(kickReason);
         }
 
         /// <summary>
