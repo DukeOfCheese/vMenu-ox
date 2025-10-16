@@ -525,17 +525,47 @@ namespace vMenuServer
         /// </summary>
         /// <param name="source"></param>
         /// <param name="vehicleNetId"></param>
-        /// <param name="playerOwner"></param>
         [EventHandler("vMenu:GetOutOfCar")]
-        internal void GetOutOfCar([FromSource] Player source, int vehicleNetId, int playerOwner)
+        internal void GetOutOfCar([FromSource] Player source, int vehicleNetId)
         {
-            if (source != null)
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.PVKickPassengers, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.PVAll, source))
             {
-                if (vMenuShared.PermissionsManager.GetPermissionAndParentPermissions(vMenuShared.PermissionsManager.Permission.PVKickPassengers).Any(perm => vMenuShared.PermissionsManager.IsAllowed(perm, source)))
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            Entity vehicle = Entity.FromNetworkId(vehicleNetId);
+
+            if (vehicle is null)
+            {
+                return;
+            }
+
+            int vehicleHandle = vehicle.Handle;
+
+            for (int i = -1; i < 15; i++)
+            {
+                int pedHandle = GetPedInVehicleSeat(vehicleHandle, i);
+
+                if (pedHandle == 0 || !IsPedAPlayer(pedHandle))
                 {
-                    TriggerClientEvent("vMenu:GetOutOfCar", vehicleNetId, playerOwner);
-                    source.TriggerEvent("vMenu:Notify", "All passengers will be kicked out as soon as the vehicle stops moving, or after 10 seconds if they refuse to stop the vehicle.");
+                    continue;
                 }
+
+                int playerHandle = NetworkGetEntityOwner(pedHandle);
+
+                Player player = GetPlayerFromServerId(playerHandle);
+
+                if (player is null || player == source)
+                {
+                    continue;
+                }
+
+                int warpOutFlag = 16;
+
+                TaskLeaveVehicle(pedHandle, vehicleHandle, warpOutFlag);
+
+                player.TriggerEvent("vMenu:Notify", "The owner of the vehicle has kicked you out.");
             }
         }
         #endregion
@@ -1036,6 +1066,30 @@ namespace vMenuServer
                     player.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, reason);
                 }
             }
+        }
+        #endregion
+
+        #region Utilities
+        private Player GetPlayerFromServerId(string serverId)
+        {
+            if (!int.TryParse(serverId, out int serverIdInt))
+            {
+                return null;
+            }
+
+            return GetPlayerFromServerId(serverIdInt);
+        }
+
+        private Player GetPlayerFromServerId(int serverId)
+        {
+            string serverIdString = serverId.ToString();
+
+            if (serverId <= 0 || !DoesPlayerExist(serverIdString))
+            {
+                return null;
+            }
+
+            return Players[serverId];
         }
         #endregion
     }
