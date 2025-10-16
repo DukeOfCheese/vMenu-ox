@@ -469,8 +469,7 @@ namespace vMenuClient.menus
             {
                 if (item == clearArea)
                 {
-                    var pos = Game.PlayerPed.Position;
-                    BaseScript.TriggerServerEvent("vMenu:ClearArea", pos.X, pos.Y, pos.Z);
+                    BaseScript.TriggerServerEvent("vMenu:ClearArea");
                 }
             };
 

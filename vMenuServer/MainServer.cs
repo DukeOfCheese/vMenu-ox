@@ -544,13 +544,13 @@ namespace vMenuServer
         /// <summary>
         /// Clear the area near this point for all players.
         /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <param name="z"></param>
         [EventHandler("vMenu:ClearArea")]
-        internal void ClearAreaNearPos(float x, float y, float z)
+        internal void ClearAreaNearPos([FromSource] Player source)
         {
-            TriggerClientEvent("vMenu:ClearArea", x, y, z);
+            Ped ped = source.Character;
+            Vector3 position = ped.Position;
+
+            TriggerClientEvent("vMenu:ClearArea", position);
         }
         #endregion
 

@@ -46,7 +46,7 @@ namespace vMenuClient
             EventHandlers.Add("vMenu:SetClouds", new Action<float, string>(SetClouds));
             EventHandlers.Add("vMenu:GoodBye", new Action(GoodBye));
             EventHandlers.Add("vMenu:SetBanList", new Action<string>(UpdateBanList));
-            EventHandlers.Add("vMenu:ClearArea", new Action<float, float, float>(ClearAreaNearPos));
+            EventHandlers.Add("vMenu:ClearArea", new Action<Vector3>(ClearAreaNearPos));
             EventHandlers.Add("vMenu:updatePedDecors", new Action(UpdatePedDecors));
             EventHandlers.Add("playerSpawned", new Action(SetAppearanceOnFirstSpawn));
             EventHandlers.Add("vMenu:GetOutOfCar", new Action<int, int>(GetOutOfCar));
@@ -378,10 +378,7 @@ namespace vMenuClient
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <param name="z"></param>
-        private void ClearAreaNearPos(float x, float y, float z)
-        {
-            ClearAreaOfEverything(x, y, z, 100f, false, false, false, false);
-        }
+        private void ClearAreaNearPos(Vector3 position) => ClearAreaOfEverything(position.X, position.Y, position.Z, 100f, false, false, false, false);
 
         /// <summary>
         /// Kicks the current player from the specified vehicle if they're inside and don't own the vehicle themselves.
