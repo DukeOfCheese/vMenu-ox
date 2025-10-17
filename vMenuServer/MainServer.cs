@@ -867,22 +867,20 @@ namespace vMenuServer
         [EventHandler("vMenu:KillPlayer")]
         internal void KillPlayer([FromSource] Player source, int target)
         {
-            if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.Kill") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything") ||
-                IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All"))
-            {
-                var targetPlayer = Players[target];
-                if (targetPlayer != null)
-                {
-                    // Trigger the client event on the target player to make them kill themselves. R.I.P.
-                    TriggerClientEvent(player: targetPlayer, eventName: "vMenu:KillMe", args: source.Name);
-                    return;
-                }
-                TriggerClientEvent(player: source, eventName: "vMenu:Notify", args: "An unknown error occurred. Report it here: vespura.com/vmenu");
-            }
-            else
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPKill, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
                 BanManager.BanCheater(source);
+                return;
             }
+
+            Player targetPlayer = GetPlayerFromServerId(target);
+
+            if (targetPlayer is null)
+            {
+                return;
+            }
+
+            targetPlayer.TriggerEvent("vMenu:KillMe", source.Name);
         }
 
         /// <summary>
