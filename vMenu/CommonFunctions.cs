@@ -966,7 +966,13 @@ namespace vMenuClient
         /// Summon player.
         /// </summary>
         /// <param name="player"></param>
-        public static void SummonPlayer(IPlayer player) => TriggerServerEvent("vMenu:SummonPlayer", player.ServerId);
+        public static void SummonPlayer(IPlayer player)
+        {
+            Vehicle currentVehicle = GetVehicle();
+            int numberOfSeats = currentVehicle is not null ? GetVehicleModelNumberOfSeats(currentVehicle.Model) : 0;
+
+            TriggerServerEvent("vMenu:SummonPlayer", player.ServerId, numberOfSeats);
+        }
         #endregion
 
         #region Spectate function

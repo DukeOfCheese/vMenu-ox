@@ -40,7 +40,6 @@ namespace vMenuClient
             EventHandlers.Add("vMenu:SetAddons", new Action(SetConfigOptions)); // DEPRECATED: Backwards-compatible event handler; use 'vMenu:SetConfigOptions' instead
             EventHandlers.Add("vMenu:SetConfigOptions", new Action(SetConfigOptions));
             EventHandlers.Add("vMenu:SetPermissions", new Action<string>(MainMenu.SetPermissions));
-            EventHandlers.Add("vMenu:GoToPlayer", new Action<string>(SummonPlayer));
             EventHandlers.Add("vMenu:KillMe", new Action<string>(KillMe));
             EventHandlers.Add("vMenu:Notify", new Action<string>(NotifyPlayer));
             EventHandlers.Add("vMenu:SetClouds", new Action<float, string>(SetClouds));
@@ -350,24 +349,6 @@ namespace vMenuClient
         {
             Notify.Alert($"You have been killed by <C>{GetSafePlayerName(sourceName)}</C>~s~ using the ~r~Kill Player~s~ option in vMenu.");
             SetEntityHealth(Game.PlayerPed.Handle, 0);
-        }
-
-        /// <summary>
-        /// Teleport to the specified player.
-        /// </summary>
-        /// <param name="targetPlayer"></param>
-        private async void SummonPlayer(string targetPlayer)
-        {
-            // ensure the player list is requested in case of Infinity
-            MainMenu.PlayersList.RequestPlayerList();
-            await MainMenu.PlayersList.WaitRequested();
-
-            var player = MainMenu.PlayersList.FirstOrDefault(a => a.ServerId == int.Parse(targetPlayer));
-
-            if (player != null)
-            {
-                _ = TeleportToPlayer(player);
-            }
         }
 
         /// <summary>

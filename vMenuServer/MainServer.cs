@@ -889,23 +889,82 @@ namespace vMenuServer
         /// <param name="source"></param>
         /// <param name="target"></param>
         [EventHandler("vMenu:SummonPlayer")]
-        internal void SummonPlayer([FromSource] Player source, int target)
+        internal async void SummonPlayer([FromSource] Player source, int target, int numberOfSeats)
         {
-            if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.Summon") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything") ||
-                IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All"))
-            {
-                // Trigger the client event on the target player to make them teleport to the source player.
-                var targetPlayer = Players[target];
-                if (targetPlayer != null)
-                {
-                    TriggerClientEvent(player: targetPlayer, eventName: "vMenu:GoToPlayer", args: source.Handle);
-                    return;
-                }
-                TriggerClientEvent(player: source, eventName: "vMenu:Notify", args: "An unknown error occurred. Report it here: vespura.com/vmenu");
-            }
-            else
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSummon, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
                 BanManager.BanCheater(source);
+                return;
+            }
+
+            Player targetPlayer = GetPlayerFromServerId(target);
+
+            if (targetPlayer is null)
+            {
+                return;
+            }
+
+            int targetPedHandle;
+            Ped targetPed = targetPlayer.Character;
+
+            if (targetPed is null || !DoesEntityExist(targetPedHandle = targetPed.Handle))
+            {
+                return;
+            }
+
+            Ped sourcePed = source.Character;
+            int sourcePedHandle = sourcePed.Handle;
+
+            bool lastVehicle = false;
+            int sourcePedVehicle = GetVehiclePedIsIn(sourcePedHandle, lastVehicle);
+
+            if (sourcePedVehicle == 0)
+            {
+                targetPed.Position = sourcePed.Position;
+                return;
+            }
+
+            bool seatFound = false;
+
+            // Seat indices start at `-1`
+            numberOfSeats -= 1;
+
+            for (int i = -1; i < numberOfSeats; i++)
+            {
+                bool seatFree = GetPedInVehicleSeat(sourcePedVehicle, i) == 0;
+
+                if (!seatFree)
+                {
+                    continue;
+                }
+
+                Vector3 priorPosition = targetPed.Position;
+                Vector3 newPosition = sourcePed.Position + new Vector3(0f, 0f, 5f);
+
+                seatFound = true;
+                targetPed.Position = newPosition;
+
+                Vector3 checkPosition;
+                long timeout = GetGameTimer() + 1_500;
+
+                while (timeout > GetGameTimer() && priorPosition.DistanceToSquared(checkPosition = targetPed.Position) < newPosition.DistanceToSquared(checkPosition))
+                {
+                    await Delay(100);
+                }
+
+                if (timeout < GetGameTimer())
+                {
+                    source.TriggerEvent("vMenu:Notify", "Failed to teleport player.");
+                    break;
+                }
+
+                SetPedIntoVehicle(targetPedHandle, sourcePedVehicle, i);
+                break;
+            }
+
+            if (!seatFound)
+            {
+                source.TriggerEvent("vMenu:Notify", "No free seats in your vehicle for summoned player.");
             }
         }
 
