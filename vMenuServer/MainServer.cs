@@ -1070,12 +1070,34 @@ namespace vMenuServer
         #region Player join/quit
         private readonly HashSet<string> joinedPlayers = new();
 
+        private IEnumerable<Player> GetJoinQuitNotifPlayers()
+        {
+            List<Player> players = [];
+
+            foreach (string playerHandle in joinedPlayers)
+            {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.MSJoinQuitNotifs, playerHandle) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.MSAll, playerHandle))
+                {
+                    continue;
+                }
+
+                Player player = GetPlayerFromServerId(playerHandle);
+
+                if (player is not null)
+                {
+                    players.Add(player);
+                }
+            }
+
+            return players;
+        }
+
         private async Task PlayersFirstTick()
         {
             Tick -= PlayersFirstTick;
 
             // Allow plenty of time for the connected clients to restart their client scripts
-            await Delay(5_000);
+            await Delay(3_000);
 
             foreach (var player in Players)
             {
@@ -1092,13 +1114,9 @@ namespace vMenuServer
 
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
 
-            foreach (var player in Players)
+            foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {
-                if (IsPlayerAceAllowed(player.Handle, "vMenu.MiscSettings.JoinQuitNotifs") ||
-                    IsPlayerAceAllowed(player.Handle, "vMenu.MiscSettings.All"))
-                {
-                    player.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, null);
-                }
+                notifPlayer.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, null);
             }
         }
 
@@ -1112,13 +1130,9 @@ namespace vMenuServer
 
             joinedPlayers.Remove(sourcePlayer.Handle);
 
-            foreach (var player in Players)
+            foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {
-                if (IsPlayerAceAllowed(player.Handle, "vMenu.MiscSettings.JoinQuitNotifs") ||
-                    IsPlayerAceAllowed(player.Handle, "vMenu.MiscSettings.All"))
-                {
-                    player.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, reason);
-                }
+                notifPlayer.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, reason);
             }
         }
         #endregion
