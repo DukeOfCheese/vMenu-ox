@@ -252,6 +252,7 @@ namespace vMenuClient.menus
                 }
                 else if (item == printIdentifiers)
                 {
+                    // TODO: Replace callback function
                     Func<string, string> CallbackFunction = (data) =>
                     {
                         Debug.WriteLine(data);
