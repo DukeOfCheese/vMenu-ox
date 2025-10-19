@@ -3299,10 +3299,6 @@ namespace vMenuClient
 
             if (MainMenu.MiscSettingsMenu == null || MainMenu.MiscSettingsMenu.MiscDisablePrivateMessages)
             {
-                if (!(sent && source == Game.Player.ServerId.ToString()))
-                {
-                    TriggerServerEvent("vMenu:PmsDisabled", source);
-                }
                 return;
             }
 

@@ -969,31 +969,51 @@ namespace vMenuServer
         }
 
         [EventHandler("vMenu:SendMessageToPlayer")]
-        internal void SendPrivateMessage([FromSource] Player source, int targetServerId, string message)
+        internal void SendPrivateMessage([FromSource] Player source, int target, string message)
         {
-            var targetPlayer = Players[targetServerId];
-            if (targetPlayer != null)
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSendMessage, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
-                targetPlayer.TriggerEvent("vMenu:PrivateMessage", source.Handle, message);
-
-                foreach (var p in Players)
-                {
-                    if (p != source && p != targetPlayer)
-                    {
-                        if (vMenuShared.PermissionsManager.IsAllowed(vMenuShared.PermissionsManager.Permission.OPSeePrivateMessages, p))
-                        {
-                            p.TriggerEvent("vMenu:Notify", $"[vMenu Staff Log] <C>{source.Name}</C>~s~ sent a PM to <C>{targetPlayer.Name}</C>~s~: {message}");
-                        }
-                    }
-                }
+                BanManager.BanCheater(source);
+                return;
             }
-        }
 
-        [EventHandler("vMenu:PmsDisabled")]
-        internal void NotifySenderThatDmsAreDisabled([FromSource] Player source, string senderServerId)
-        {
-            var p = Players[int.Parse(senderServerId)];
-            p?.TriggerEvent("vMenu:Notify", $"Sorry, your private message to <C>{source.Name}</C>~s~ could not be delivered because they disabled private messages.");
+            bool sourcePmsDisabled = source.State.Get("vmenu_pms_disabled") ?? false;
+
+            if (sourcePmsDisabled)
+            {
+                source.TriggerEvent("vMenu:Notify", "You can't send a private message if you have private messages disabled yourself. Enable them in the Misc Settings menu and try again.");
+                return;
+            }
+
+            Player targetPlayer = GetPlayerFromServerId(target);
+
+            if (targetPlayer is null)
+            {
+                source.TriggerEvent("vMenu:Notify", "Failed to send message because the target could not be found. Did they disconnect?");
+                return;
+            }
+
+            bool targetPmsDisabled = targetPlayer.State.Get("vmenu_pms_disabled") ?? false;
+
+            if (targetPmsDisabled)
+            {
+                source.TriggerEvent("vMenu:Notify", $"Sorry, your private message to <C>{source.Name}</C>~s~ could not be delivered because they have private messages disabled.");
+                return;
+            }
+
+            targetPlayer.TriggerEvent("vMenu:PrivateMessage", source.Handle, message);
+
+            foreach (string playerHandle in joinedPlayers)
+            {
+                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSeePrivateMessages, playerHandle) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, playerHandle))
+                {
+                    continue;
+                }
+
+                Player player = GetPlayerFromServerId(playerHandle);
+
+                player?.TriggerEvent("vMenu:Notify", $"[vMenu Staff Log] <C>{source.Name}</C>~s~ sent a PM to <C>{targetPlayer.Name}</C>~s~: {message}");
+            }
         }
         #endregion
 
