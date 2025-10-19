@@ -1025,16 +1025,33 @@ namespace vMenuServer
 
         #region Add teleport location
         [EventHandler("vMenu:SaveTeleportLocation")]
-        internal void AddTeleportLocation([FromSource] Player _, string locationJson)
+        internal void AddTeleportLocation([FromSource] Player source, string locationJson)
         {
-            var location = JsonConvert.DeserializeObject<TeleportLocation>(locationJson);
-            if (GetTeleportLocationsData().Any(loc => loc.name == location.name))
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.MSTeleportSaveLocation, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.MSAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            TeleportLocation teleportLocation;
+
+            try
+            {
+                teleportLocation = JsonConvert.DeserializeObject<TeleportLocation>(locationJson);
+            }
+            catch
+            {
+                Log("Teleport location could not be deserialized, location was not saved.", LogLevel.error);
+                return;
+            }
+
+            if (GetTeleportLocationsData().Exists(loc => loc.name == teleportLocation.name))
             {
                 Log("A teleport location with this name already exists, location was not saved.", LogLevel.error);
                 return;
             }
             var locs = GetLocations();
-            locs.teleports.Add(location);
+            locs.teleports.Add(teleportLocation);
             if (!SaveResourceFile(GetCurrentResourceName(), "config/locations.json", JsonConvert.SerializeObject(locs, Formatting.Indented), -1))
             {
                 Log("Could not save locations.json file, reason unknown.", LogLevel.error);
