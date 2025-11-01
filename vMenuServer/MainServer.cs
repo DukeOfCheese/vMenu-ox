@@ -553,7 +553,6 @@ namespace vMenuServer
                 }
 
                 int playerHandle = NetworkGetEntityOwner(pedHandle);
-
                 Player player = GetPlayerFromServerId(playerHandle);
 
                 if (player is null || player == source)
@@ -912,10 +911,9 @@ namespace vMenuServer
                 return;
             }
 
+            bool lastVehicle = false;
             Ped sourcePed = source.Character;
             int sourcePedHandle = sourcePed.Handle;
-
-            bool lastVehicle = false;
             int sourcePedVehicle = GetVehiclePedIsIn(sourcePedHandle, lastVehicle);
 
             if (sourcePedVehicle == 0)
@@ -938,14 +936,13 @@ namespace vMenuServer
                     continue;
                 }
 
+                Vector3 checkPosition;
+                long timeout = GetGameTimer() + 1_500;
                 Vector3 priorPosition = targetPed.Position;
                 Vector3 newPosition = sourcePed.Position + new Vector3(0f, 0f, 5f);
 
                 seatFound = true;
                 targetPed.Position = newPosition;
-
-                Vector3 checkPosition;
-                long timeout = GetGameTimer() + 1_500;
 
                 while (timeout > GetGameTimer() && priorPosition.DistanceToSquared(checkPosition = targetPed.Position) < newPosition.DistanceToSquared(checkPosition))
                 {
@@ -1163,9 +1160,11 @@ namespace vMenuServer
 
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
 
+            string sourcePlayerName = sourcePlayer.Name;
+
             foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {
-                notifPlayer.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, null);
+                notifPlayer.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayerName, null);
             }
         }
 
@@ -1179,9 +1178,11 @@ namespace vMenuServer
 
             joinedPlayers.Remove(sourcePlayer.Handle);
 
+            string sourcePlayerName = sourcePlayer.Name;
+            
             foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {
-                notifPlayer.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayer.Name, reason);
+                notifPlayer.TriggerEvent("vMenu:PlayerJoinQuit", sourcePlayerName, reason);
             }
         }
         #endregion
