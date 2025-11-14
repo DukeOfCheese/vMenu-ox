@@ -1,1 +1,1 @@
-lib.versionCheck("Gravxd/vMenu-ox")
+lib.versionCheck("DukeOfCheese/vMenu-ox")
