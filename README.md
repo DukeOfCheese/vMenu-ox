@@ -1,4 +1,9 @@
 # vMenu-OX 
+
+Many thanks to @Gravxd for the original repository and to-do list which will be continued in this repository as his has since been archived
+
+--------
+
 This is a fork of vMenu designed to integrate with [ox_lib](https://github.com/overextended/ox_lib/releases/latest) you will require it for this to work.
 
 This fork introduces some new exports that work with ox_lib for better UI features and to make the menu more convenient/easier to use for players.
@@ -13,14 +18,13 @@ Here's an example where we can move away from 3 separate input popups for rgb nu
 --------
 
 ### Download & Install
-Click [here](https://github.com/Gravxd/vMenu-ox/releases/) to go to the releases page and download `vMenu.zip` - this will be your fivem resource folder.
+Click [here](https://github.com/DukeOfCheese/vMenu-ox/releases/) to go to the releases page and download `vMenu.zip` - this will be your fivem resource folder.
 
 --------
 
 ### Support/Issues with my Fork
-If you require support or have an issue / suggestion, feel free to join my discord!
-I have a direct suggestions channel so you can give ideas and request stuff to be added.
-[discord.gg/chromalabs](https://discord.gg/chromalabs)
+Support for this repository going forward can be found below!
+[Atlas Development](https://discord.atlasdevops.com)
 
 # Fork Features/Changes
 
