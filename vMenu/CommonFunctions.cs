@@ -1685,7 +1685,7 @@ namespace vMenuClient
                         wheelType = GetVehicleWheelType(veh.Handle),
                         windowTint = (int)veh.Mods.WindowTint,
                         xenonHeadlights = IsToggleModOn(veh.Handle, 22),
-                        bulletProofTires = veh.CanTiresBurst ? false : true,
+                        bulletProofTires = !veh.CanTiresBurst,
                         headlightColor = VehicleOptions.GetHeadlightsColorForVehicle(veh),
                         enveffScale = GetVehicleEnveffScale(veh.Handle),
                         Category = string.IsNullOrEmpty(existingCatergory) ? "Uncategorized" : existingCatergory
