@@ -1,0 +1,13 @@
+{
+    "Lua.diagnostics.globals": [
+        "lib",
+        "cache",
+        "MySQL"
+    ],
+    "Lua.diagnostics.disable": [
+        "lowercase-global",
+        "missing-parameter",
+        "duplicate-doc-field",
+        "doc-field-no-class"
+    ]
+}

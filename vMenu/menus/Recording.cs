@@ -69,6 +69,8 @@ namespace vMenuClient.menus
                 }
                 else if (item == openEditor)
                 {
+                    bool confirmed = await GetUserConfirmation("Rockstar Editor", "Are you sure you want to open the Rockstar Editor? \n\n This will leave the current server.");
+                    if (!confirmed) return;
                     if (GetSettingsBool(Setting.vmenu_quit_session_in_rockstar_editor))
                     {
                         QuitSession();

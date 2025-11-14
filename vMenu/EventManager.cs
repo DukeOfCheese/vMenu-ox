@@ -281,8 +281,13 @@ namespace vMenuClient
         /// Used by events triggered from the server to notify a user.
         /// </summary>
         /// <param name="message"></param>
+        bool usingCustomNotifications = GetSettingsBool(Setting.vmenu_using_custom_notify);
         private void NotifyPlayer(string message)
         {
+            if (usingCustomNotifications)
+            {
+                TriggerEvent("vMenu:CustomNotify", message, "inform");
+            }
             Notify.Custom(message, true, true);
         }
 

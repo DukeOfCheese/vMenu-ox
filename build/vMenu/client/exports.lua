@@ -1,4 +1,6 @@
---#region Input Dialogs
+-- You should not be editing this file unless you know what you are doing. This shouldn't need to be changed.
+-- For integrations, check client/integrations.lua
+
 ---@class inputDialog
 ---@param windowTitle string
 ---@param defaultText string
@@ -25,7 +27,7 @@ function rgbToHex(r, g, b)
 	b = math.max(0, math.min(255, b))
 
 	-- Format RGB values to hexadecimal string
-	return string.format("#%02X%02X%02X", r, g, b)
+	return format("#%02X%02X%02X", r, g, b)
 end
 
 ---@class colourDialog
@@ -40,9 +42,17 @@ exports("colourDialog", function(type)
 	})
 	return input and input[1] or ""
 end)
---#endregion
 
---#region Misc Exports
+exports("getUserConfirmation", function(title, description)
+	local confirmed = lib.alertDialog({
+		header = format("vMenu - %s", title),
+		content = description,
+		centered = true,
+		cancel = true,
+	})
+	return confirmed and confirmed == "confirm" or false
+end)
+
 ---@class copyToClipboard
 ---@param text string
 exports("copyToClipboard", function(text)
@@ -50,9 +60,7 @@ exports("copyToClipboard", function(text)
 	lib.setClipboard(text)
 	return ""
 end)
---#endregion
 
---#region Client Stuff
 CreateThread(function()
 	-- # Sets whether or not players can lose their head props when they are hit/pushed.
 	-- # true = Props will stay on player (default vMenu and GTA Online behavior)
@@ -72,4 +80,3 @@ CreateThread(function()
 		SetArtificialLightsStateAffectsVehicles(false)
 	end
 end)
---#endregion

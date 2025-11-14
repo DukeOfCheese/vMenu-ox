@@ -14,6 +14,7 @@ using vMenuClient.data;
 using static CitizenFX.Core.Native.API;
 using static vMenuClient.CommonFunctions;
 using static vMenuClient.MpPedDataManager;
+using static vMenuShared.ConfigManager;
 
 namespace vMenuClient.menus
 {
@@ -50,7 +51,7 @@ namespace vMenuClient.menus
         private MultiplayerPedData currentCharacter = new();
         private MpCharacterCategory currentCategory = new();
 
-
+        public static bool OutfitCodesEnabled = GetSettingsBool(Setting.vmenu_outfitcodes);
 
         /// <summary>
         /// Makes or updates the character creator menu. Also has an option to load data from the <see cref="currentCharacter"/> data, to allow for editing an existing ped.
@@ -836,6 +837,20 @@ namespace vMenuClient.menus
             var tattoosButton = new MenuItem("Character Tattoo Options", "Character tattoo options.");
             var clothesButton = new MenuItem("Character Clothes", "Character clothes.");
             var propsButton = new MenuItem("Character Props", "Character props.");
+
+            var loadOutfitCodeButton = new MenuItem("Load Shared Outfit", "Duplicates your character ready for outfit sharing.");
+            var generateOutfitCodeButton = new MenuItem("Generate Outfit Code", "Generates a code for your character ready for outfit sharing.");
+
+            if(!OutfitCodesEnabled)
+            {
+                loadOutfitCodeButton.Enabled = false;
+                loadOutfitCodeButton.RightIcon = MenuItem.Icon.LOCK;
+                loadOutfitCodeButton.Description = "~r~Outfit Code Sharing is disabled by the Server Owner.";
+                generateOutfitCodeButton.Enabled = false;
+                generateOutfitCodeButton.RightIcon = MenuItem.Icon.LOCK;
+                generateOutfitCodeButton.Description = "~r~Outfit Code Sharing is disabled by the Server Owner.";
+            }
+
             var saveButton = new MenuItem("Save Character", "Save your character.");
             var exitNoSave = new MenuItem("Exit Without Saving", "Are you sure? All unsaved work will be lost.");
             var faceExpressionList = new MenuListItem("Facial Expression", new List<string> { "Normal", "Happy", "Angry", "Aiming", "Injured", "Stressed", "Smug", "Sulk" }, 0, "Set a facial expression that will be used whenever your ped is idling.");
@@ -853,6 +868,9 @@ namespace vMenuClient.menus
             createCharacterMenu.AddMenuItem(tattoosButton);
             createCharacterMenu.AddMenuItem(clothesButton);
             createCharacterMenu.AddMenuItem(propsButton);
+            
+            createCharacterMenu.AddMenuItem(loadOutfitCodeButton);
+            createCharacterMenu.AddMenuItem(generateOutfitCodeButton);
             createCharacterMenu.AddMenuItem(faceExpressionList);
             createCharacterMenu.AddMenuItem(categoryBtn);
             createCharacterMenu.AddMenuItem(saveButton);
@@ -1772,6 +1790,34 @@ namespace vMenuClient.menus
                         createCharacterMenu.GoBack();
                     }
                 }
+                else if (item == loadOutfitCodeButton)
+                {
+                    if (currentCharacter.SaveName == null)
+                    {
+                        Notify.Error("You must save the current character before you can load a code for it.");
+                    }
+                    else
+                    {
+                        bool success = await LoadSharedOutfit(currentCharacter.SaveName);
+                        if (success)
+                        {
+                            MenuController.CloseAllMenus();
+                            UpdateSavedPedsMenu();
+                            savedCharactersMenu.OpenMenu();
+                        }
+                    }
+                }
+                else if (item == generateOutfitCodeButton)
+                {
+                    if (currentCharacter.SaveName == null)
+                    {
+                        Notify.Error("You must save the current character before you can generate a code for it.");
+                    }
+                    else
+                    {
+                        TriggerEvent("vMenu:Outfits:GenerateCode", currentCharacter.SaveName);
+                    }
+                }
                 else if (item == exitNoSave) // exit without saving
                 {
                     var confirm = false;
@@ -2216,9 +2262,9 @@ namespace vMenuClient.menus
                         delPed.Label = "";
                         DeleteResourceKvp("mp_ped_" + selectedSavedCharacterManageName);
                         Notify.Success("Your saved character has been deleted.");
-                        manageSavedCharacterMenu.GoBack();
+                        MenuController.CloseAllMenus();
                         UpdateSavedPedsMenu();
-                        manageSavedCharacterMenu.RefreshIndex();
+                        savedCharactersMenu.OpenMenu();
                     }
                     else
                     {

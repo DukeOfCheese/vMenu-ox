@@ -100,7 +100,7 @@ namespace vMenuClient.menus
                 menu.AddMenuItem(removeclouds);
             }
 
-            menu.OnItemSelect += (sender, item, index2) =>
+            menu.OnItemSelect += async (sender, item, index2) =>
             {
                 if (item == removeclouds)
                 {
@@ -112,12 +112,16 @@ namespace vMenuClient.menus
                 }
                 else if (item.ItemData is string weatherType)
                 {
-                    Notify.Custom($"The weather will be changed to ~y~{item.Text}~s~. This will take {EventManager.WeatherChangeTime} seconds.");
-                    UpdateServerWeather(weatherType, EventManager.IsBlackoutEnabled, EventManager.DynamicWeatherEnabled, EventManager.IsSnowEnabled);
+                    bool confirmed = await GetUserConfirmation("Change Weather", $"Please confirm that you want to change the weather to: **{item.Text}**");
+                    if (confirmed)
+                    {
+                        Notify.Custom($"The weather will be changed to ~y~{item.Text}~s~. This will take {EventManager.WeatherChangeTime} seconds.");
+                        UpdateServerWeather(weatherType, EventManager.IsBlackoutEnabled, EventManager.DynamicWeatherEnabled, EventManager.IsSnowEnabled);
+                    }
                 }
             };
 
-            menu.OnCheckboxChange += (sender, item, index, _checked) =>
+            menu.OnCheckboxChange += async (sender, item, index, _checked) =>
             {
                 if (item == dynamicWeatherEnabled)
                 {
@@ -126,13 +130,31 @@ namespace vMenuClient.menus
                 }
                 else if (item == blackout)
                 {
-                    Notify.Custom($"Blackout mode is now {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
-                    UpdateServerWeather(EventManager.GetServerWeather, _checked, EventManager.DynamicWeatherEnabled, EventManager.IsSnowEnabled);
+                    string action = _checked ? "Enable" : "Disable";
+                    bool confirmed = await GetUserConfirmation($"{action} Blackout Mode", $"Please confirm that you want to {action} blackout mode. This will disable or enable all lights across the map.");
+                    if (confirmed)
+                    {
+                        Notify.Custom($"Blackout mode is now {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
+                        UpdateServerWeather(EventManager.GetServerWeather, _checked, EventManager.DynamicWeatherEnabled, EventManager.IsSnowEnabled);
+                    }
+                    else
+                    {
+                        item.Checked = !item.Checked;
+                    }
                 }
                 else if (item == snowEnabled)
                 {
-                    Notify.Custom($"Snow effects will now be forced {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
-                    UpdateServerWeather(EventManager.GetServerWeather, EventManager.IsBlackoutEnabled, EventManager.DynamicWeatherEnabled, _checked);
+                    string action = _checked ? "Enable" : "Disable";
+                    bool confirmed = await GetUserConfirmation($"{action} Snow Effects", $"Please confirm that you want to {action} snow effects. This will force snow to appear on the ground and enable snow particle effects for peds and vehicles.");
+                    if (confirmed)
+                    {
+                        Notify.Custom($"Snow effects will now be forced {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
+                        UpdateServerWeather(EventManager.GetServerWeather, EventManager.IsBlackoutEnabled, EventManager.DynamicWeatherEnabled, _checked);
+                    }
+                    else
+                    {
+                        item.Checked = !item.Checked;
+                    }
                 }
             };
         }
