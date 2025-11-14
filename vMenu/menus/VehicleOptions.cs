@@ -709,7 +709,12 @@ namespace vMenuClient.menus
                 else if (item == infiniteFuel)
                 {
                     VehicleInfiniteFuel = _checked;
-                    TriggerEvent("vMenu:Integrations:InfiniteFuel", _checked);
+                    
+                    var actionData = new Dictionary<string, object>
+                    {
+                        ["enabled"] = _checked
+                    };
+                    TriggerEvent("vMenu:Integrations:Action", "infinitefuel", actionData);
                 }
             };
             #endregion

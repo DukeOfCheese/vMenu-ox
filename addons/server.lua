@@ -1,1 +1,0 @@
-lib.versionCheck("DukeOfCheese/vMenu-ox")
