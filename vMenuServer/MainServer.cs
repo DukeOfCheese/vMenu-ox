@@ -765,6 +765,8 @@ namespace vMenuServer
                 return;
             }
 
+            bool allWOPermissions = PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source);
+
             if (removeClouds)
             {
                 if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORemoveClouds, source) && !allWOPermissions)
