@@ -470,6 +470,11 @@ namespace vMenuClient
                 else
                 {
                     playerPos = await MainMenu.RequestPlayerCoordinates(player.ServerId);
+                    if (playerPos == Vector3.Zero)
+                    {
+                        Notify.Error("Could not retrieve the coordinates of the specified player. Teleport cancelled.");
+                        return;
+                    }
                     wasActive = false;
                 }
 
@@ -1008,7 +1013,13 @@ namespace vMenuClient
         /// Summon player.
         /// </summary>
         /// <param name="player"></param>
-        public static void SummonPlayer(IPlayer player) => TriggerServerEvent("vMenu:SummonPlayer", player.ServerId);
+        public static void SummonPlayer(IPlayer player)
+        {
+            Vehicle currentVehicle = GetVehicle();
+            int numberOfSeats = currentVehicle is not null ? GetVehicleModelNumberOfSeats(currentVehicle.Model) : 0;
+
+            TriggerServerEvent("vMenu:SummonPlayer", player.ServerId, numberOfSeats);
+        }
         #endregion
 
         #region Spectate function
@@ -1624,7 +1635,7 @@ namespace vMenuClient
                     #region new saving method
                     var mods = new Dictionary<int, int>();
 
-                    foreach (var mod in veh.Mods.GetAllMods())
+                    foreach (var mod in GetAllVehicleMods(veh))
                     {
                         mods.Add((int)mod.ModType, mod.Index);
                     }
@@ -1664,17 +1675,32 @@ namespace vMenuClient
                     colors.Add("tyresmokeR", tyresmokeR);
                     colors.Add("tyresmokeG", tyresmokeG);
                     colors.Add("tyresmokeB", tyresmokeB);
+
                     int customPrimaryR = -1;
                     int customPrimaryG = -1;
                     int customPrimaryB = -1;
-                    GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                    bool primaryColorIsCustom = GetIsVehiclePrimaryColourCustom(veh.Handle);
+
+                    if (primaryColorIsCustom)
+                    {
+                        GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                    }
+                    
                     colors.Add("customPrimaryR", customPrimaryR);
                     colors.Add("customPrimaryG", customPrimaryG);
                     colors.Add("customPrimaryB", customPrimaryB);
+
                     int customSecondaryR = -1;
                     int customSecondaryG = -1;
                     int customSecondaryB = -1;
-                    GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+
+                    bool secondaryColorIsCustom = GetIsVehicleSecondaryColourCustom(veh.Handle);
+
+                    if (secondaryColorIsCustom)
+                    {
+                        GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+                    }
+
                     colors.Add("customSecondaryR", customSecondaryR);
                     colors.Add("customSecondaryG", customSecondaryG);
                     colors.Add("customSecondaryB", customSecondaryB);
@@ -2133,9 +2159,12 @@ namespace vMenuClient
         /// Update the server with the new weather type, blackout status and dynamic weather changes enabled status.
         /// </summary>
         /// <param name="newWeather">The new weather type.</param>
-        /// <param name="blackout">Manual blackout mode enabled/disabled.</param>
         /// <param name="dynamicChanges">Dynamic weather changes enabled/disabled.</param>
-        public static void UpdateServerWeather(string newWeather, bool blackout, bool dynamicChanges, bool isSnowEnabled) => TriggerServerEvent("vMenu:UpdateServerWeather", newWeather, blackout, dynamicChanges, isSnowEnabled);
+        public static void UpdateServerWeather(string newWeather, bool dynamicChanges, bool isSnowEnabled) => TriggerServerEvent("vMenu:UpdateServerWeather", newWeather, dynamicChanges, isSnowEnabled);
+
+        public static void UpdateServerBlackout(bool value) => TriggerServerEvent("vMenu:UpdateServerBlackout", value);
+
+        public static void UpdateServerVehicleBlackout(bool value) => TriggerServerEvent("vMenu:UpdateServerVehicleBlackout", value);
 
         /// <summary>
         /// Modify the clouds for everyone. If removeClouds is true, then remove all clouds. If it's false, then randomize the clouds.
@@ -2150,8 +2179,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="hours">Hours (0-23)</param>
         /// <param name="minutes">Minutes (0-59)</param>
-        /// <param name="freezeTime">Should the time be frozen?</param>
-        public static void UpdateServerTime(int hours, int minutes, bool freezeTime)
+        public static void UpdateServerTime(int hours, int minutes)
         {
             var realHours = hours;
             var realMinutes = minutes;
@@ -2163,8 +2191,14 @@ namespace vMenuClient
             {
                 realMinutes = 0;
             }
-            TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes, freezeTime);
+            TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes);
         }
+
+        /// <summary>
+        /// Updates the server on if time should be frozen or not.
+        /// </summary>
+        /// <param name="freezeTime">`true` to freeze time, `false` to unfreeze time</param>
+        public static void FreezeServerTime(bool freezeTime) => TriggerServerEvent("vMenu:FreezeServerTime", freezeTime);
         #endregion
 
         #region StringToStringArray
@@ -3384,10 +3418,6 @@ namespace vMenuClient
 
             if (MainMenu.MiscSettingsMenu == null || MainMenu.MiscSettingsMenu.MiscDisablePrivateMessages)
             {
-                if (!(sent && source == Game.Player.ServerId.ToString()))
-                {
-                    TriggerServerEvent("vMenu:PmsDisabled", source);
-                }
                 return;
             }
 
@@ -3573,6 +3603,27 @@ namespace vMenuClient
             }
             TriggerServerEvent("vMenu:SaveTeleportLocation", JsonConvert.SerializeObject(new vMenuShared.ConfigManager.TeleportLocation(locationName, pos, heading)));
             Notify.Success("The location was successfully saved.");
+        }
+        #endregion
+
+        #region Get all vehicle mods
+        public static VehicleMod[] GetAllVehicleMods(Vehicle vehicle)
+        {
+            int vehicleHandle = vehicle.Handle;
+
+            bool HasVehicleMod(VehicleData.ModType modType)
+            {
+                return GetNumVehicleMods(vehicleHandle, (int)modType) > 0;
+            }
+
+            return
+            [
+                .. Enum.GetValues(typeof(VehicleData.ModType))
+                    .Cast<VehicleData.ModType>()
+                    .Where(HasVehicleMod)
+                    // The cast to `VehicleModType` is fine here because `VehicleMod` casts `VehicleModType` to `int`
+                    .Select(modType => vehicle.Mods[(VehicleModType)modType])
+            ];
         }
         #endregion
     }

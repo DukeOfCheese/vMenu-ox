@@ -120,7 +120,7 @@ namespace vMenuClient
             }
             #endregion
             #region keymapping
-            string KeyMappingID = String.IsNullOrWhiteSpace(GetSettingsString(Setting.vmenu_keymapping_id)) ? "Default" : GetSettingsString(Setting.vmenu_keymapping_id);
+            string KeyMappingID = GetKeyMappingId();
             RegisterCommand($"vMenu:{KeyMappingID}:NoClip", new Action<dynamic, List<dynamic>, string>((dynamic source, List<dynamic> args, string rawCommand) =>
             {
                 if (IsAllowed(Permission.NoClip))
@@ -141,20 +141,6 @@ namespace vMenuClient
                     else
                     {
                         NoClipEnabled = !NoClipEnabled;
-                    }
-                }
-            }), false);
-            RegisterCommand($"vMenu:{KeyMappingID}:MenuToggle", new Action<dynamic, List<dynamic>, string>((dynamic source, List<dynamic> args, string rawCommand) =>
-            {
-                if (MenuEnabled)
-                {
-                    if (!MenuController.IsAnyMenuOpen())
-                    {
-                        Menu.OpenMenu();
-                    }
-                    else
-                    {
-                        MenuController.CloseAllMenus();
                     }
                 }
             }), false);
@@ -340,54 +326,58 @@ namespace vMenuClient
             // Clear all previous pause menu info/brief messages on resource start.
             ClearBrief();
 
-            // Request the permissions data from the server.
-            TriggerServerEvent("vMenu:RequestPermissions");
-
-            // Request server state from the server.
-            TriggerServerEvent("vMenu:RequestServerState");
-        }
-
-        #region Infinity bits
-        [EventHandler("vMenu:SetServerState")]
-        public void SetServerState(IDictionary<string, object> data)
-        {
-            if (data.TryGetValue("IsInfinity", out var isInfinity))
+            if (GlobalState.Get("vmenu_onesync") ?? false)
             {
-                if (isInfinity is bool isInfinityBool)
-                {
-                    if (isInfinityBool)
-                    {
-                        PlayersList = new InfinityPlayerList(Players);
-                    }
-                }
+                PlayersList = new InfinityPlayerList(Players);
             }
         }
 
+        #region Infinity bits
         [EventHandler("vMenu:ReceivePlayerList")]
         public void ReceivedPlayerList(IList<object> players)
         {
             PlayersList?.ReceivedPlayerList(players);
         }
 
+        struct RPCData
+        {
+            public bool IsCompleted { get; set; }
+            public Vector3 Coords { get; set; }
+        }
+
+        private static Dictionary<long, RPCData> rpcQueue = new Dictionary<long, RPCData>();
+        private static long rpcIdCounter = 0;
+
+        [EventHandler("vMenu:GetPlayerCoords:reply")]
+        public static void PlayerCoordinatesReceived(long rpcId, Vector3 coords)
+        {
+            if (rpcQueue.ContainsKey(rpcId))
+            {
+                var rpcItem = rpcQueue[rpcId];
+                rpcItem.IsCompleted = true;
+                rpcItem.Coords = coords;
+                rpcQueue[rpcId] = rpcItem;
+            }
+            else
+            {
+                Debug.WriteLine($"[vMenu] Warning: Received player coordinates for unknown RPC ID: {rpcId}");
+            }
+        }
+
         public static async Task<Vector3> RequestPlayerCoordinates(int serverId)
         {
-            var coords = Vector3.Zero;
-            var completed = false;
+            long rpcId = rpcIdCounter++;
+            rpcQueue.Add(rpcId, new RPCData { IsCompleted = false, Coords = Vector3.Zero });
 
-            // TODO: replace with client<->server RPC once implemented in CitizenFX!
-            Func<Vector3, bool> CallbackFunction = (data) =>
-            {
-                coords = data;
-                completed = true;
-                return true;
-            };
+            TriggerServerEvent("vMenu:GetPlayerCoords", rpcId, serverId);
 
-            TriggerServerEvent("vMenu:GetPlayerCoords", serverId, CallbackFunction);
-
-            while (!completed)
+            while (!rpcQueue[rpcId].IsCompleted)
             {
                 await Delay(0);
             }
+
+            Vector3 coords = rpcQueue[rpcId].Coords;
+            rpcQueue.Remove(rpcId);
 
             return coords;
         }
@@ -519,6 +509,21 @@ namespace vMenuClient
                 StatSetInt((uint)GetHashKey("MP0_LUNG_CAPACITY"), 100, true);           // Lung Capacity
                 StatSetFloat((uint)GetHashKey("MP0_PLAYER_MENTAL_STATE"), 0f, true);    // Mental State
             }
+
+            RegisterCommand($"vMenu:{GetKeyMappingId()}:MenuToggle", new Action<dynamic, List<dynamic>, string>((dynamic source, List<dynamic> args, string rawCommand) =>
+            {
+                if (MenuEnabled)
+                {
+                    if (!MenuController.IsAnyMenuOpen())
+                    {
+                        Menu.OpenMenu();
+                    }
+                    else
+                    {
+                        MenuController.CloseAllMenus();
+                    }
+                }
+            }), false);
 
             TriggerEvent("vMenu:SetupTickFunctions");
         }
@@ -886,6 +891,10 @@ namespace vMenuClient
                 MenuController.EnableMenuToggleKeyOnController = !MiscSettingsMenu.MiscDisableControllerSupport;
             }
         }
+        #endregion
+
+        #region Utilities
+        private static string GetKeyMappingId() => string.IsNullOrWhiteSpace(GetSettingsString(Setting.vmenu_keymapping_id)) ? "Default" : GetSettingsString(Setting.vmenu_keymapping_id);
         #endregion
     }
 }

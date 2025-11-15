@@ -30,6 +30,7 @@ namespace vMenuShared
             vmenu_enable_animals_spawn_menu,
             vmenu_pvp_mode,
             vmenu_disable_server_info_convars,
+            keep_player_head_props,
             vmenu_player_names_distance,
             vmenu_disable_entity_outlines_tool,
             vmenu_disable_player_stats_setup,
@@ -40,6 +41,14 @@ namespace vMenuShared
 
             // Vehicle Chameleon Colours
             vmenu_using_chameleon_colours,
+
+            // Prevent Extras Abuse
+            vmenu_prevent_extras_when_damaged,
+            vmenu_allowed_engine_damage_for_extra_change,
+            vmenu_allowed_body_damage_for_extra_change,
+
+            // MP Ped preview setting,
+            vmenu_mp_ped_preview,
 
             // Kick & ban settings
             vmenu_default_ban_message_information,
@@ -54,6 +63,7 @@ namespace vMenuShared
             vmenu_dynamic_weather_timer,
             vmenu_current_weather,
             vmenu_blackout_enabled,
+            vmenu_vehicle_blackout_enabled,
             vmenu_weather_change_duration,
             vmenu_enable_snow,
 
