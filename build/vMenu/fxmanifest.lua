@@ -2,9 +2,9 @@
 fx_version 'bodacious'
 games { 'gta5' }
 
-description 'vMenu Fork - github.com/Gravxd/vMenu-ox'
+description 'vMenu Fork - github.com/DukeOfCheese/vMenu-ox'
 version '2.0.0'
-author 'Tom Grobbe (vMenu), Gravxd (vMenu-ox)'
+author 'Tom Grobbe (vMenu), Gravxd & DukeOfCheese (vMenu-ox)'
 ui_page 'storage.html'
 
 lua54 "yes"
