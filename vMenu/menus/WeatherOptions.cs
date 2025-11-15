@@ -133,7 +133,7 @@ namespace vMenuClient.menus
                 if (item == dynamicWeatherEnabled)
                 {
                     Notify.Custom($"Dynamic weather changes are now {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
-                    UpdateServerWeather(EventManager.GetServerWeather, _checked, EventManager.IsSnowEnabled);
+                    UpdateServerWeather(EventManager.GetServerWeather, EventManager.IsBlackoutEnabled, _checked, EventManager.IsSnowEnabled);
                 }
                 else if (item == blackout)
                 {

@@ -120,8 +120,10 @@ namespace vMenuClient.menus
                     if (confirmed)
                     {
                         Subtitle.Info($"Time set to ~y~{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}~s~:~y~" +
-                        $"{(newMinute < 10 ? $"0{newMinute}" : newMinute.ToString())}~s~.", prefix: "Info:");
-                    UpdateServerTime(newHour, newMinute);
+                            $"{(newMinute < 10 ? $"0{newMinute}" : newMinute.ToString())}~s~.", prefix: "Info:");
+                        UpdateServerTime(newHour, newMinute);
+
+                    }
                 }
 
             };
@@ -145,7 +147,8 @@ namespace vMenuClient.menus
                 {
                     Subtitle.Info($"Time set to ~y~{(newHour < 10 ? $"0{newHour}" : newHour.ToString())}~s~:~y~" +
                         $"{(newMinute < 10 ? $"0{newMinute}" : newMinute.ToString())}~s~.", prefix: "Info:");
-                UpdateServerTime(newHour, newMinute);
+                    UpdateServerTime(newHour, newMinute);
+                }
             };
         }
 
