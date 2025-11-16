@@ -25,7 +25,6 @@ files {
     'Newtonsoft.Json.dll',
     'MenuAPI.dll',
     'config/locations.json',
-    'config/addons.json',
     'storage.html'
 }
 
