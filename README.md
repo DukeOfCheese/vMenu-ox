@@ -136,7 +136,6 @@ end)
 - [ ] Update weapon attachment right button if it is equipped (checkmark)
 - [x] Copy Coords Button (devtools)
 - [x] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
-- [x] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
 - [x] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
 - [ ] Modify weapon stats (both on weapon spawn and dynamically)
 

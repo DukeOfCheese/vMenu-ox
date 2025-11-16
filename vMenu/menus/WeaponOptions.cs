@@ -396,6 +396,23 @@ namespace vMenuClient.menus
                             if (HasPedGotWeapon(Game.PlayerPed.Handle, hash, false))
                             {
                                 RemoveWeaponFromPed(Game.PlayerPed.Handle, hash);
+                                bool hasWeapon = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                                foreach (var kvp in weaponComponents)
+                                {
+                                    var compKey = kvp.Value;
+                                    if (kvp.Key is MenuCheckboxItem compItem)
+                                    {
+                                        if (weapon.Components.ContainsKey(compKey))
+                                        {
+                                            if (weapon.Components.TryGetValue(compKey, out uint compHash))
+                                            {
+                                                compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                                                compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
+                                            }
+                                        }
+                                    }
+                                }
+                                weaponMenu.RefreshIndex();
                                 Subtitle.Custom("Weapon removed.");
                             }
                             else
@@ -408,6 +425,22 @@ namespace vMenuClient.menus
                                 var ammo = 255;
                                 GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
                                 GiveWeaponToPed(Game.PlayerPed.Handle, hash, ammo, false, true);
+                                bool hasWeapon = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                                foreach (var kvp in weaponComponents)
+                                {
+                                    var compKey = kvp.Value;
+                                    if (kvp.Key is MenuCheckboxItem compItem)
+                                    {
+                                        if (weapon.Components.ContainsKey(compKey))
+                                        {
+                                            if (weapon.Components.TryGetValue(compKey, out uint compHash))
+                                            {
+                                                compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                                                compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
+                                            }
+                                        }
+                                    }
+                                }
                                 Subtitle.Custom("Weapon added.");
                             }
                         }
@@ -460,11 +493,41 @@ namespace vMenuClient.menus
                                     if (HasPedGotWeaponComponent(Game.PlayerPed.Handle, weaponData.Hash, componentHash))
                                     {
                                         RemoveWeaponComponentFromPed(Game.PlayerPed.Handle, weaponData.Hash, componentHash);
+                                        foreach (var kvp in weaponComponents)
+                                        {
+                                            var compKey = kvp.Value;
+                                            if (kvp.Key is MenuCheckboxItem compItem)
+                                            {
+                                                if (weapon.Components.ContainsKey(compKey))
+                                                {
+                                                    if (weapon.Components.TryGetValue(compKey, out uint compHash))
+                                                    {
+                                                        compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                                                        compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
+                                                    }
+                                                }
+                                            }
+                                        }
                                         Subtitle.Custom("Component removed.");
                                     }
                                     else
                                     {
                                         EquipWeaponComponent(weaponData.Hash, componentHash);
+                                        foreach (var kvp in weaponComponents)
+                                        {
+                                            var compKey = kvp.Value;
+                                            if (kvp.Key is MenuCheckboxItem compItem)
+                                            {
+                                                if (weapon.Components.ContainsKey(compKey))
+                                                {
+                                                    if (weapon.Components.TryGetValue(compKey, out uint compHash))
+                                                    {
+                                                        compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                                                        compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
+                                                    }
+                                                }
+                                            }
+                                        }
                                         Subtitle.Custom("Component equipped.");
                                     }
                                 }
@@ -697,7 +760,6 @@ namespace vMenuClient.menus
             heavy.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
             snipers.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
         }
-
 
         #endregion
 
