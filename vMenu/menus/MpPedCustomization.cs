@@ -3370,7 +3370,15 @@ namespace vMenuClient.menus
             {
                 foreach (var cd in character.DrawableVariations.clothes)
                 {
-                    SetPedComponentVariation(pedHandle, cd.Key, cd.Value.Key, cd.Value.Value, 0);
+                    if (cd.Key < 0 || cd.Key > 11) { continue; };
+
+                    int maxDrawables = GetNumberOfPedDrawableVariations(pedHandle, cd.Key);
+                    if (cd.Value.Key < 0 || cd.Value.Key >= maxDrawables) { continue; };
+
+                    int maxTextures = GetNumberOfPedTextureVariations(pedHandle, cd.Key, cd.Value.Key);
+                    int textureIndex = cd.Value.Value >= 0 && cd.Value.Value < maxTextures ? cd.Value.Value : 0;
+                    
+                    SetPedComponentVariation(pedHandle, cd.Key, cd.Value.Key, textureIndex, 0);
                 }
             }
             #endregion
