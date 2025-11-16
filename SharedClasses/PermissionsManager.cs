@@ -116,7 +116,6 @@ namespace vMenuShared
             VSAll,
             VSDisableReplacePrevious,
             VSSpawnByName,
-            VSAddon,
             VSCompacts,
             VSSedans,
             VSSUVs,
@@ -172,7 +171,6 @@ namespace vMenuShared
             PACustomize,
             PASpawnSaved,
             PASpawnNew,
-            PAAddonPeds,
             #endregion
 
             // Time Options
@@ -583,7 +581,7 @@ namespace vMenuShared
             // Send the permissions to the client.
             player.TriggerEvent("vMenu:SetPermissions", Newtonsoft.Json.JsonConvert.SerializeObject(perms));
 
-            // Also tell the client to do the addons setup.
+            // Also tell the client to do the extras setup.
             player.TriggerEvent("vMenu:SetConfigOptions");
             player.TriggerEvent("vMenu:UpdateTeleportLocations", Newtonsoft.Json.JsonConvert.SerializeObject(ConfigManager.GetTeleportLocationsData()));
         }

@@ -1,13 +1,12 @@
 -- You should not be editing this file unless you know what you are doing. This shouldn't need to be changed.
 -- For integrations, check client/integrations.lua
 
----@class inputDialog
----@param windowTitle string
----@param defaultText string
----@param maxLength integer | 30
----@return string
 exports(
 	"inputDialog",
+	---@param windowTitle string
+	---@param defaultText string
+	---@param maxLength integer | 30
+	---@return string
 	function(windowTitle, defaultText, maxLength)
 		local input =
 			lib.inputDialog(
@@ -20,13 +19,11 @@ exports(
 	end
 )
 
-function rgbToHex(r, g, b)
-	-- Ensure values are within RGB bounds (0-255)
+function RgbToHex(r, g, b)
 	r = math.max(0, math.min(255, r))
 	g = math.max(0, math.min(255, g))
 	b = math.max(0, math.min(255, b))
 
-	-- Format RGB values to hexadecimal string
 	return format("#%02X%02X%02X", r, g, b)
 end
 
@@ -35,8 +32,8 @@ end
 ---@return string
 exports("colourDialog", function(type)
 	if not cache.vehicle then return "" end -- edge case
-	local defaultColour = type == 1 and rgbToHex(GetVehicleCustomPrimaryColour(cache.vehicle)) or
-		rgbToHex(GetVehicleCustomSecondaryColour(cache.vehicle))
+	local defaultColour = type == 1 and RgbToHex(GetVehicleCustomPrimaryColour(cache.vehicle)) or
+		RgbToHex(GetVehicleCustomSecondaryColour(cache.vehicle))
 	local input = lib.inputDialog("vMenu", {
 		{ type = 'color', label = 'Select a Colour', default = defaultColour },
 	})
@@ -56,7 +53,7 @@ end)
 ---@class copyToClipboard
 ---@param text string
 exports("copyToClipboard", function(text)
-	print("Copied to clipboard: " .. text)
+	-- print("Copied to clipboard: " .. text)
 	lib.setClipboard(text)
 	return ""
 end)

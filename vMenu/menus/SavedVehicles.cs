@@ -471,7 +471,7 @@ namespace vMenuClient.menus
                 bool vehicleModelExists = IsModelInCdimage(currentlySelectedVehicle.Value.model);
 
                 spawnVehicle.Enabled = vehicleModelExists;
-                spawnVehicle.Description = vehicleModelExists ? "Spawn this saved vehicle." : "This model could not be found in the game files. Most likely because this is an addon vehicle and it's currently not streamed by the server.";
+                spawnVehicle.Description = vehicleModelExists ? "Spawn this saved vehicle." : "This model could not be found in the game files.";
 
                 spawnVehicle.Label = "(" + GetDisplayNameFromVehicleModel(currentlySelectedVehicle.Value.model).ToLower() + ")";
             };
@@ -858,7 +858,7 @@ namespace vMenuClient.menus
                 }
                 else
                 {
-                    var missingVehItem = new MenuItem(sv.Key.Substring(4), "This model could not be found in the game files. Most likely because this is an addon vehicle and it's currently not streamed by the server.")
+                    var missingVehItem = new MenuItem(sv.Key.Substring(4), "This model could not be found in the game files.")
                     {
                         Label = "(" + sv.Value.name + ")",
                         Enabled = false,

@@ -73,32 +73,6 @@ namespace vMenuClient.data
             }
         }
 
-        private static Dictionary<string, string> _components = new();
-        public static Dictionary<string, string> GetWeaponComponents()
-        {
-            if (_components.Count == 0)
-            {
-                var addons = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-                _components = weaponComponentNames;
-                try
-                {
-                    var addonsFile = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(addons);
-
-                    if (addonsFile.TryGetValue("weapon_components", out var weaponComponents))
-                    {
-                        foreach (var key in weaponComponents)
-                        {
-                            _components[key] = key;
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    Log("[WARNING] The addons.json contains invalid JSON.");
-                }
-            }
-            return _components;
-        }
 
         private static void CreateWeaponsList()
         {
@@ -110,7 +84,7 @@ namespace vMenuClient.data
                 if (realName == "weapon_unarmed") continue;
                 var hash = (uint)GetHashKey(realName);
                 var componentHashes = new Dictionary<string, uint>();
-                var weaponComponents = GetWeaponComponents();
+                var weaponComponents = weaponComponentNames;
                 var weaponComponentKeys = weaponComponents.Keys;
                 foreach (var comp in weaponComponentKeys)
                 {

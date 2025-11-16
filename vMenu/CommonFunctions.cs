@@ -425,7 +425,7 @@ namespace vMenuClient
 
         #region Quit session & Quit game
         /// <summary>
-        /// Quit the current network session, but leaves you connected to the server so addons/resources are still streamed.
+        /// Quit the current network session, but leaves you connected to the server so resources are still streamed.
         /// </summary>
         public static void QuitSession() => NetworkSessionEnd(true, true);
 
