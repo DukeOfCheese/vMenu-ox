@@ -79,14 +79,16 @@ lib.callback.register(
 )
 
 CreateThread(function()
-    if GetConvarBool("vmenu_outfitcodes", false) then
-        if GetResourceState("oxmysql") ~= "started" then
-            for i = 1, 10 do
-                lib.print.error("Outfit Code System is enabled but oxmysql is not started..")
-            end
-            return
-        else
-            lib.print.info("Outfit Code System is enabled.")
-        end
+    if not GetConvarBool("vmenu_outfitcodes", false) then
+        return
     end
+
+    if GetResourceState("oxmysql") ~= "started" then
+        for i = 1, 10 do
+            lib.print.error("Outfit Code System is enabled but oxmysql is not started..")
+        end
+        return
+    end
+
+    lib.print.info("Outfit Code System is enabled.")
 end)
