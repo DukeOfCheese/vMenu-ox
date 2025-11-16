@@ -437,12 +437,18 @@ namespace vMenuClient.menus
                     {
                         foreach (var comp in weapon.Components)
                         {
-                            var compItem = new MenuItem(comp.Key, "Click to equip or remove this component.");
+                            var compItem = new MenuCheckboxItem(comp.Key, "Click to equip or remove this component.");
                             weaponComponents.Add(compItem, comp.Key);
+
+                            if (!HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false))
+                            {
+                                compItem.Enabled = false;
+                            }
+
                             weaponMenu.AddMenuItem(compItem);
 
                             #region Handle component button presses
-                            weaponMenu.OnItemSelect += (sender, item, index) =>
+                            weaponMenu.OnCheckboxChange += (sender, item, index, _checked) =>
                             {
                                 if (item != compItem) return;
                                 var weaponData = weaponInfo[sender];
