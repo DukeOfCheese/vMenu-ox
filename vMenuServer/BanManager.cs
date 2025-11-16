@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -48,22 +49,29 @@ namespace vMenuServer
         /// </summary>
         public BanManager()
         {
-            EventHandlers.Add("vMenu:TempBanPlayer", new Action<Player, int, double, string>(BanPlayer));
-            EventHandlers.Add("vMenu:PermBanPlayer", new Action<Player, int, string>(BanPlayer));
-            EventHandlers.Add("playerConnecting", new Action<Player, string, CallbackDelegate>(CheckForBans));
-            EventHandlers.Add("vMenu:RequestPlayerUnban", new Action<Player, string>(RemoveBanRecord));
-            EventHandlers.Add("vMenu:RequestBanList", new Action<Player>(SendBanList));
+            EventHandlers.Add("vMenu:Internal:TempBanPlayer", new Action<int, int, double, string>(BanPlayer));
+            EventHandlers.Add("vMenu:Internal:PermBanPlayer", new Action<int, int, string>(BanPlayer));
+            EventHandlers.Add("vMenu:Internal:playerConnecting", new Action<int, string, CallbackDelegate>(CheckForBans));
+            EventHandlers.Add("vMenu:Internal:RequestPlayerUnban", new Action<int, string>(RemoveBanRecord));
+            EventHandlers.Add("vMenu:Internal:RequestBanList", new Action<int>(SendBanList));
         }
 
         /// <summary>
         /// Sends the banlist (as json string) to the client.
         /// </summary>
         /// <param name="source"></param>
-        private void SendBanList([FromSource] Player source)
+        private void SendBanList(int playerId)
         {
+            Player source = null;
+
+            if (playerId != 0)
+            {
+                source = Players[playerId];
+            }
             Log("Updating player with new banlist.\n");
             var data = JsonConvert.SerializeObject(GetBanList()).ToString();
-            source.TriggerEvent("vMenu:SetBanList", data);
+
+            source?.TriggerEvent("vMenu:SetBanList", data);
         }
 
         private static List<BanRecord> cachedBansList = new();
@@ -115,8 +123,15 @@ namespace vMenuServer
         /// <param name="source"></param>
         /// <param name="playerName"></param>
         /// <param name="kickCallback"></param>
-        private void CheckForBans([FromSource] Player source, string playerName, CallbackDelegate kickCallback)
+        private void CheckForBans(int playerId, string playerName, CallbackDelegate kickCallback)
         {
+            Player source = null;
+
+            if (playerId != 0)
+            {
+                source = Players[playerId];
+            }
+
             // Take care of expired bans.
             var oldBans = GetBanList().Where(banRecord =>
             {
@@ -166,23 +181,38 @@ namespace vMenuServer
         /// <summary>
         /// Bans the specified player from the server.
         /// </summary>
-        /// <param name="source">The player who triggered the event.</param>
+        /// <param name="playerId">The ID of the player who triggered the event.</param>
         /// <param name="targetPlayer">The player that needs to be banned.</param>
         /// <param name="banReason">The reason why the player is getting banned.</param>
-        private void BanPlayer([FromSource] Player source, int targetPlayer, string banReason)
+        private void BanPlayer(int playerId, int targetPlayer, string banReason)
         {
-            BanPlayer(source, targetPlayer, -1.0, banReason);
+            Player source = null;
+
+            if (playerId != 0)
+            {
+                source = Players[playerId];
+            }
+
+            BanPlayer(playerId, targetPlayer, -1.0, banReason);
         }
 
         /// <summary>
         /// Bans the specified player for a the specified amount of hours.
         /// </summary>
-        /// <param name="source">Player who triggered the event.</param>
+        /// <param name="playerId">The ID of the player who triggered the event.</param>
         /// <param name="targetPlayer">Player who needs to be banned.</param>
         /// <param name="banDurationHours">Ban duration in hours.</param>
         /// <param name="banReason">Reason for the ban.</param>
-        private void BanPlayer([FromSource] Player source, int targetPlayer, double banDurationHours, string banReason)
+        
+        private void BanPlayer(int playerId, int targetPlayer, double banDurationHours, string banReason)
         {
+            Player source = null;
+
+            if (playerId != 0)
+            {
+                source = Players[playerId];
+            }
+
             if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.TempBan") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything") || IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All"))
             {
                 Log("Source player is allowed to ban others.", LogLevel.info);
@@ -295,10 +325,17 @@ namespace vMenuServer
         /// <summary>
         /// Removes a ban record.
         /// </summary>
-        /// <param name="source"></param>
+        /// <param name="playerId"></param>
         /// <param name="banRecordJsonString"></param>
-        private void RemoveBanRecord([FromSource] Player source, string uuid)
+        private void RemoveBanRecord(int playerId, string uuid)
         {
+            Player source = null;
+
+            if (playerId != 0)
+            {
+                source = Players[playerId];
+            }
+
             if (source != null && !string.IsNullOrEmpty(source.Name) && source.Name.ToLower() != "**invalid**" && source.Name.ToLower() != "** invalid **")
             {
                 if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.Unban") || IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything"))
