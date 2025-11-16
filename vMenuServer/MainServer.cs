@@ -223,17 +223,6 @@ namespace vMenuServer
                     CallbackFunction(JsonConvert.SerializeObject(data));
                 }));
 
-                // check addons file for errors
-                var addons = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-                try
-                {
-                    JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(addons);
-                    // If the above crashes, then the json is invalid and it'll throw warnings in the console.
-                }
-                catch (JsonReaderException ex)
-                {
-                    Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your addons.json file contains a problem! Error details: {ex.Message}\n\n");
-                }
 
                 // check extras file for errors
                 string extras = LoadResourceFile(GetCurrentResourceName(), "config/extras.json") ?? "{}";
