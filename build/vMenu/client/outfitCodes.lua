@@ -9,7 +9,7 @@ exports("loadSharedOutfit", function(name)
     if not name or type(name) ~= "string" then
         return lib.print.error("export: Tried to load outfit failed, no name provided.")
     end
-    
+
     name = string.sub(name, 8)
 
     if Cooldown then
@@ -108,11 +108,11 @@ exports("loadOutfitFromCode", function(outfitCode)
     end
 
     for k, v in pairs(validData.Clothes) do
-        SetPedComponentVariation(PlayerPedId(), tonumber(k), v.Item, v.Texture, 0)
+        SetPedComponentVariation(PlayerPedId(), k, v.Item, v.Texture, 0)
     end
 
     for k, v in pairs(validData.Props) do
-        SetPedPropIndex(PlayerPedId(), tonumber(k), v.Item, v.Texture, true)
+        SetPedPropIndex(PlayerPedId(), k, v.Item, v.Texture, true)
     end
 
 

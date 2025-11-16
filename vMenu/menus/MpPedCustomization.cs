@@ -782,7 +782,10 @@ namespace vMenuClient.menus
                 categoryBtn.ListIndex = 0;
             }
 
-            categoryBtn.RightIcon = categoryIcons[categoryBtn.ListIndex];
+            if (categoryBtn.ListIndex >= 0 && categoryBtn.ListIndex < categoryIcons.Count)
+            {
+                categoryBtn.RightIcon = categoryIcons[categoryBtn.ListIndex];
+            }
 
             createCharacterMenu.RefreshIndex();
             appearanceMenu.RefreshIndex();
@@ -2006,7 +2009,7 @@ namespace vMenuClient.menus
 
                     currentCharacter.FacialExpression = facial_expressions[_facialExpressionSelection];
 
-                    ((MenuListItem)createCharacterMenu.GetMenuItems()[7]).ListIndex = _facialExpressionSelection;
+                    ((MenuListItem)createCharacterMenu.GetMenuItems()[9]).ListIndex = _facialExpressionSelection;
 
                     SetPlayerClothing();
                 }
