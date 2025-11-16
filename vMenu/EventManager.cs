@@ -36,8 +36,6 @@ namespace vMenuClient
         /// </summary>
         public EventManager()
         {
-            // Add event handlers.
-            EventHandlers.Add("vMenu:SetAddons", new Action(SetConfigOptions)); // DEPRECATED: Backwards-compatible event handler; use 'vMenu:SetConfigOptions' instead
             EventHandlers.Add("vMenu:SetConfigOptions", new Action(SetConfigOptions));
             EventHandlers.Add("vMenu:SetPermissions", new Action<string>(MainMenu.SetPermissions));
             EventHandlers.Add("vMenu:KillMe", new Action<string>(KillMe));
@@ -111,92 +109,22 @@ namespace vMenuClient
         }
 
         /// <summary>
-        /// Sets the addon models from the addons.json file.
+        /// Sets the extras file.
         /// </summary>
         private void SetConfigOptions()
         {
-            SetAddons();
             SetExtras();
 
             MainMenu.ConfigOptionsSetupComplete = true;
         }
 
-        /// <summary>
-        /// Sets the addon models from the addons.json file.
-        /// </summary>
-        private void SetAddons()
-        {
-            // reset addons
-            VehicleSpawner.AddonVehicles = new Dictionary<string, uint>();
-            WeaponOptions.AddonWeapons = new Dictionary<string, uint>();
-            PlayerAppearance.AddonPeds = new Dictionary<string, uint>();
-
-            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-            try
-            {
-                // load new addons.
-                var addons = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(jsonData);
-
-                // load vehicles
-                if (addons.ContainsKey("vehicles"))
-                {
-                    foreach (var addon in addons["vehicles"])
-                    {
-                        if (!VehicleSpawner.AddonVehicles.ContainsKey(addon))
-                        {
-                            VehicleSpawner.AddonVehicles.Add(addon, (uint)GetHashKey(addon));
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[vMenu] [Error] Your addons.json file contains 2 or more entries with the same vehicle name! ({addon}) Please remove duplicate lines!");
-                        }
-                    }
-                }
-
-                // load weapons
-                if (addons.ContainsKey("weapons"))
-                {
-                    foreach (var addon in addons["weapons"])
-                    {
-                        if (!WeaponOptions.AddonWeapons.ContainsKey(addon))
-                        {
-                            WeaponOptions.AddonWeapons.Add(addon, (uint)GetHashKey(addon));
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[vMenu] [Error] Your addons.json file contains 2 or more entries with the same weapon name! ({addon}) Please remove duplicate lines!");
-                        }
-                    }
-                }
-
-                // load peds.
-                if (addons.ContainsKey("peds"))
-                {
-                    foreach (var addon in addons["peds"])
-                    {
-                        if (!PlayerAppearance.AddonPeds.ContainsKey(addon))
-                        {
-                            PlayerAppearance.AddonPeds.Add(addon, (uint)GetHashKey(addon));
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[vMenu] [Error] Your addons.json file contains 2 or more entries with the same ped name! ({addon}) Please remove duplicate lines!");
-                        }
-                    }
-                }
-            }
-            catch (JsonReaderException ex)
-            {
-                Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your addons.json file contains a problem! Error details: {ex.Message}\n\n");
-            }
-        }
 
         /// <summary>
         /// Sets the extras labels from the extras.json file.
         /// </summary>
         private void SetExtras()
         {
-            // reset addons
+            // reset extras
             VehicleOptions.VehicleExtras = new Dictionary<uint, Dictionary<int, string>>();
 
             string jsonData = LoadResourceFile(GetCurrentResourceName(), "config/extras.json") ?? "{}";

@@ -21,14 +21,11 @@ namespace vMenuClient.menus
         private Menu pedCollectionsCustomizationMenu;
         private Menu savedPedsMenu;
         private Menu spawnPedsMenu;
-        private Menu addonPedsMenu;
         private readonly Menu mainPedsMenu = new("Main Peds", "Spawn A Ped");
         private readonly Menu animalsPedsMenu = new("Animals", "Spawn A Ped");
         private readonly Menu malePedsMenu = new("Male Peds", "Spawn A Ped");
         private readonly Menu femalePedsMenu = new("Female Peds", "Spawn A Ped");
         private readonly Menu otherPedsMenu = new("Other Peds", "Spawn A Ped");
-
-        public static Dictionary<string, uint> AddonPeds;
 
         public static int ClothingAnimationType { get; set; } = UserDefaults.PAClothingAnimationType;
 
@@ -48,7 +45,6 @@ namespace vMenuClient.menus
             pedCollectionsMenu = new Menu(Game.Player.Name, "Ped Collections");
             pedCollectionsCustomizationMenu = new Menu(Game.Player.Name, "I get updated at runtime!");
             spawnPedsMenu = new Menu(Game.Player.Name, "Spawn Ped");
-            addonPedsMenu = new Menu(Game.Player.Name, "Addon Peds");
 
 
             // Add the (submenus) to the menu pool.
@@ -57,7 +53,6 @@ namespace vMenuClient.menus
             MenuController.AddSubmenu(pedCollectionsMenu, pedCollectionsCustomizationMenu);
             MenuController.AddSubmenu(menu, savedPedsMenu);
             MenuController.AddSubmenu(menu, spawnPedsMenu);
-            MenuController.AddSubmenu(spawnPedsMenu, addonPedsMenu);
             MenuController.AddSubmenu(spawnPedsMenu, mainPedsMenu);
             MenuController.AddSubmenu(spawnPedsMenu, animalsPedsMenu);
             MenuController.AddSubmenu(spawnPedsMenu, malePedsMenu);
@@ -69,11 +64,10 @@ namespace vMenuClient.menus
             var pedCollections = new MenuItem("Ped Collections", "Modify your ped's appearance using collections, such as from the Base Game, Offical DLCs, and Custom Collections.") { Label = "→→→" };
             var saveCurrentPed = new MenuItem("Save Ped", "Save your current ped. Note for the MP Male/Female peds this won't save most of their customization, just because that's impossible. Create those characters in the MP Character creator instead.");
             var savedPedsBtn = new MenuItem("Saved Peds", "Edit, rename, clone, spawn or delete saved peds.") { Label = "→→→" };
-            var spawnPedsBtn = new MenuItem("Spawn Peds", "Change ped model by selecting one from the list or by selecting an addon ped from the list.") { Label = "→→→" };
+            var spawnPedsBtn = new MenuItem("Spawn Peds", "Change ped model by selecting one from the list.") { Label = "→→→" };
 
 
             var spawnByNameBtn = new MenuItem("Spawn By Name", "Spawn a ped by entering it's name manually.");
-            var addonPedsBtn = new MenuItem("Addon Peds", "Spawn a ped from the addon peds list.") { Label = "→→→" };
             var mainPedsBtn = new MenuItem("Main Peds", "Select a new ped from the main player-peds list.") { Label = "→→→" };
             var animalPedsBtn = new MenuItem("Animals", "Become an animal. ~r~Note this may crash your own or other players' game if you die as an animal, godmode can NOT prevent this.") { Label = "→→→" };
             var malePedsBtn = new MenuItem("Male Peds", "Select a male ped.") { Label = "→→→" };
@@ -304,41 +298,6 @@ namespace vMenuClient.menus
                 savedPed = item.ItemData;
                 selectedSavedPedMenu.MenuSubtitle = item.Text;
             };
-
-            if (AddonPeds != null && AddonPeds.Count > 0 && IsAllowed(Permission.PAAddonPeds))
-            {
-                spawnPedsMenu.AddMenuItem(addonPedsBtn);
-                MenuController.BindMenuItem(spawnPedsMenu, addonPedsMenu, addonPedsBtn);
-
-                var addons = AddonPeds.ToList();
-
-                addons.Sort((a, b) => a.Key.ToLower().CompareTo(b.Key.ToLower()));
-
-                foreach (var ped in addons)
-                {
-                    var name = GetLabelText(ped.Key);
-                    if (string.IsNullOrEmpty(name) || name == "NULL")
-                    {
-                        name = ped.Key;
-                    }
-
-                    var pedBtn = new MenuItem(ped.Key, "Click to spawn this model.") { Label = $"({name})" };
-
-                    if (!IsModelInCdimage(ped.Value) || !IsModelAPed(ped.Value))
-                    {
-                        pedBtn.Enabled = false;
-                        pedBtn.LeftIcon = MenuItem.Icon.LOCK;
-                        pedBtn.Description = "This ped is not (correctly) streamed. If you are the server owner, please ensure that the ped name and model are valid!";
-                    }
-
-                    addonPedsMenu.AddMenuItem(pedBtn);
-                }
-
-                addonPedsMenu.OnItemSelect += async (sender, item, index) =>
-                {
-                    await SetPlayerSkin((uint)GetHashKey(item.Text), new PedInfo() { version = -1 }, true);
-                };
-            }
 
             if (IsAllowed(Permission.PASpawnNew))
             {

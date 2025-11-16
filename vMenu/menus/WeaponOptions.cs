@@ -8,7 +8,6 @@ using vMenuClient.data;
 
 using static CitizenFX.Core.Native.API;
 using static vMenuClient.CommonFunctions;
-using static vMenuClient.ExternalFunctions;
 using static vMenuShared.PermissionsManager;
 
 namespace vMenuClient.menus
@@ -23,12 +22,8 @@ namespace vMenuClient.menus
         public bool AutoEquipChute { get; private set; } = UserDefaults.AutoEquipChute;
         public bool UnlimitedParachutes { get; private set; } = UserDefaults.WeaponsUnlimitedParachutes;
 
-        public static Dictionary<string, uint> AddonWeapons = new();
-
         private Dictionary<Menu, ValidWeapon> weaponInfo;
-        private Dictionary<Menu, ValidAddonWeapon> addonWeaponInfo;
         private Dictionary<MenuItem, string> weaponComponents;
-        private Dictionary<MenuItem, string> addonWeaponComponents;
 
         #region Create Menu
         /// <summary>
@@ -38,9 +33,7 @@ namespace vMenuClient.menus
         {
             // Setup weapon dictionaries.
             weaponInfo = new Dictionary<Menu, ValidWeapon>();
-            addonWeaponInfo = new Dictionary<Menu, ValidAddonWeapon>();
             weaponComponents = new Dictionary<MenuItem, string>();
-            addonWeaponComponents = new Dictionary<MenuItem, string>();
 
             #region create main weapon options menu and add items
             // Create the menu.
@@ -82,205 +75,6 @@ namespace vMenuClient.menus
             }
             #endregion
 
-            #region addonweapons submenu
-            var addonWeaponsBtn = new MenuItem("Addon Weapons", "Equip / remove addon weapons available on this server.");
-            var addonWeaponsMenu = new Menu("Addon Weapons", "Equip/Remove Addon Weapons");
-            MenuController.AddSubmenu(menu, addonWeaponsMenu);
-            #endregion
-
-            #region addonweapons buttons
-            addonWeaponsBtn.Label = "→→→";
-            menu.AddMenuItem(addonWeaponsBtn);
-            MenuController.BindMenuItem(menu, addonWeaponsMenu, addonWeaponsBtn);
-            #endregion
-
-            #region manage creating and accessing addon weapons menu
-            foreach (var addonWeapon in ValidAddonWeapons.AddonWeaponsList)
-            {
-                if (IsAllowed(Permission.WPSpawn) && !string.IsNullOrEmpty(addonWeapon.Name) && AddonWeapons.Count > 0)
-                {
-                    var addonWeaponMenu = new Menu("Weapon Options", addonWeapon.Name)
-                    #region Create menu for this weapon and add buttons
-                    {
-                        ShowWeaponStatsPanel = true
-                    };
-                    var stats = new Game.WeaponHudStats();
-                    Game.GetWeaponHudStats(addonWeapon.Hash, ref stats);
-                    addonWeaponMenu.SetWeaponStats(stats.hudDamage / 100f, stats.hudSpeed / 100f, stats.hudAccuracy / 100f, stats.hudRange / 100f);
-                    var addonWeaponItem = new MenuItem(addonWeapon.Name, $"Open the options for ~y~{addonWeapon.Name}~s~.")
-                    {
-                        Label = "→→→",
-                        LeftIcon = MenuItem.Icon.GUN,
-                        ItemData = stats
-                    };
-
-                    addonWeaponInfo.Add(addonWeaponMenu, addonWeapon);
-
-                    var getOrRemoveWeapon = new MenuItem("Equip/Remove Weapon", "Add or remove this weapon to/form your inventory.")
-                    {
-                        LeftIcon = MenuItem.Icon.GUN
-                    };
-                    addonWeaponMenu.AddMenuItem(getOrRemoveWeapon);
-
-
-                    var fillAmmo = new MenuItem("Re-fill Ammo", "Get max ammo for this weapon.")
-                    {
-                        LeftIcon = MenuItem.Icon.AMMO
-                    };
-                    addonWeaponMenu.AddMenuItem(fillAmmo);
-
-                    var tints = new List<string>();
-                    if (addonWeapon.Name.Contains(" Mk II") || addonWeapon.SpawnName.Contains("MK_II"))
-                    {
-                        foreach (var tint in ValidWeapons.WeaponTintsMkII)
-                        {
-                            tints.Add(tint.Key);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var tint in ValidWeapons.WeaponTints)
-                        {
-                            tints.Add(tint.Key);
-                        }
-                    }
-
-                    var weaponTints = new MenuListItem("Tints", tints, 0, "Select a tint for your weapon.");
-                    addonWeaponMenu.AddMenuItem(weaponTints);
-                    #endregion
-
-                    #region Handle weapon specific list changes
-                    addonWeaponMenu.OnListIndexChange += (sender, item, oldIndex, newIndex, itemIndex) =>
-                    {
-                        if (item == weaponTints)
-                        {
-                            if (HasPedGotWeapon(Game.PlayerPed.Handle, addonWeaponInfo[sender].Hash, false))
-                            {
-                                SetPedWeaponTintIndex(Game.PlayerPed.Handle, addonWeaponInfo[sender].Hash, newIndex);
-                            }
-                            else
-                            {
-                                Notify.Error("You need to get the weapon first!");
-                            }
-                        }
-                    };
-                    #endregion
-
-                    #region Handle weapon specific button presses
-                    addonWeaponMenu.OnItemSelect += (sender, item, index) =>
-                    {
-                        var info = addonWeaponInfo[sender];
-                        var hash = info.Hash;
-                        SetCurrentPedWeapon(Game.PlayerPed.Handle, hash, true);
-                        if (item == getOrRemoveWeapon)
-                        {
-                            if (HasPedGotWeapon(Game.PlayerPed.Handle, hash, false))
-                            {
-                                RemoveWeaponFromPed(Game.PlayerPed.Handle, hash);
-                                Subtitle.Custom("Weapon removed.");
-                            }
-                            else
-                            {
-                                if (!CanDoInteraction("spawnweapon"))
-                                {
-                                    return;
-                                }
-
-                                var ammo = 255;
-                                GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
-                                GiveWeaponToPed(Game.PlayerPed.Handle, hash, ammo, false, true);
-                                Subtitle.Custom("Weapon added.");
-                            }
-                        }
-                        else if (item == fillAmmo)
-                        {
-                            if (HasPedGotWeapon(Game.PlayerPed.Handle, hash, false))
-                            {
-                                if (!CanDoInteraction("refillammo"))
-                                {
-                                    return;
-                                }
-
-                                var ammo = 900;
-                                GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
-                                SetPedAmmo(Game.PlayerPed.Handle, hash, ammo);
-                            }
-                            else
-                            {
-                                Notify.Error("You need to get the weapon first before re-filling ammo!");
-                            }
-                        }
-                    };
-                    #endregion
-                    #region load AddonComponents
-                    if (addonWeapon.AddonComponents?.Count > 0)
-                    {
-                        foreach (var comp in addonWeapon.AddonComponents)
-                        {
-                            var compItem = new MenuItem(comp.Key, "Click to equip or remove this component.");
-                            addonWeaponComponents.Add(compItem, comp.Key);
-                            addonWeaponMenu.AddMenuItem(compItem);
-
-                            #region Handle component button presses
-                            addonWeaponMenu.OnItemSelect += (sender, item, index) =>
-                            {
-                                if (item != compItem) return;
-
-                                var weapon = addonWeaponInfo[sender];
-                                var componentHash = weapon.AddonComponents[addonWeaponComponents[item]];
-
-                                if (HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false))
-                                {
-                                    SetCurrentPedWeapon(Game.PlayerPed.Handle, weapon.Hash, true);
-
-                                    if (HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, componentHash))
-                                    {
-                                        RemoveWeaponComponentFromPed(Game.PlayerPed.Handle, weapon.Hash, componentHash);
-                                        Subtitle.Custom("Component removed.");
-                                    }
-                                    else
-                                    {
-                                        EquipWeaponComponent(weapon.Hash, componentHash);
-                                        Subtitle.Custom("Component equipped.");
-                                    }
-                                }
-                                else
-                                {
-                                    Notify.Error("You need to get the weapon first before you can modify it.");
-                                }
-                            };
-                            #endregion
-                        }
-                    }
-                    void EquipWeaponComponent(uint weaponHash, uint componentHash)
-                    {
-                        var ammo = GetAmmoInPedWeapon(Game.PlayerPed.Handle, weaponHash);
-                        var clipAmmo = GetMaxAmmoInClip(Game.PlayerPed.Handle, weaponHash, false);
-                        GetAmmoInClip(Game.PlayerPed.Handle, weaponHash, ref clipAmmo);
-
-                        GiveWeaponComponentToPed(Game.PlayerPed.Handle, weaponHash, componentHash);
-                        SetAmmoInClip(Game.PlayerPed.Handle, weaponHash, clipAmmo);
-                        SetPedAmmo(Game.PlayerPed.Handle, weaponHash, ammo);
-                    }
-                    #endregion
-                    #region refresh and add to menu.
-                    addonWeaponMenu.RefreshIndex();
-                    MenuController.AddSubmenu(addonWeaponsMenu, addonWeaponMenu);
-                    MenuController.BindMenuItem(addonWeaponsMenu, addonWeaponMenu, addonWeaponItem);
-                    addonWeaponsMenu.AddMenuItem(addonWeaponItem);
-                    #endregion
-                }
-            }
-            #endregion
-
-            #region Disable submenu if category is not allowed.
-            if (addonWeaponsMenu.Size == 0)
-            {
-                addonWeaponsBtn.LeftIcon = MenuItem.Icon.LOCK;
-                addonWeaponsBtn.Description = "This option is not available on this server because you don't have permission to use it, or it is not setup correctly.";
-                addonWeaponsBtn.Enabled = false;
-            }
-            #endregion
 
             #region parachute options menu
 
@@ -813,15 +607,6 @@ namespace vMenuClient.menus
                             SetPedAmmo(Game.PlayerPed.Handle, vw.Hash, ammo);
                         }
                     }
-                    foreach (var avw in ValidAddonWeapons.AddonWeaponsList)
-                    {
-                        GiveWeaponToPed(Game.PlayerPed.Handle, avw.Hash, avw.GetMaxAmmo, false, true);
-                        var ammoInClip = GetMaxAmmoInClip(Game.PlayerPed.Handle, avw.Hash, false);
-                        SetAmmoInClip(Game.PlayerPed.Handle, avw.Hash, ammoInClip);
-                        var ammo = 0;
-                        GetMaxAmmo(Game.PlayerPed.Handle, avw.Hash, ref ammo);
-                        SetPedAmmo(Game.PlayerPed.Handle, avw.Hash, ammo);
-                    }
 
                     SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_unarmed"), true);
                 }
@@ -849,17 +634,6 @@ namespace vMenuClient.menus
                             var ammo = 0;
                             GetMaxAmmo(Game.PlayerPed.Handle, vw.Hash, ref ammo);
                             SetPedAmmo(Game.PlayerPed.Handle, vw.Hash, ammo);
-                        }
-                    }
-                    foreach (var avw in ValidAddonWeapons.AddonWeaponsList)
-                    {
-                        if (HasPedGotWeapon(Game.PlayerPed.Handle, avw.Hash, false))
-                        {
-                            var ammoInClip = GetMaxAmmoInClip(Game.PlayerPed.Handle, avw.Hash, false);
-                            SetAmmoInClip(Game.PlayerPed.Handle, avw.Hash, ammoInClip);
-                            var ammo = 0;
-                            GetMaxAmmo(Game.PlayerPed.Handle, avw.Hash, ref ammo);
-                            SetPedAmmo(Game.PlayerPed.Handle, avw.Hash, ammo);
                         }
                     }
                 }
@@ -907,7 +681,6 @@ namespace vMenuClient.menus
             melee.OnIndexChange += (sender, oldItem, newItem, oldIndex, newIndex) => { OnIndexChange(sender, newItem); };
             heavy.OnIndexChange += (sender, oldItem, newItem, oldIndex, newIndex) => { OnIndexChange(sender, newItem); };
             snipers.OnIndexChange += (sender, oldItem, newItem, oldIndex, newIndex) => { OnIndexChange(sender, newItem); };
-            addonWeaponsMenu.OnIndexChange += (sender, oldItem, newItem, oldIndex, newIndex) => { OnIndexChange(sender, newItem); };
 
             handGuns.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
             rifles.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
@@ -917,7 +690,6 @@ namespace vMenuClient.menus
             melee.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
             heavy.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
             snipers.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
-            addonWeaponsMenu.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
         }
 
 
