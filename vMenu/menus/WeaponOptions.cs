@@ -477,6 +477,13 @@ namespace vMenuClient.menus
                             {
                                 compItem.Enabled = false;
                             }
+                            else
+                            {
+                                if (weapon.Components.TryGetValue(comp.Key, out uint compHash))
+                                    {
+                                        compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
+                                    }
+                            };
 
                             weaponMenu.AddMenuItem(compItem);
 
