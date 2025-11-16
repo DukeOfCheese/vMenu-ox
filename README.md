@@ -138,7 +138,7 @@ end)
 - [x] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
 - [x] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
 - [x] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
-- [ ] Ability to change default notifications for vMenu to a chosen framework (e.g. ox_lib)
+- [ ] Modify weapon stats (both on weapon spawn and dynamically)
 
 --------
 
