@@ -5,11 +5,10 @@
 ---@field data table
 AddEventHandler("vMenu:Integrations:Action", function(action, data)
     if action == "infinitefuel" then
-        ---@field enabled boolean
+        ---@cast data {enabled: boolean}
         lib.print.debug("Infinite Fuel: " .. tostring(data.enabled))
     elseif action == "licenseplate" then
-        ---@field handle integer
-        ---@field plate string
+        ---@cast data {handle: integer, plate: string}
         lib.print.debug("License Plate Updated: " .. data.handle .. " - " .. data.plate)
         --[[
             Example Usage:
@@ -19,13 +18,13 @@ AddEventHandler("vMenu:Integrations:Action", function(action, data)
             end
         --]]
     elseif action == "noclip" then
-        ---@field enabled boolean
+        ---@cast data {enabled: boolean}
         lib.print.debug("NoClip: " .. tostring(data.enabled))
     elseif action == "playernames" then
-        ---@field enabled boolean
+        ---@cast data {enabled: boolean}
         lib.print.debug("Player Names: " .. tostring(data.enabled))
     elseif action == "playerblips" then
-        ---@field enabled boolean
+        ---@cast data {enabled: boolean}
         lib.print.debug("Player Blips: " .. tostring(data.enabled))
     end
 end)
@@ -175,3 +174,4 @@ end)
 AddEventHandler("vMenu:CustomNotify", function(description, ntype)
     Config.Notify("vMenu", description, ntype, 6500)
 end)
+
