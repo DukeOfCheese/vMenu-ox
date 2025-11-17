@@ -115,9 +115,9 @@ if Config.OutfitSharing.CommandEnabled then
     TriggerEvent("chat:addSuggestion", "/loadoutfitfromcode", "Load an outfit from a code", {
         { name = "code", help = "The outfit code you were given." }
     })
-    RegisterCommand("loadoutfitfromcode", function(source, args)
+    RegisterCommand(Config.OutfitSharing.CommandName, function(source, args)
         if #args ~= 1 then
-            Config.Notify("vMenu", "Invalid Usage! \n\n /loadoutfitfromcode <code>", "error", 6500)
+            Config.Notify("vMenu", "Invalid Usage! \n\n /" .. Config.OutfitSharing.CommandName .. " <code>", "error", 6500)
             return
         end
         if not tonumber(args[1]) then
