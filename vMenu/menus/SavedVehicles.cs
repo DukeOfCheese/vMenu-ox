@@ -30,7 +30,7 @@ namespace vMenuClient.menus
         private int replaceButtonPressedCount = 0;
         private SavedVehicleCategory currentCategory;
 
-        public static bool vehicleCodesEnabled = GetSettingsBool(Setting.vmenu_vehiclecodes);
+        public static bool vehicleCodesEnabled = GetSettingsBool(Setting.vmenu_vehicle_codes);
 
         // Need to be editable from other functions
         private readonly MenuListItem setCategoryBtn = new("Set Vehicle Category", new List<string> { }, 0, "Sets this Vehicle's category. Select to save.");

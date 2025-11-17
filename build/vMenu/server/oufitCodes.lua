@@ -79,7 +79,7 @@ lib.callback.register(
 )
 
 CreateThread(function()
-    if not GetConvarBool("vmenu_outfitcodes", false) then
+    if not GetConvarBool("vmenu_outfit_codes", false) then
         return
     end
 

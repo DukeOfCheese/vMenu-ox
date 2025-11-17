@@ -80,7 +80,7 @@ lib.callback.register(
 )
 
 CreateThread(function()
-    if not GetConvarBool("vmenu_vehiclecodes", false) then
+    if not GetConvarBool("vmenu_vehicle_codes", false) then
         return
     end
 
