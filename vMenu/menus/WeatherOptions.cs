@@ -144,7 +144,6 @@ namespace vMenuClient.menus
                     {
                         Notify.Custom($"Blackout mode is now {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
                         UpdateServerWeather(EventManager.GetServerWeather, _checked, EventManager.DynamicWeatherEnabled, EventManager.IsSnowEnabled);
-                        menu.RefreshIndex();
                     }
                     else
                     {
