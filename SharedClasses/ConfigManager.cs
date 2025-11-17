@@ -63,6 +63,7 @@ namespace vMenuShared
             vmenu_current_weather,
             vmenu_blackout_enabled,
             vmenu_vehicle_blackout_enabled,
+            vmenu_blackout_affect_vehicles,
             vmenu_weather_change_duration,
             vmenu_enable_snow,
 

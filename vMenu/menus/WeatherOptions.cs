@@ -8,6 +8,7 @@ using vMenuShared;
 
 using static vMenuClient.CommonFunctions;
 using static vMenuShared.PermissionsManager;
+using static vMenuShared.ConfigManager;
 
 namespace vMenuClient.menus
 {
@@ -74,7 +75,7 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(blackout);
             }
-            if (IsAllowed(Permission.WOVehBlackout))
+            if (IsAllowed(Permission.WOVehBlackout) && !GetSettingsBool(Setting.vmenu_blackout_affect_vehicles))
             {
                 menu.AddMenuItem(vehicleBlackout);
             }
@@ -143,6 +144,7 @@ namespace vMenuClient.menus
                     {
                         Notify.Custom($"Blackout mode is now {(_checked ? "~g~enabled" : "~r~disabled")}~s~.");
                         UpdateServerWeather(EventManager.GetServerWeather, _checked, EventManager.DynamicWeatherEnabled, EventManager.IsSnowEnabled);
+                        menu.RefreshIndex();
                     }
                     else
                     {
