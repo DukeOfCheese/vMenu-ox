@@ -125,11 +125,11 @@ end)
 ### To-Do / Suggested Ideas
 - [x] Alphabetically sort weapons in categories
 - [x] Implement ids into notifications to cleanup / stop duplicate spammy notifications
-- [ ] Sync Time/Weather into GlobalStates
+- [x] ~~Sync Time/Weather into GlobalStates~~ Add export for time / weather
 - [x] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
 - [x] Ratelimit on close all/open all doors (exploit to make cars fly)
 - [x] Configurable vehicle spawn cooldown
-- [ ] Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory
+- [x] ~~Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory~~
 - [ ] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
 - [x] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
 - [x] ~~Separate branch (maybe?) for outfit/weapon/vehicle code system~~ Planned to go ahead in main fork and add dependency of oxmysql as most servers use it. Maybe ill just do a resource check so if the resource isnt installed the buttons just error and say plugin not installed or smth?
@@ -141,6 +141,7 @@ end)
 - [ ] Ability to create weapon loadout codes
 - [ ] Update Voice Chat menu to use pma-voice instead
 - [ ] Searchable menus (incl. convar to enable / disable)
+- [ ] Convert show player names to LUA function to allow for easier developer integration
 
 --------
 
