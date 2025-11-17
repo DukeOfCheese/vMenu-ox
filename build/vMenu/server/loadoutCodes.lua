@@ -72,7 +72,7 @@ lib.callback.register(
 )
 
 CreateThread(function()
-    if not GetConvarBool('vmenu_loadoutcodes', false) then
+    if not GetConvarBool('vmenu_loadout_codes', false) then
         return
     end
 
