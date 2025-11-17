@@ -267,4 +267,5 @@ external/
 *.cmd.bak
 
 # VS Build Output
-build/
+build/vMenu/vMenuClient.net.dll
+build/vMenu/vMenuServer.net.dll
