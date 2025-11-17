@@ -710,6 +710,7 @@ namespace vMenuServer
 
             // Update the new weather related variables.
             CurrentWeather = newWeather;
+            BlackoutEnabled = blackoutNew;
             DynamicWeatherEnabled = dynamicWeatherNew;
             ManualSnowEnabled = enableSnow;
 
