@@ -5,6 +5,11 @@ Config = {
         CommandEnabled = false, -- Enable the /loadoutfitfromcode command
     },
 
+    LoadoutSharing = {
+        CommandName = 'loadloadoutfromcode',
+        CommandEnabled = false, -- Enable the /loadloadoutfromcode command
+    },
+
     Notify = function(title, msg, ntype, time)
         msg = msg:gsub('<C>', ''):gsub('</C>', '')
         -- these are just different examples i did for ox_lib, you can change these of course how you like

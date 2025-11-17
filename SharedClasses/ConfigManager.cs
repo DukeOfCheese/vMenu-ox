@@ -35,6 +35,7 @@ namespace vMenuShared
             vmenu_disable_player_stats_setup,
             vmenu_outfitcodes,
             vmenu_vehiclecodes,
+            vmenu_loadoutcodes,
             vmenu_vehicle_spawner_cooldown,
             vmenu_using_custom_notify,
 

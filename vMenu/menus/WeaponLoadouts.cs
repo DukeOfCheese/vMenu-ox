@@ -11,6 +11,8 @@ using vMenuClient.data;
 using static CitizenFX.Core.Native.API;
 using static vMenuClient.CommonFunctions;
 using static vMenuShared.PermissionsManager;
+using static vMenuShared.ConfigManager;
+using System.Threading.Tasks;
 
 namespace vMenuClient.menus
 {
@@ -21,7 +23,7 @@ namespace vMenuClient.menus
         private readonly Menu SavedLoadoutsMenu = new("Saved Loadouts", "saved weapon loadouts list");
         private readonly Menu ManageLoadoutMenu = new("Mange Loadout", "Manage saved weapon loadout");
         public bool WeaponLoadoutsSetLoadoutOnRespawn { get; private set; } = UserDefaults.WeaponLoadoutsSetLoadoutOnRespawn;
-
+        public bool LoadoutCodesEnabled = GetSettingsBool(Setting.vmenu_loadoutcodes);
         private readonly Dictionary<string, List<ValidWeapon>> SavedWeapons = new();
 
         public static Dictionary<string, List<ValidWeapon>> GetSavedWeapons()
@@ -89,10 +91,21 @@ namespace vMenuClient.menus
 
             var saveLoadout = new MenuItem("Save Loadout", "Save your current weapons into a new loadout slot.");
             var savedLoadoutsMenuBtn = new MenuItem("Manage Loadouts", "Manage saved weapon loadouts.") { Label = "→→→" };
+            var loadLoadoutCodeButton = new MenuItem("Load Shared Loadout", "Load a shared outfit by code");
             var enableDefaultLoadouts = new MenuCheckboxItem("Restore Default Loadout On Respawn", "If you've set a loadout as default loadout, then your loadout will be equipped automatically whenever you (re)spawn.", WeaponLoadoutsSetLoadoutOnRespawn);
 
             menu.AddMenuItem(saveLoadout);
             menu.AddMenuItem(savedLoadoutsMenuBtn);
+
+            menu.AddMenuItem(loadLoadoutCodeButton);
+
+            if(!LoadoutCodesEnabled)
+            {
+                loadLoadoutCodeButton.Enabled = false;
+                loadLoadoutCodeButton.RightIcon = MenuItem.Icon.LOCK;
+                loadLoadoutCodeButton.Description = "~r~Loadout Code Sharing is disabled by the Server Owner.";
+            }
+
             MenuController.BindMenuItem(menu, SavedLoadoutsMenu, savedLoadoutsMenuBtn);
             if (IsAllowed(Permission.WLEquipOnRespawn))
             {
@@ -129,6 +142,16 @@ namespace vMenuClient.menus
             var spawnLoadout = new MenuItem("Equip Loadout", "Spawn this saved weapons loadout. This will remove all your current weapons and replace them with this saved slot.");
             var renameLoadout = new MenuItem("Rename Loadout", "Rename this saved loadout.");
             var cloneLoadout = new MenuItem("Clone Loadout", "Clones this saved loadout to a new slot.");
+            
+            var generateLoadoutCodeButton = new MenuItem("Generate Loadout Code", "Generates a code for your weapon loadout for sharing.");
+            
+            if(!LoadoutCodesEnabled)
+            {
+                generateLoadoutCodeButton.Enabled = false;
+                generateLoadoutCodeButton.RightIcon = MenuItem.Icon.LOCK;
+                generateLoadoutCodeButton.Description = "~r~Loadout Code Sharing is disabled by the Server Owner.";
+            }
+
             var setDefaultLoadout = new MenuItem("Set As Default Loadout", "Set this loadout to be your default loadout for whenever you (re)spawn. This will override the 'Restore Weapons' option inside the Misc Settings menu. You can toggle this option in the main Weapon Loadouts menu.");
             var replaceLoadout = new MenuItem("~r~Replace Loadout", "~r~This replaces this saved slot with the weapons that you currently have in your inventory. This action can not be undone!");
             var deleteLoadout = new MenuItem("~r~Delete Loadout", "~r~This will delete this saved loadout. This action can not be undone!");
@@ -140,6 +163,7 @@ namespace vMenuClient.menus
 
             ManageLoadoutMenu.AddMenuItem(renameLoadout);
             ManageLoadoutMenu.AddMenuItem(cloneLoadout);
+            ManageLoadoutMenu.AddMenuItem(generateLoadoutCodeButton);
             ManageLoadoutMenu.AddMenuItem(setDefaultLoadout);
             ManageLoadoutMenu.AddMenuItem(replaceLoadout);
             ManageLoadoutMenu.AddMenuItem(deleteLoadout);
@@ -173,6 +197,10 @@ namespace vMenuClient.menus
                             }
                         }
                     }
+                }
+                else if (item == loadLoadoutCodeButton)
+                {
+                    bool success = await LoadSharedLoadout();
                 }
             };
 
@@ -213,6 +241,11 @@ namespace vMenuClient.menus
                                 ManageLoadoutMenu.GoBack();
                             }
                         }
+                    }
+                    else if (item == generateLoadoutCodeButton)
+                    {
+                        string currentlySelectedLoadoutSaveName = SelectedSavedLoadoutName.Replace("vmenu_string_saved_weapon_loadout_", "");
+                        TriggerEvent("vMenu:Loadout:GenerateCode", currentlySelectedLoadoutSaveName);
                     }
                     else if (item == setDefaultLoadout) // set as default
                     {
