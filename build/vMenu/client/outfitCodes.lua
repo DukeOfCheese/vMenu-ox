@@ -43,7 +43,7 @@ exports("loadSharedOutfit", function()
 
     local validData = json.decode(Valid)
     local charJson = exports[GetCurrentResourceName()]:GetMpCharacterData()
-    if not charJson then
+    if charJson == nil then
         Config.Notify("vMenu", "Failed to fetch character data!", "error", 6500)
         return false
     end
@@ -170,6 +170,6 @@ AddEventHandler("vMenu:Outfits:GenerateCode", function(name)
     end
 
     print(format("Outfit code created: %s", Generated))
-    Config.Notify("vMenu", "Outfit code has been generated - id: #" .. Generated, "success", 10000)
+    Config.Notify("vMenu", "Outfit code has been generated #" .. Generated, "success", 10000)
     lib.setClipboard(Generated)
 end)
