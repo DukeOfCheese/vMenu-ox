@@ -143,7 +143,6 @@ end)
 - [ ] Searchable menus (incl. convar to enable / disable)
 - [ ] Convert show player names to LUA function to allow for easier developer integration
 - [x] Fix non-custom notifications
-- [ ] Add default permissions.cfg with setting additions
 
 --------
 
