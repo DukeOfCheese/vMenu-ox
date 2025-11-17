@@ -142,6 +142,7 @@ end)
 - [ ] Update Voice Chat menu to use pma-voice instead
 - [ ] Searchable menus (incl. convar to enable / disable)
 - [ ] Convert show player names to LUA function to allow for easier developer integration
+- [ ] Fix non-custom notifications
 
 --------
 
