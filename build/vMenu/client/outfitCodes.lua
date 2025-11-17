@@ -2,6 +2,16 @@ local Cooldown = false
 local GenerateCooldown = false
 format = string.format
 
+local function isValidComp(ped, comp, drawable, texture)
+    local maxDraw = GetNumberOfPedDrawableVariations(ped, comp)
+    if drawable < 0 or drawable >= maxDraw then return false end
+
+    local maxTex = GetNumberOfPedTextureVariations(ped, comp, drawable)
+    if texture < 0 or texture >= maxTex then return false end
+
+    return true
+end
+
 ---@class loadSharedOutfit
 exports("loadSharedOutfit", function()
     if Cooldown then
@@ -50,35 +60,52 @@ exports("loadSharedOutfit", function()
     local charData = json.decode(charJson)
 
     for k, v in pairs(validData.Clothes) do
-        SetPedComponentVariation(cache.ped, tonumber(k), v.Item, v.Texture, 0)
+        local comp = tonumber(k)
+        if isValidComp(cache.ped, comp, v.Item, v.Texture) then
+            SetPedComponentVariation(cache.ped, comp, v.Item, v.Texture, 0)
+        else
+            lib.print.warn(("Invalid clothing: comp %s drawable %s texture %s"):format(comp, v.Item, v.Texture))
+        end
     end
 
     for k, v in pairs(validData.Props) do
         SetPedPropIndex(cache.ped, tonumber(k), v.Item, v.Texture, true)
     end
 
+    print('SET CLOTHES')
+
+    charData.DrawableVariations = charData.DrawableVariations or {}
+    charData.DrawableVariations.clothes = charData.DrawableVariations.clothes or {}
+
+    charData.PropVariations = charData.PropVariations or {}
+    charData.PropVariations.props = charData.PropVariations.props or {}
+
     for k, v in pairs(validData.Clothes) do
         local key = tostring(k)
-        if charData.DrawableVariations.clothes[key] then
-            charData.DrawableVariations.clothes[key].Key = v.Item
-            charData.DrawableVariations.clothes[key].Value = v.Texture
-        else
-            charData.DrawableVariations.clothes[key] = { Key = v.Item, Value = v.Texture }
-        end
+
+        charData.DrawableVariations.clothes[key] =
+            charData.DrawableVariations.clothes[key] or {}
+
+        charData.DrawableVariations.clothes[key].Key = v.Item
+        charData.DrawableVariations.clothes[key].Value = v.Texture
     end
 
     for k, v in pairs(validData.Props) do
         local key = tostring(k)
-        if charData.PropVariations.props[key] then
-            charData.PropVariations.props[key].Key = v.Item
-            charData.PropVariations.props[key].Value = v.Texture
-        else
-            charData.PropVariations.props[key] = { Key = v.Item, Value = v.Texture }
-        end
+
+        charData.PropVariations.props[key] =
+            charData.PropVariations.props[key] or {}
+
+        charData.PropVariations.props[key].Key = v.Item
+        charData.PropVariations.props[key].Value = v.Texture
     end
+
+    print('SET KVP TABLE')
 
     SetResourceKvp(format("mp_ped_%s", newName), json.encode(charData))
 
+    print('SAVED')
+    
     Config.Notify("vMenu", "Outfit has been successfully loaded!", "success", 6500)
 
     return true
@@ -101,7 +128,12 @@ exports("loadOutfitFromCode", function(outfitCode)
     local validData = json.decode(Valid)
 
     for k, v in pairs(validData.Clothes) do
-        SetPedComponentVariation(PlayerPedId(), k, v.Item, v.Texture, 0)
+        local comp = tonumber(k)
+        if isValidComp(cache.ped, comp, v.Item, v.Texture) then
+            SetPedComponentVariation(cache.ped, comp, v.Item, v.Texture, 0)
+        else
+            lib.print.warn(("Invalid clothing: comp %s drawable %s texture %s"):format(comp, v.Item, v.Texture))
+        end
     end
 
     for k, v in pairs(validData.Props) do
@@ -112,7 +144,7 @@ exports("loadOutfitFromCode", function(outfitCode)
 end)
 
 if Config.OutfitSharing.CommandEnabled then
-    TriggerEvent("chat:addSuggestion", "/loadoutfitfromcode", "Load an outfit from a code", {
+    TriggerEvent("chat:addSuggestion", Config.OutfitSharing.CommandName, "Load an outfit from a code", {
         { name = "code", help = "The outfit code you were given." }
     })
     RegisterCommand(Config.OutfitSharing.CommandName, function(source, args)
