@@ -1066,18 +1066,7 @@ namespace vMenuClient.menus
                 }
             }
 
-            int GetInheritance(Dictionary<string, int> list, MenuListItem listItem)
             {
-                if (listItem.ListIndex < listItem.ListItems.Count)
-                {
-                    if (list.TryGetValue(listItem.ListItems[listItem.ListIndex], out var idx))
-                    {
-                        return idx;
-                    }
-                }
-
-                return 0;
-            }
 
             var listIdx = 0;
             foreach (var list in new[] { dads, moms })
@@ -1118,34 +1107,6 @@ namespace vMenuClient.menus
             inheritanceMenu.AddMenuItem(inheritanceShapeMix);
             inheritanceMenu.AddMenuItem(inheritanceSkinMix);
 
-            // formula from maintransition.#sc
-            float GetMinimum()
-            {
-                return currentCharacter.IsMale ? 0.05f : 0.3f;
-            }
-
-            float GetMaximum()
-            {
-                return currentCharacter.IsMale ? 0.7f : 0.95f;
-            }
-
-            float ClampMix(int value)
-            {
-                var sliderFraction = mixValues[value];
-                var min = GetMinimum();
-                var max = GetMaximum();
-
-                return min + (sliderFraction * (max - min));
-            }
-
-            int UnclampMix(float value)
-            {
-                var min = GetMinimum();
-                var max = GetMaximum();
-
-                var origFraction = (value - min) / (max - min);
-                return Math.Max(Math.Min((int)(origFraction * 10), 10), 0);
-            }
 
             inheritanceMenu.OnListIndexChange += (_menu, listItem, oldSelectionIndex, newSelectionIndex, itemIndex) =>
             {
