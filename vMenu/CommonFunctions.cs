@@ -37,9 +37,9 @@ namespace vMenuClient
             return Exports["vMenu"].canDoInteraction(type);
 
         }
-        public async Task<bool> LoadSharedOutfit(string outfitName)
+        public async Task<bool> LoadSharedOutfit()
         {
-            return await Exports["vMenu"].loadSharedOutfit(outfitName);
+            return await Exports["vMenu"].loadSharedOutfit();
         }
         public async Task<bool> LoadSharedVehicle()
         {
@@ -1929,10 +1929,10 @@ namespace vMenuClient
             var ExternalFunctions = new ExternalFunctions();
             return ExternalFunctions.CanDoInteraction(type);
         }
-        public static async Task<bool> LoadSharedOutfit(string outfitName)
+        public static async Task<bool> LoadSharedOutfit()
         {
             var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.LoadSharedOutfit(outfitName);
+            return await ExternalFunctions.LoadSharedOutfit();
         }
         public static async Task<bool> LoadSharedVehicle()
         {
