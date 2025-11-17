@@ -2160,7 +2160,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="newWeather">The new weather type.</param>
         /// <param name="dynamicChanges">Dynamic weather changes enabled/disabled.</param>
-        public static void UpdateServerWeather(string newWeather, bool blackout, bool dynamicChanges, bool isSnowEnabled) => TriggerServerEvent("vMenu:UpdateServerWeather", newWeather, dynamicChanges, isSnowEnabled);
+        public static void UpdateServerWeather(string newWeather, bool blackout, bool dynamicChanges, bool isSnowEnabled) => TriggerServerEvent("vMenu:UpdateServerWeather", newWeather, blackout, dynamicChanges, isSnowEnabled);
 
         public static void UpdateServerBlackout(bool value) => TriggerServerEvent("vMenu:UpdateServerBlackout", value);
 
