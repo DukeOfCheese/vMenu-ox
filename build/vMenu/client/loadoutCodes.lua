@@ -60,8 +60,7 @@ exports('loadSharedLoadout', function()
         end
     end
 
-    local saveJson = json.encode(validData)
-    SetResourceKvp(string.format('vmenu_string_saved_weapon_loadout_%s', newName), saveJson)
+    SetResourceKvp(string.format('vmenu_string_saved_weapon_loadout_%s', newName), json.encode(validData))
 
     Config.Notify("vMenu", "Weapon loadout has been successfully loaded!", "success", 6500)
 
@@ -86,7 +85,7 @@ RegisterCommand("clearlayouts", function()
     EndFindKvp(handle)
 
     print(("Deleted %d saved weapon loadouts."):format(count))
-end)
+end, false)
 
 
 exports('loadLoadoutFromCode', function(loadoutCode)
