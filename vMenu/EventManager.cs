@@ -272,7 +272,10 @@ namespace vMenuClient
             {
                 TriggerEvent("vMenu:CustomNotify", message, "inform");
             }
-            Notify.Custom(message, true, true);
+            else
+            {
+                Notify.Custom(message, true, true);
+            }
         }
 
         /// <summary>
