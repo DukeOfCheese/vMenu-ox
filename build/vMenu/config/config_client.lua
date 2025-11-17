@@ -5,6 +5,7 @@ Config = {
     },
 
     Notify = function(title, msg, ntype, time)
+        msg = msg:gsub('<C>', ''):gsub('</C>', '')
         -- these are just different examples i did for ox_lib, you can change these of course how you like
         if ntype == "error" then
             lib.notify({
