@@ -3,7 +3,6 @@ local GenerateCooldown = false
 format = string.format
 
 ---@class loadSharedOutfit
----@param name string
 exports("loadSharedOutfit", function()
     if Cooldown then
         Config.Notify("vMenu", "You must wait before loading another outfit!", "error", 6500)
