@@ -72,8 +72,6 @@ exports("loadSharedOutfit", function()
         SetPedPropIndex(cache.ped, tonumber(k), v.Item, v.Texture, true)
     end
 
-    print('SET CLOTHES')
-
     charData.DrawableVariations = charData.DrawableVariations or {}
     charData.DrawableVariations.clothes = charData.DrawableVariations.clothes or {}
 
@@ -100,11 +98,7 @@ exports("loadSharedOutfit", function()
         charData.PropVariations.props[key].Value = v.Texture
     end
 
-    print('SET KVP TABLE')
-
     SetResourceKvp(format("mp_ped_%s", newName), json.encode(charData))
-
-    print('SAVED')
     
     Config.Notify("vMenu", "Outfit has been successfully loaded!", "success", 6500)
 
