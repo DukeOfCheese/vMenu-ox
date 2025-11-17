@@ -1066,8 +1066,6 @@ namespace vMenuClient.menus
                 }
             }
 
-            {
-
             var listIdx = 0;
             foreach (var list in new[] { dads, moms })
             {
