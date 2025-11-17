@@ -124,7 +124,7 @@ end)
 
 ### To-Do / Suggested Ideas
 - [x] Alphabetically sort weapons in categories
-- [ ] Implement ids into notifications to cleanup / stop duplicate spammy notifications
+- [x] Implement ids into notifications to cleanup / stop duplicate spammy notifications
 - [ ] Sync Time/Weather into GlobalStates
 - [x] Add new event for ban manager so that developers can easily integrate their own anticheat/banning functions for event exploiters
 - [x] Ratelimit on close all/open all doors (exploit to make cars fly)
@@ -139,6 +139,8 @@ end)
 - [x] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
 - [ ] Modify weapon stats (both on weapon spawn and dynamically)
 - [ ] Ability to create weapon loadout codes
+- [ ] Update Voice Chat menu to use pma-voice instead
+- [ ] Searchable menus (incl. convar to enable / disable)
 
 --------
 
