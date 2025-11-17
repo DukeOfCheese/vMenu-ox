@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -18,7 +19,7 @@ using static vMenuShared.ConfigManager;
 
 namespace vMenuClient.menus
 {
-    public class MpPedCustomization
+    public class MpPedCustomization : BaseScript
     {
         // Variables
         private Menu menu;
@@ -131,6 +132,16 @@ namespace vMenuClient.menus
 
         private MultiplayerPedData currentCharacter = new();
         private MpCharacterCategory currentCategory = new();
+
+        public MpPedCustomization()
+        {
+            Exports.Add("GetMpCharacterData", new Func<string>(GetMpCharacterData));
+        }
+        
+        private string GetMpCharacterData()
+        {
+            return JsonConvert.SerializeObject(currentCharacter);
+        }
 
         public static bool OutfitCodesEnabled = GetSettingsBool(Setting.vmenu_outfitcodes);
         private Ped _clone;
@@ -936,6 +947,15 @@ namespace vMenuClient.menus
             MenuController.AddMenu(clothesMenu);
             MenuController.AddMenu(propsMenu);
 
+            var loadOutfitCodeButton = new MenuItem("Load Shared Outfit", "Duplicates your character ready for outfit sharing.");
+
+            if(!OutfitCodesEnabled)
+            {
+                loadOutfitCodeButton.Enabled = false;
+                loadOutfitCodeButton.RightIcon = MenuItem.Icon.LOCK;
+                loadOutfitCodeButton.Description = "~r~Outfit Code Sharing is disabled by the Server Owner.";
+            }
+
             CreateSavedPedsMenu();
 
             menu.AddMenuItem(createMaleBtn);
@@ -944,6 +964,7 @@ namespace vMenuClient.menus
             MenuController.BindMenuItem(menu, createCharacterMenu, createFemaleBtn);
             menu.AddMenuItem(savedCharacters);
             MenuController.BindMenuItem(menu, savedCharactersMenu, savedCharacters);
+            menu.AddMenuItem(loadOutfitCodeButton);
 
             menu.RefreshIndex();
 
@@ -988,14 +1009,10 @@ namespace vMenuClient.menus
             var clothesButton = new MenuItem("Character Clothes", "Character clothes.");
             var propsButton = new MenuItem("Character Props", "Character props.");
 
-            var loadOutfitCodeButton = new MenuItem("Load Shared Outfit", "Duplicates your character ready for outfit sharing.");
             var generateOutfitCodeButton = new MenuItem("Generate Outfit Code", "Generates a code for your character ready for outfit sharing.");
 
             if(!OutfitCodesEnabled)
             {
-                loadOutfitCodeButton.Enabled = false;
-                loadOutfitCodeButton.RightIcon = MenuItem.Icon.LOCK;
-                loadOutfitCodeButton.Description = "~r~Outfit Code Sharing is disabled by the Server Owner.";
                 generateOutfitCodeButton.Enabled = false;
                 generateOutfitCodeButton.RightIcon = MenuItem.Icon.LOCK;
                 generateOutfitCodeButton.Description = "~r~Outfit Code Sharing is disabled by the Server Owner.";
@@ -1020,7 +1037,6 @@ namespace vMenuClient.menus
             createCharacterMenu.AddMenuItem(clothesButton);
             createCharacterMenu.AddMenuItem(propsButton);
             
-            createCharacterMenu.AddMenuItem(loadOutfitCodeButton);
             createCharacterMenu.AddMenuItem(generateOutfitCodeButton);
             createCharacterMenu.AddMenuItem(faceExpressionList);
             createCharacterMenu.AddMenuItem(categoryBtn);
@@ -2032,23 +2048,6 @@ namespace vMenuClient.menus
                         createCharacterMenu.GoBack();
                     }
                 }
-                else if (item == loadOutfitCodeButton)
-                {
-                    if (currentCharacter.SaveName == null)
-                    {
-                        Notify.Error("You must save the current character before you can load a code for it.");
-                    }
-                    else
-                    {
-                        bool success = await LoadSharedOutfit(currentCharacter.SaveName);
-                        if (success)
-                        {
-                            MenuController.CloseAllMenus();
-                            UpdateSavedPedsMenu();
-                            savedCharactersMenu.OpenMenu();
-                        }
-                    }
-                }
                 else if (item == generateOutfitCodeButton)
                 {
                     if (currentCharacter.SaveName == null)
@@ -2257,6 +2256,23 @@ namespace vMenuClient.menus
                 else if (item == savedCharacters)
                 {
                     UpdateSavedPedsMenu();
+                }
+                else if (item == loadOutfitCodeButton)
+                {
+                    // if (currentCharacter.SaveName == null)
+                    // {
+                    //     Notify.Error("You must save the current character before you can load a code for it.");
+                    // }
+                    // else
+                    // {
+                        bool success = await LoadSharedOutfit();
+                        if (success)
+                        {
+                            MenuController.CloseAllMenus();
+                            UpdateSavedPedsMenu();
+                            savedCharactersMenu.OpenMenu();
+                        }
+                    // }
                 }
             };
         }

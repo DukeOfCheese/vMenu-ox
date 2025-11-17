@@ -4,23 +4,9 @@ format = string.format
 
 ---@class loadSharedOutfit
 ---@param name string
-exports("loadSharedOutfit", function(name)
-
-    if not name or type(name) ~= "string" then
-        return lib.print.error("export: Tried to load outfit failed, no name provided.")
-    end
-
-    name = string.sub(name, 8)
-
+exports("loadSharedOutfit", function()
     if Cooldown then
         Config.Notify("vMenu", "You must wait before loading another outfit!", "error", 6500)
-        return false
-    end
-
-    local Existing = GetResourceKvpString(format("mp_ped_%s", name))
-    if not Existing then
-        lib.print.debug("Outfit data does not exist somehow?")
-        Config.Notify("vMenu", "Error loading outfit, please try again!", "error", 6500)
         return false
     end
 
@@ -55,28 +41,44 @@ exports("loadSharedOutfit", function(name)
         return false
     end
 
-    Valid = json.decode(Valid)
+    local validData = json.decode(Valid)
+    local charJson = exports[GetCurrentResourceName()]:GetMpCharacterData()
+    if not charJson then
+        Config.Notify("vMenu", "Failed to fetch character data!", "error", 6500)
+        return false
+    end
 
-    local Data = json.decode(Existing)
-    for k, v in pairs(Valid.Clothes) do
-        if Data.DrawableVariations.clothes[k] then
-            Data.DrawableVariations.clothes[k].Key = v.Item
-            Data.DrawableVariations.clothes[k].Value = v.Texture
+    local charData = json.decode(charJson)
+
+    for k, v in pairs(validData.Clothes) do
+        SetPedComponentVariation(cache.ped, tonumber(k), v.Item, v.Texture, 0)
+    end
+
+    for k, v in pairs(validData.Props) do
+        SetPedPropIndex(cache.ped, tonumber(k), v.Item, v.Texture, true)
+    end
+
+    for k, v in pairs(validData.Clothes) do
+        local key = tostring(k)
+        if charData.DrawableVariations.clothes[key] then
+            charData.DrawableVariations.clothes[key].Key = v.Item
+            charData.DrawableVariations.clothes[key].Value = v.Texture
         else
-            Data.DrawableVariations.clothes[k] = { Key = v.Item, Value = v.Texture }
+            charData.DrawableVariations.clothes[key] = { Key = v.Item, Value = v.Texture }
         end
     end
 
-    for k, v in pairs(Valid.Props) do
-        if Data.PropVariations.props[k] then
-            Data.PropVariations.props[k].Key = v.Item
-            Data.PropVariations.props[k].Value = v.Texture
+    for k, v in pairs(validData.Props) do
+        local key = tostring(k)
+        if charData.PropVariations.props[key] then
+            charData.PropVariations.props[key].Key = v.Item
+            charData.PropVariations.props[key].Value = v.Texture
         else
-            Data.PropVariations.props[k] = { Key = v.Item, Value = v.Texture }
+            charData.PropVariations.props[key] = { Key = v.Item, Value = v.Texture }
         end
     end
 
-    SetResourceKvp(format("mp_ped_%s", newName), json.encode(Data))
+    SetResourceKvp(format("mp_ped_%s", newName), json.encode(charData))
 
     Config.Notify("vMenu", "Outfit has been successfully loaded!", "success", 6500)
 
@@ -99,14 +101,6 @@ exports("loadOutfitFromCode", function(outfitCode)
 
     local validData = json.decode(Valid)
 
-    for i = 0, 11 do
-        SetPedComponentVariation(PlayerPedId(), i, 0, 0, 0)
-    end
-
-    for i = 0, 12 do
-        ClearPedProp(PlayerPedId(), i)
-    end
-
     for k, v in pairs(validData.Clothes) do
         SetPedComponentVariation(PlayerPedId(), k, v.Item, v.Texture, 0)
     end
@@ -114,7 +108,6 @@ exports("loadOutfitFromCode", function(outfitCode)
     for k, v in pairs(validData.Props) do
         SetPedPropIndex(PlayerPedId(), k, v.Item, v.Texture, true)
     end
-
 
     return true
 end)
