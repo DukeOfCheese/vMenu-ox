@@ -143,7 +143,7 @@ namespace vMenuClient.menus
             return JsonConvert.SerializeObject(currentCharacter);
         }
 
-        public static bool OutfitCodesEnabled = GetSettingsBool(Setting.vmenu_outfitcodes);
+        public static bool OutfitCodesEnabled = GetSettingsBool(Setting.vmenu_outfit_codes);
         private Ped _clone;
 
         /// <summary>

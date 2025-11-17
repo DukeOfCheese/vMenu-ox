@@ -33,9 +33,9 @@ namespace vMenuShared
             vmenu_player_names_distance,
             vmenu_disable_entity_outlines_tool,
             vmenu_disable_player_stats_setup,
-            vmenu_outfitcodes,
-            vmenu_vehiclecodes,
-            vmenu_loadoutcodes,
+            vmenu_outfit_codes,
+            vmenu_vehicle_codes,
+            vmenu_loadout_codes,
             vmenu_vehicle_spawner_cooldown,
             vmenu_using_custom_notify,
 
