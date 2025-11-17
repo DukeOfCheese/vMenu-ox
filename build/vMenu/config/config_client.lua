@@ -10,6 +10,7 @@ Config = {
         -- these are just different examples i did for ox_lib, you can change these of course how you like
         if ntype == "error" then
             lib.notify({
+                id = 'error_' .. string.sub(msg, 1, 10),
                 title = title,
                 description = msg,
                 position = 'center-right',
@@ -25,6 +26,7 @@ Config = {
             })
         elseif ntype == "alert" then
             lib.notify({
+                id = 'alert_' .. string.sub(msg, 1, 10),
                 title = title,
                 description = msg,
                 position = 'center-right',
@@ -40,6 +42,7 @@ Config = {
             })
         else
             lib.notify({
+                id = 'default_' .. string.sub(msg, 1, 10),
                 title = title,
                 description = msg,
                 type = ntype,
