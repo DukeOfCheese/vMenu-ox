@@ -1,6 +1,7 @@
 Config = {
 
     OutfitSharing = {
+        CommandName = 'loadoutfitfromcode',
         CommandEnabled = false, -- Enable the /loadoutfitfromcode command
     },
 
