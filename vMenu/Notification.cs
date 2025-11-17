@@ -88,12 +88,20 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Custom(string message, bool blink = true, bool saveToBrief = true)
         {   
-            SetNotificationTextEntry("CELL_EMAIL_BCON"); // 10x ~a~
-            foreach (var s in CitizenFX.Core.UI.Screen.StringToArray(message))
+            if (usingCustomNotifications)
             {
-                AddTextComponentSubstringPlayerName(s);
+                TriggerEvent("vMenu:CustomNotify", message, "inform");
+                return;
             }
-            DrawNotification(blink, saveToBrief);
+            else
+            {
+                SetNotificationTextEntry("CELL_EMAIL_BCON"); // 10x ~a~
+                foreach (var s in CitizenFX.Core.UI.Screen.StringToArray(message))
+                {
+                    AddTextComponentSubstringPlayerName(s);
+                }
+                DrawNotification(blink, saveToBrief);
+            }
         }
 
         /// <summary>
@@ -109,7 +117,10 @@ namespace vMenuClient
                 TriggerEvent("vMenu:CustomNotify", message, "alert");
                 return;
             }
-            Custom("~y~~h~Alert~h~~s~: " + message, blink, saveToBrief);
+            else
+            {
+                Custom("~y~~h~Alert~h~~s~: " + message, blink, saveToBrief);
+            }
         }
 
         /// <summary>
