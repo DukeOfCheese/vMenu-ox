@@ -138,11 +138,12 @@ end)
 - [x] Ability to save BP tires on vehicles? (would need to perm check on re-apply)
 - [x] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
 - [ ] Modify weapon stats (both on weapon spawn and dynamically)
-- [ ] Ability to create weapon loadout codes
+- [x] Ability to create weapon loadout codes
 - [ ] Update Voice Chat menu to use pma-voice instead
 - [ ] Searchable menus (incl. convar to enable / disable)
 - [ ] Convert show player names to LUA function to allow for easier developer integration
 - [x] Fix non-custom notifications
+- [ ] Add option for brake multiplier
 
 --------
 
