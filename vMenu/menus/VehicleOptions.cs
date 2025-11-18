@@ -55,8 +55,10 @@ namespace vMenuClient.menus
         public bool VehicleFrozen { get; private set; } = false;
         public bool VehicleTorqueMultiplier { get; private set; } = false;
         public bool VehiclePowerMultiplier { get; private set; } = false;
+        public bool VehicleBrakeMultiplier { get; private set; } = false;
         public float VehicleTorqueMultiplierAmount { get; private set; } = 2f;
         public float VehiclePowerMultiplierAmount { get; private set; } = 2f;
+        public float VehicleBrakeMultiplierAmount { get; private set; } = 2f;
 
         public bool VehicleCloseAllDoorsCooldown { get; private set; } = false;
 
@@ -91,6 +93,7 @@ namespace vMenuClient.menus
             var vehicleFreeze = new MenuCheckboxItem("Freeze Vehicle", "Freeze your vehicle's position.", VehicleFrozen);
             var torqueEnabled = new MenuCheckboxItem("Enable Torque Multiplier", "Enables the torque multiplier selected from the list below.", VehicleTorqueMultiplier);
             var powerEnabled = new MenuCheckboxItem("Enable Power Multiplier", "Enables the power multiplier selected from the list below.", VehiclePowerMultiplier);
+            var brakeEnabled = new MenuCheckboxItem("Enable Brake Multiplier", "Enables the brake multiplier selected from the list below.", VehicleBrakeMultiplier);
             var highbeamsOnHonk = new MenuCheckboxItem("Flash Highbeams On Honk", "Turn on your highbeams on your vehicle when honking your horn. Does not work during the day when you have your lights turned off.", FlashHighbeamsOnHonk);
             var showHealth = new MenuCheckboxItem("Show Vehicle Health", "Shows the vehicle health on the screen.", VehicleShowHealth);
             var infiniteFuel = new MenuCheckboxItem("Infinite Fuel", "Enables or disables infinite fuel for this vehicle, only works if FRFuel is installed.", VehicleInfiniteFuel);
@@ -202,6 +205,8 @@ namespace vMenuClient.menus
             var torqueMultiplier = new MenuListItem("Set Engine Torque Multiplier", torqueMultiplierList, 0, "Set the engine torque multiplier.");
             var powerMultiplierList = new List<string> { "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256", "x512", "x1024" };
             var powerMultiplier = new MenuListItem("Set Engine Power Multiplier", powerMultiplierList, 0, "Set the engine power multiplier.");
+            var brakeMultiplierList = new List<string>() { "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256", "x512", "x1024" };
+            var brakeMultiplier = new MenuListItem("Set Brake Power Multiplier", brakeMultiplierList, 0, "Sets the brake multiplier.");
             var speedLimiterOptions = new List<string>() { "Set", "Reset", "Custom Speed Limit" };
             var speedLimiter = new MenuListItem("Speed Limiter", speedLimiterOptions, 0, "Set your vehicles max speed to your ~y~current speed~s~. Resetting your vehicles max speed will set the max speed of your current vehicle back to default. Only your current vehicle is affected by this option.");
             #endregion
@@ -366,6 +371,11 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(powerEnabled); // POWER ENABLED
                 menu.AddMenuItem(powerMultiplier); // POWER LIST
+            }
+            if (IsAllowed(Permission.VOBrakeMultiplier))
+            {
+                menu.AddMenuItem(brakeEnabled);
+                menu.AddMenuItem(brakeMultiplier);
             }
             if (IsAllowed(Permission.VODisableTurbulence))
             {
@@ -626,6 +636,53 @@ namespace vMenuClient.menus
                         }
                     }
                 }
+                else if (item == brakeEnabled)
+                {
+                    VehicleBrakeMultiplier = _checked;
+                    var state = vehicle.State;
+                    if (_checked)
+                    {
+                        if (vehicle != null && vehicle.Exists())
+                        {
+                            float brakeForce = GetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeForce");
+                            if (state.Get("OriginalBrakeForce") != null)
+                            {
+                                float originalBrakeForce = (float) state["OriginalBrakeForce"];
+                                
+                                state["OriginalBrakeForce"] = null;
+                                
+                            };
+
+                            if (state.Get("OriginalBrakeBias") == null)
+                            {
+                                float originalBias = GetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeBiasFront");
+                                state.Set("OriginalBrakeBias", originalBias, false);
+                            };
+
+                            SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeForce", brakeForce * VehicleBrakeMultiplierAmount * 100);
+                            SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeBiasFront", 0.85f);
+                        }
+                    }
+                    else
+                    {
+                        if (vehicle != null && vehicle.Exists())
+                        {
+                            if (state.Get("OriginalBrakeForce") != null)
+                            {
+                                float originalBrakeForce = (float)state["OriginalBrakeForce"];
+                                SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeForce", originalBrakeForce);
+                                state["OriginalBrakeForce"] = null;
+                            }
+
+                            if (state.Get("OriginalBrakeBias") != null)
+                            {
+                                float originalBias = (float)state["OriginalBrakeBias"];
+                                SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeBiasFront", originalBias);
+                                state["OriginalBrakeBias"] = null;
+                            }
+                        }
+                    }
+                }
                 else if (item == vehicleEngineAO) // Leave Engine Running (vehicle always on) Toggled
                 {
                     VehicleEngineAlwaysOn = _checked;
@@ -745,6 +802,32 @@ namespace vMenuClient.menus
                         if (VehiclePowerMultiplier)
                         {
                             SetVehicleEnginePowerMultiplier(veh.Handle, VehiclePowerMultiplierAmount);
+                        }
+                    }
+                    else if (item == brakeMultiplier)
+                    {
+                        var value = brakeMultiplierList[newIndex].ToString().Replace("x", "");
+                        VehicleBrakeMultiplierAmount = float.Parse(value);
+
+                        if (veh != null && veh.Exists() && VehiclePowerMultiplier)
+                        {
+                            var state = veh.State;
+
+                            if (state.Get("OriginalBrakeForce") == null)
+                            {
+                                float originalBrake = GetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeForce");
+                                state.Set("OriginalBrakeForce", originalBrake, false);
+                            }
+
+                            if (state.Get("OriginalBrakeBias") == null)
+                            {
+                                float originalBias = GetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeBiasFront");
+                                state.Set("OriginalBrakeBias", originalBias, false);
+                            }
+
+                            float brakeForce = (float)state["OriginalBrakeForce"];
+                            SetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeForce", brakeForce * VehicleBrakeMultiplierAmount * 100);
+                            SetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeBiasFront", 0.85f);
                         }
                     }
                     else if (item == setLicensePlateType)

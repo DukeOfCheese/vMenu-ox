@@ -90,6 +90,7 @@ namespace vMenuShared
             VOInvisible,
             VOTorqueMultiplier,
             VOPowerMultiplier,
+            VOBrakeMultiplier,
             VOFlip,
             VOAlarm,
             VOCycleSeats,
