@@ -35,9 +35,6 @@ exports('loadSharedLoadout', function()
         lib.print.debug('Loadout load cooldown expired.')
     end)
 
-    print(Valid)
-    print(type(Valid))
-
     if not Valid then
         Config.Notify('vMenu', 'The loadout code you entered is invalid!', 'error', 6500)
     end
@@ -54,13 +51,12 @@ exports('loadSharedLoadout', function()
         end
     end
 
-    for _, weapon in ipairs(validData) do
-        if type(weapon.Components) ~= "table" or next(weapon.Components) == nil then
-            weapon.Components = {}
-        end
+    if json.encode(validData.Components) == '[]' then
+        validData.Components = json.decode('{}')
+        Valid = json.encode(validData)
     end
 
-    SetResourceKvp(string.format('vmenu_string_saved_weapon_loadout_%s', newName), json.encode(validData))
+    SetResourceKvp(string.format('vmenu_string_saved_weapon_loadout_%s', newName), Valid)
 
     Config.Notify("vMenu", "Weapon loadout has been successfully loaded!", "success", 6500)
 
