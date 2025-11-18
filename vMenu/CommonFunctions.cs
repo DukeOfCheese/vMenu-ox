@@ -45,6 +45,10 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].loadSharedVehicle();
         }
+        public async Task<bool> LoadSharedLoadout()
+        {
+            return await Exports["vMenu"].loadSharedLoadout();
+        }
         public async Task<bool> GetUserConfirmation(string windowTitle, string description)
         {
             return await Exports["vMenu"].getUserConfirmation(windowTitle, description);
@@ -1938,6 +1942,11 @@ namespace vMenuClient
         {
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.LoadSharedVehicle();
+        }
+        public static async Task<bool> LoadSharedLoadout()
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.LoadSharedLoadout();
         }
         public static async Task<bool> GetUserConfirmation(string windowTitle, string description)
         {
