@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CitizenFX.Core;
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using static CitizenFX.Core.Native.API;
 using static vMenuClient.CommonFunctions;
@@ -14,6 +15,7 @@ namespace vMenuClient.data
     {
         public uint Hash;
         public string Name;
+        [Newtonsoft.Json.JsonConverter(typeof(DictionaryConverter))]
         public Dictionary<string, uint> Components;
         public Permission Perm;
         public string SpawnName;
@@ -53,6 +55,41 @@ namespace vMenuClient.data
             {
                 var stats = new Game.WeaponHudStats(); Game.GetWeaponHudStats(Hash, ref stats); return stats.hudSpeed;
             }
+        }
+    }
+
+    public class DictionaryConverter : JsonConverter<Dictionary<string, uint>>
+    {
+        public override Dictionary<string, uint> ReadJson(JsonReader reader, System.Type objectType, Dictionary<string, uint> existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            var token = JToken.Load(reader);
+            
+            if (token.Type == JTokenType.Object)
+            {
+                return token.ToObject<Dictionary<string, uint>>();
+            }
+            
+            if (token.Type == JTokenType.Array)
+            {
+                return new Dictionary<string, uint>();
+            }
+            
+            if (token.Type == JTokenType.Null)
+            {
+                return new Dictionary<string, uint>();
+            }
+            
+            return new Dictionary<string, uint>();
+        }
+
+        public override void WriteJson(JsonWriter writer, Dictionary<string, uint> value, JsonSerializer serializer)
+        {
+            var obj = new JObject();
+            foreach (var kvp in value)
+            {
+                obj[kvp.Key] = kvp.Value;
+            }
+            obj.WriteTo(writer);
         }
     }
 
