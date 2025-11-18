@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 using CitizenFX.Core;
 
@@ -37,7 +38,30 @@ namespace vMenuClient.menus
                 {
                     break;
                 }
-                saves.Add(kvp, JsonConvert.DeserializeObject<List<ValidWeapon>>(GetResourceKvpString(kvp)));
+                try
+                {
+                    var jsonString = GetResourceKvpString(kvp);
+                    if (!string.IsNullOrEmpty(jsonString))
+                    {
+                        var settings = new JsonSerializerSettings
+                        {
+                            MissingMemberHandling = MissingMemberHandling.Ignore,
+                            Error = (sender, args) =>
+                            {
+                                args.ErrorContext.Handled = true;
+                            }
+                        };
+                        var weapons = JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, settings);
+                        if (weapons != null)
+                        {
+                            saves.Add(kvp, weapons);
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    CitizenFX.Core.Debug.WriteLine($"[vMenu] Error deserializing weapon loadout '{kvp}': {ex.Message}");
+                }
             }
             EndFindKvp(handle);
             return saves;
@@ -73,7 +97,34 @@ namespace vMenuClient.menus
 
             foreach (var save in saves)
             {
-                SavedWeapons.Add(save, JsonConvert.DeserializeObject<List<ValidWeapon>>(GetResourceKvpString(save)));
+                try
+                {
+                    var jsonString = GetResourceKvpString(save);
+                    if (!string.IsNullOrEmpty(jsonString))
+                    {
+                        var settings = new JsonSerializerSettings
+                        {
+                            MissingMemberHandling = MissingMemberHandling.Ignore,
+                            Error = (sender, args) =>
+                            {
+                                args.ErrorContext.Handled = true;
+                            }
+                        };
+                        var weapons = JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, settings);
+                        if (weapons != null)
+                        {
+                            SavedWeapons.Add(save, weapons);
+                        }
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    CitizenFX.Core.Debug.WriteLine($"[vMenu] Error deserializing weapon loadout '{save}': {ex.Message}");
+                }
+                catch (System.Exception ex)
+                {
+                    CitizenFX.Core.Debug.WriteLine($"[vMenu] Unexpected error deserializing weapon loadout '{save}': {ex.Message}");
+                }
             }
 
             return SavedWeapons;
