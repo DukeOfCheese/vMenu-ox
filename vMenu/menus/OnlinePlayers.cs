@@ -133,7 +133,7 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        Notify.Error("You can't send a private message if you have private messages disabled yourself. Enable them in the Misc Settings menu and try again.");
+                        Notify.Error("You cannot send a private message if you have private messages disabled yourself. Enable them in the Misc Settings menu and try again.");
                     }
 
                 }
@@ -146,7 +146,7 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        Notify.Error("You can not teleport to yourself!");
+                        Notify.Error("You cannot teleport to yourself!");
                     }
                 }
                 // summon button
@@ -158,7 +158,7 @@ namespace vMenuClient.menus
                     }
                     else
                     {
-                        Notify.Error("You can't summon yourself.");
+                        Notify.Error("You cannot summon yourself.");
                     }
                 }
                 // spectating
@@ -246,7 +246,7 @@ namespace vMenuClient.menus
                         }
                         else
                         {
-                            Notify.Error("You can not set a waypoint to yourself.");
+                            Notify.Error("You cannot set a waypoint to yourself.");
                         }
                     }
                 }
