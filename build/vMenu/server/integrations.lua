@@ -41,3 +41,23 @@ end)
 RegisterNetEvent("vMenu:RequestBanList", function()
     TriggerEvent("vMenu:Internal:RequestBanList", source)
 end)
+
+-- Refreshes Show Player Names
+Citizen.CreateThread(function()
+    while true do
+        local players = GetPlayers()
+        local cache = {}
+
+        for _, id in ipairs(players) do
+            cache[id] = {
+                -- Parse EXACTLY what you want to show as the name (incl. staff ranks etc.)
+                name=string.format("%s [%d]", GetPlayerName(id) or "Unknown", id),
+                -- https://docs.fivem.net/docs/game-references/hud-colors/
+                colour=18
+            }
+        end
+
+        TriggerClientEvent('vMenu:SyncOverheadNames', -1, cache)
+        Citizen.Wait(1000)
+    end
+end)
