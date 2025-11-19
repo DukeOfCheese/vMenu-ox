@@ -2407,6 +2407,16 @@ namespace vMenuClient
                             if (closeEnough && gamerTags.ContainsKey(id))
                             {
                                 SetMpGamerTagVisibility(gamerTags[id], 2, true); // healthArmor
+                                SetMpGamerTagColour(gamerTags[id], 0, overheadColour);
+                                SetMpGamerTagVisibility(gamerTags[id], 2, true);
+                                if (NetworkIsPlayerTalking(p.Handle))
+                                {
+                                    SetMpGamerTagVisibility(gamerTags[id], 4, true);
+                                }
+                                else
+                                {
+                                    SetMpGamerTagVisibility(gamerTags[id], 4, false);
+                                };
                                 if (p.WantedLevel > 0)
                                 {
                                     SetMpGamerTagVisibility(gamerTags[id], 7, true); // wantedStars
