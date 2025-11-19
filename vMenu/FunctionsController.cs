@@ -60,6 +60,42 @@ namespace vMenuClient
         private List<Prop> props = new();
         private List<Vehicle> vehicles = new();
         private List<Ped> peds = new();
+        private readonly Dictionary<int, string> overheadNamesCache = new();
+        private readonly Dictionary<int, int> overheadColourCache = new();
+
+        [EventHandler("vMenu:SyncOverheadNames")]
+        private void SyncOverheadNames(dynamic cacheObj)
+        {
+            overheadNamesCache.Clear();
+            overheadColourCache.Clear();
+
+            var dict = cacheObj as IDictionary<string, object>;
+            if (dict == null) return;
+
+            foreach (var kvp in dict)
+            {
+                if (!int.TryParse(kvp.Key, out int playerId))
+                    continue;
+
+                var entry = kvp.Value as IDictionary<string, object>;
+                if (entry == null)
+                    continue;
+
+                if (entry.TryGetValue("name", out var nameObj))
+                {
+                    overheadNamesCache[playerId] = nameObj?.ToString() ?? $"Player [{playerId}]";
+                }
+
+                if (entry.TryGetValue("colour", out var colourObj))
+                {
+                    overheadColourCache[playerId] = Convert.ToInt32(colourObj);
+                }
+                else
+                {
+                    overheadColourCache[playerId] = 0; // default colour
+                }
+            }
+        }
 
         public FunctionsController() { }
 
@@ -2299,7 +2335,7 @@ namespace vMenuClient
         #endregion
 
         #region player overhead names
-        private readonly Dictionary<Player, int> gamerTags = new();
+        Dictionary<int, int> gamerTags = new();
 
         private readonly float playerNamesDistance = GetSettingsFloat(Setting.vmenu_player_names_distance) > 10f ? GetSettingsFloat(Setting.vmenu_player_names_distance) : 500f;
 
@@ -2317,47 +2353,68 @@ namespace vMenuClient
                 var enabled = MainMenu.MiscSettingsMenu.MiscShowOverheadNames;
                 if (!enabled)
                 {
-                    foreach (var gamerTag in gamerTags)
+                    foreach (var tag in gamerTags.Values)
                     {
-                        RemoveMpGamerTag(gamerTag.Value);
+                        RemoveMpGamerTag(tag);
                     }
                     gamerTags.Clear();
+                    return;
                 }
                 else
                 {
                     foreach (var p in Players)
                     {
+                        int id = p.ServerId;
                         if (p != Game.Player)
                         {
+                            string overheadName = overheadNamesCache.ContainsKey(id) 
+                                ? overheadNamesCache[id] 
+                                : $"{p.Name} [{id}]";
+
+                            int overheadColour = overheadColourCache.ContainsKey(id)
+                                ? overheadColourCache[id]
+                                : 0;
+                            
                             var dist = p.Character.Position.DistanceToSquared(Game.PlayerPed.Position);
                             var closeEnough = dist < playerNamesDistance;
-                            if (gamerTags.ContainsKey(p))
+                            if (gamerTags.ContainsKey(id))
                             {
                                 if (!closeEnough)
                                 {
-                                    RemoveMpGamerTag(gamerTags[p]);
-                                    gamerTags.Remove(p);
+                                    RemoveMpGamerTag(gamerTags[id]);
+                                    gamerTags.Remove(id);
+                                    continue;
                                 }
                                 else
                                 {
-                                    gamerTags[p] = CreateMpGamerTag(p.Character.Handle, p.Name + $" [{p.ServerId}]", false, false, "", 0);
+                                    SetMpGamerTagName(gamerTags[id], overheadName);
+                                    SetMpGamerTagColour(gamerTags[id], 0, overheadColour);
+                                    SetMpGamerTagVisibility(gamerTags[id], 2, true);
+                                    if (NetworkIsPlayerTalking(p.Handle))
+                                    {
+                                        SetMpGamerTagVisibility(gamerTags[id], 4, true);
+                                    }
+                                    else
+                                    {
+                                        SetMpGamerTagVisibility(gamerTags[id], 4, false);
+                                    };
                                 }
                             }
                             else if (closeEnough)
                             {
-                                gamerTags.Add(p, CreateMpGamerTag(p.Character.Handle, p.Name + $" [{p.ServerId}]", false, false, "", 0));
+                                gamerTags.Add(id, CreateMpGamerTag(p.Character.Handle, overheadName, false, false, "", 0));
                             }
-                            if (closeEnough && gamerTags.ContainsKey(p))
+                            if (closeEnough && gamerTags.ContainsKey(id))
                             {
-                                SetMpGamerTagVisibility(gamerTags[p], 2, true); // healthArmor
+                                SetMpGamerTagVisibility(gamerTags[id], 2, true); // healthArmor
                                 if (p.WantedLevel > 0)
                                 {
-                                    SetMpGamerTagVisibility(gamerTags[p], 7, true); // wantedStars
-                                    SetMpGamerTagWantedLevel(gamerTags[p], GetPlayerWantedLevel(p.Handle));
+                                    SetMpGamerTagVisibility(gamerTags[id], 7, true); // wantedStars
+                                    SetMpGamerTagWantedLevel(gamerTags[id], GetPlayerWantedLevel(p.Handle));
                                 }
                                 else
                                 {
-                                    SetMpGamerTagVisibility(gamerTags[p], 7, false); // wantedStars
+                                    SetMpGamerTagVisibility(gamerTags[id], 7, false); // wantedStars
                                 }
                             }
                         }
