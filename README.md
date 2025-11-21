@@ -139,9 +139,9 @@ end)
 - [x] Add an event that is triggered when infinite fuel is enabled so developers can easily integrate with scripts other than FRFUEL
 - [ ] Modify weapon stats (both on weapon spawn and dynamically)
 - [x] Ability to create weapon loadout codes
-- [ ] Update Voice Chat menu to use pma-voice instead
+- [x] ~~Update Voice Chat menu to use pma-voice instead~~ Removing vMenu integrated voice chat
 - [ ] Searchable menus (incl. convar to enable / disable)
-- [ ] Convert show player names to LUA function to allow for easier developer integration
+- [x] Convert show player names to LUA function to allow for easier developer integration
 - [x] Fix non-custom notifications
 - [ ] Add option for brake multiplier
 

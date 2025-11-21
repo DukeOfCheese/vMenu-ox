@@ -365,15 +365,6 @@ namespace vMenuShared
             MSEntitySpawner,
             MSDevTools,
             #endregion
-
-            // Voice Chat
-            #region voice chat
-            VCMenu,
-            VCAll,
-            VCEnable,
-            VCShowSpeaker,
-            VCStaffChannel,
-            #endregion
         };
 
         public static Dictionary<Permission, bool> Permissions { get; private set; } = new Dictionary<Permission, bool>();
@@ -651,9 +642,6 @@ namespace vMenuShared
                     break;
                 case "MS":
                     prefix += "MiscSettings";
-                    break;
-                case "VC":
-                    prefix += "VoiceChat";
                     break;
                 default:
                     return prefix + name;

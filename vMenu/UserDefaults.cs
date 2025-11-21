@@ -353,32 +353,6 @@ namespace vMenuClient
         #endregion
         #endregion
 
-        #region Voice Chat Settings
-        public static bool VoiceChatEnabled
-        {
-            get { return GetSettingsBool("voiceChatEnabled"); }
-            set { SetSavedSettingsBool("voiceChatEnabled", value); }
-        }
-
-        public static float VoiceChatProximity
-        {
-            get { return GetSettingsFloat("voiceChatProximity"); }
-            set { SetSavedSettingsFloat("voiceChatProximity", value); }
-        }
-
-        public static bool ShowCurrentSpeaker
-        {
-            get { return GetSettingsBool("voiceChatShowSpeaker"); }
-            set { SetSavedSettingsBool("voiceChatShowSpeaker", value); }
-        }
-
-        public static bool ShowVoiceStatus
-        {
-            get { return GetSettingsBool("voiceChatShowVoiceStatus"); }
-            set { SetSavedSettingsBool("voiceChatShowVoiceStatus", value); }
-        }
-        #endregion
-
         #region Player Appearance
         public static int PAClothingAnimationType
         {
@@ -428,8 +402,6 @@ namespace vMenuClient
                     "vehicleSpawnerSpawnInside" or
                     "vehicleSpawnerReplacePrevious" or
                     "neverWanted" or
-                    "voiceChatShowSpeaker" or
-                    "voiceChatEnabled" or
                     "autoEquipParachuteWhenInPlane" or
                     "miscRestorePlayerAppearance" or
                     "miscRestorePlayerWeapons" or
@@ -663,21 +635,6 @@ namespace vMenuClient
 
                 VehicleSpawnerSpawnInside = MainMenu.VehicleSpawnerMenu.SpawnInVehicle;
                 prefs.Add("vehicleSpawnerSpawnInside", VehicleSpawnerSpawnInside);
-            }
-
-            if (MainMenu.VoiceChatSettingsMenu != null)
-            {
-                VoiceChatEnabled = MainMenu.VoiceChatSettingsMenu.EnableVoicechat;
-                prefs.Add("voiceChatEnabled", VoiceChatEnabled);
-
-                VoiceChatProximity = MainMenu.VoiceChatSettingsMenu.currentProximity;
-                prefs.Add("voiceChatProximity", VoiceChatProximity);
-
-                ShowCurrentSpeaker = MainMenu.VoiceChatSettingsMenu.ShowCurrentSpeaker;
-                prefs.Add("voiceChatShowSpeaker", ShowCurrentSpeaker);
-
-                ShowVoiceStatus = MainMenu.VoiceChatSettingsMenu.ShowVoiceStatus;
-                prefs.Add("voiceChatShowVoiceStatus", ShowVoiceStatus);
             }
 
             if (MainMenu.WeaponOptionsMenu != null)
