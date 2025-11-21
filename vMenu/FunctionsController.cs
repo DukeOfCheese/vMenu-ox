@@ -40,11 +40,6 @@ namespace vMenuClient
         private string headingDisplay = "";
 
         private readonly List<int> waypointPlayerIdsToRemove = new();
-        private int voiceTimer = 0;
-        private int voiceCycle = 1;
-        private const float voiceIndicatorWidth = 0.02f;
-        private const float voiceIndicatorHeight = 0.041f;
-        private const float voiceIndicatorMutedWidth = voiceIndicatorWidth + 0.0021f;
         public const string clothingAnimationDecor = "clothing_animation_type";
         private bool clothingAnimationReverse = false;
         private float clothingOpacity = 1f;
@@ -147,10 +142,6 @@ namespace vMenuClient
                 {
                     Tick += VehicleHighbeamFlashTick;
                 }
-            }
-            if (IsAllowed(Permission.VCMenu))
-            {
-                Tick += VoiceChat;
             }
             if (IsAllowed(Permission.WPMenu))
             {
@@ -1332,90 +1323,6 @@ namespace vMenuClient
             await Task.FromResult(0);
         }
         #endregion
-        #endregion
-
-        #region Voice Chat Tasks
-        /// <summary>
-        /// Run all voice chat options tasks
-        /// </summary>
-        /// <returns></returns>
-        private async Task VoiceChat()
-        {
-            if (MainMenu.VoiceChatSettingsMenu.EnableVoicechat && IsAllowed(Permission.VCEnable))
-            {
-                NetworkSetVoiceActive(true);
-                NetworkSetTalkerProximity(MainMenu.VoiceChatSettingsMenu.currentProximity);
-                var channel = MainMenu.VoiceChatSettingsMenu.channels.IndexOf(MainMenu.VoiceChatSettingsMenu.currentChannel);
-                if (channel < 1)
-                {
-                    NetworkClearVoiceChannel();
-                }
-                else
-                {
-                    NetworkSetVoiceChannel(channel);
-                }
-                if (MainMenu.VoiceChatSettingsMenu.ShowCurrentSpeaker && IsAllowed(Permission.VCShowSpeaker))
-                {
-                    var pl = Players;
-                    var i = 1;
-                    var currentlyTalking = false;
-                    foreach (var p in pl)
-                    {
-                        if (NetworkIsPlayerTalking(p.Handle))
-                        {
-                            if (!currentlyTalking)
-                            {
-                                DrawTextOnScreen("~s~Currently Talking", 0.5f, 0.00f, 0.5f, Alignment.Center, 6);
-                                currentlyTalking = true;
-                            }
-                            DrawTextOnScreen($"~b~{p.Name}", 0.5f, 0.00f + (i * 0.03f), 0.5f, Alignment.Center, 6);
-                            i++;
-                        }
-                    }
-                }
-                if (MainMenu.VoiceChatSettingsMenu.ShowVoiceStatus)
-                {
-
-                    if (GetGameTimer() - voiceTimer > 150)
-                    {
-                        voiceTimer = GetGameTimer();
-                        voiceCycle++;
-                        if (voiceCycle > 3)
-                        {
-                            voiceCycle = 1;
-                        }
-                    }
-                    if (!HasStreamedTextureDictLoaded("mpleaderboard"))
-                    {
-                        RequestStreamedTextureDict("mpleaderboard", false);
-                        while (!HasStreamedTextureDictLoaded("mpleaderboard"))
-                        {
-                            await Delay(0);
-                        }
-                    }
-                    if (NetworkIsPlayerTalking(Game.Player.Handle))
-                    {
-                        DrawSprite("mpleaderboard", $"leaderboard_audio_{voiceCycle}", 0.008f, 0.985f, voiceIndicatorWidth, voiceIndicatorHeight, 0f, 255, 55, 0, 255);
-                    }
-                    else
-                    {
-                        DrawSprite("mpleaderboard", "leaderboard_audio_mute", 0.008f, 0.985f, voiceIndicatorMutedWidth, voiceIndicatorHeight, 0f, 255, 55, 0, 255);
-                    }
-                }
-                else
-                {
-                    if (HasStreamedTextureDictLoaded("mpleaderboard"))
-                    {
-                        SetStreamedTextureDictAsNoLongerNeeded("mpleaderboard");
-                    }
-                }
-            }
-            else
-            {
-                NetworkSetVoiceActive(false);
-                NetworkClearVoiceChannel();
-            }
-        }
         #endregion
 
         #region Update Time Options Menu (current time display)

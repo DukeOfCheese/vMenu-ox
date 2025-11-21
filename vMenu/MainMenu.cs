@@ -46,7 +46,6 @@ namespace vMenuClient
         public static WeaponLoadouts WeaponLoadoutsMenu { get; private set; }
         public static Recording RecordingMenu { get; private set; }
         public static MiscSettings MiscSettingsMenu { get; private set; }
-        public static VoiceChat VoiceChatSettingsMenu { get; private set; }
         public static About AboutMenu { get; private set; }
         public static bool NoClipEnabled { get { return NoClip.IsNoclipActive(); } set { NoClip.SetNoclipActive(value); } }
         public static IPlayerList PlayersList;
@@ -246,11 +245,7 @@ namespace vMenuClient
                                 var type = 0; // 0 = string, 1 = float, 2 = int.
                                 if (kvp.StartsWith("settings_"))
                                 {
-                                    if (kvp == "settings_voiceChatProximity") // float
-                                    {
-                                        type = 1;
-                                    }
-                                    else if (kvp == "settings_clothingAnimationType") // int
+                                    if (kvp == "settings_clothingAnimationType") // int
                                     {
                                         type = 2;
                                     }
@@ -807,18 +802,6 @@ namespace vMenuClient
                     Label = "→→→"
                 };
                 AddMenu(PlayerSubmenu, menu, button);
-            }
-
-            // Add Voice Chat Menu.
-            if (IsAllowed(Permission.VCMenu))
-            {
-                VoiceChatSettingsMenu = new VoiceChat();
-                var menu = VoiceChatSettingsMenu.GetMenu();
-                var button = new MenuItem("Voice Chat Settings", "Change Voice Chat options here.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(Menu, menu, button);
             }
 
             {
