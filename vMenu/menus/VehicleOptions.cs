@@ -740,19 +740,35 @@ namespace vMenuClient.menus
                 else if (item == vehicleSetAnchor)
                 {
                     AnchorBoat = _checked;
-                    if (vehicle != null && vehicle.Exists() && vehicle.Model.IsBoat && CanAnchorBoatHere(vehicle.Handle))
+                    if (vehicle != null && vehicle.Exists())
                     {
-                        if (MainMenu.VehicleOptionsMenu.AnchorBoat)
+                        if (vehicle.Model.IsBoat)
                         {
-                            SetBoatAnchor(vehicle.Handle, true);
-                            SetBoatFrozenWhenAnchored(vehicle.Handle, true);
-                            SetForcedBoatLocationWhenAnchored(vehicle.Handle, true);
+                            if (CanAnchorBoatHere(vehicle.Handle))
+                            {
+                                if (MainMenu.VehicleOptionsMenu.AnchorBoat)
+                                {
+                                    SetBoatAnchor(vehicle.Handle, true);
+                                    SetBoatFrozenWhenAnchored(vehicle.Handle, true);
+                                    SetForcedBoatLocationWhenAnchored(vehicle.Handle, true);
+                                }
+                                else
+                                {
+                                    SetBoatAnchor(vehicle.Handle, false);
+                                    SetBoatFrozenWhenAnchored(vehicle.Handle, false);
+                                    SetForcedBoatLocationWhenAnchored(vehicle.Handle, false);
+                                }
+                            }
+                            else
+                            {
+                                vehicleSetAnchor.Checked = false;
+                                Notify.Error("You cannot anchor your boat here!");
+                            }
                         }
                         else
                         {
-                            SetBoatAnchor(vehicle.Handle, false);
-                            SetBoatFrozenWhenAnchored(vehicle.Handle, false);
-                            SetForcedBoatLocationWhenAnchored(vehicle.Handle, false);
+                            vehicleSetAnchor.Checked = false;
+                            Notify.Error("You are not currently in a boat!");
                         }
                     }
                 }
