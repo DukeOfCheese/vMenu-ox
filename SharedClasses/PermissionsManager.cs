@@ -77,6 +77,7 @@ namespace vMenuShared
             VOWash,
             VOEngine,
             VODestroyEngine,
+            VOFixEngine,
             VOBikeSeatbelt,
             VOSpeedLimiter,
             VOChangePlate,

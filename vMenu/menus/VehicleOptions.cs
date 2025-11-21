@@ -168,6 +168,7 @@ namespace vMenuClient.menus
             var vehicleTiresList = new MenuListItem("Fix / Destroy Tires", tiresList, 0, "Fix or destroy a specific vehicle tire, or all of them at once. Note, not all indexes are valid for all vehicles, some might not do anything on certain vehicles.");
 
             var destroyEngine = new MenuItem("Destroy Engine", "Destroys your vehicle's engine.");
+            var fixEngine = new MenuItem("Fix Engine", "Fixes your vehicle's engine.");
 
             var deleteBtn = new MenuItem("~r~Delete Vehicle", "Delete your vehicle, this ~r~can NOT be undone~s~!")
             {
@@ -410,6 +411,10 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(destroyEngine);
             }
+            if (IsAllowed(Permission.VOFixEngine))
+            {
+                menu.AddMenuItem(fixEngine);
+            }
             if (IsAllowed(Permission.VOFreeze)) // FREEZE VEHICLE
             {
                 menu.AddMenuItem(vehicleFreeze);
@@ -575,6 +580,10 @@ namespace vMenuClient.menus
                         else if (item == destroyEngine)
                         {
                             SetVehicleEngineHealth(vehicle.Handle, -4000);
+                        }
+                        else if (item == fixEngine)
+                        {
+                            SetVehicleEngineHealth(vehicle.Handle, 1000);
                         }
                     }
 
