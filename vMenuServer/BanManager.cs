@@ -172,18 +172,20 @@ namespace vMenuServer
                 return;
             }
 
-            // Perm banned.
+            // Build ban message
+            string banMessage;
             if (record.bannedUntil.Year >= 3000)
             {
-                DropPlayer(player.Handle, $"You have been permanently banned from this server. Banned by: {record.bannedBy}. Ban reason: {record.banReason}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
-                CancelEvent();
+                banMessage = $"You have been permanently banned from this server. Banned by: {record.bannedBy}. Ban reason: {record.banReason}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.";
             }
-            // Temp banned
             else
             {
-                DropPlayer(player.Handle, "You are banned from this server. Ban time remaining: {GetRemainingTimeMessage(record.bannedUntil.Subtract(DateTime.Now))}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
-                CancelEvent();
+                banMessage = $"You are banned from this server. Ban time remaining: {GetRemainingTimeMessage(record.bannedUntil.Subtract(DateTime.Now))}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.";
             }
+            
+            // Trigger Lua event to handle deferrals rejection
+            TriggerEvent("vMenu:Internal:RejectConnection", playerId, banMessage);
+            CancelEvent();
         }
 
         /// <summary>

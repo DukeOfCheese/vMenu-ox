@@ -25,8 +25,29 @@ RegisterNetEvent("vMenu:PermBanPlayer", function(targetPlayer, banReason)
     TriggerEvent("vMenu:Internal:PermBanPlayer", source, targetPlayer, banReason)
 end)
 
+-- Store deferrals for each connecting player
+local connectingDeferrals = {}
+
 RegisterNetEvent("playerConnecting", function(playerName, setKickReason, deferrals)
-    TriggerEvent("vMenu:Internal:playerConnecting", source, playerName)
+    local playerId = source
+    connectingDeferrals[playerId] = deferrals
+    
+    -- Trigger C# ban check
+    TriggerEvent("vMenu:Internal:playerConnecting", playerId, playerName)
+    
+    -- Clean up deferrals after a timeout (in case player connects successfully)
+    SetTimeout(30000, function()
+        connectingDeferrals[playerId] = nil
+    end)
+end)
+
+-- Handle ban rejection from C#
+AddEventHandler("vMenu:Internal:RejectConnection", function(playerId, banMessage)
+    local deferrals = connectingDeferrals[playerId]
+    if deferrals then
+        deferrals.done(banMessage)
+        connectingDeferrals[playerId] = nil
+    end
 end)
 
 ---@class RequestPlayerUnban
