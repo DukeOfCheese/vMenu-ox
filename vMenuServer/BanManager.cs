@@ -51,7 +51,7 @@ namespace vMenuServer
         {
             EventHandlers.Add("vMenu:Internal:TempBanPlayer", new Action<int, int, double, string>(BanPlayer));
             EventHandlers.Add("vMenu:Internal:PermBanPlayer", new Action<int, int, string>(BanPlayer));
-            EventHandlers.Add("vMenu:Internal:playerConnecting", new Action<int, string, CallbackDelegate>(CheckForBans));
+            EventHandlers.Add("vMenu:Internal:playerConnecting", new Action<int, string>(CheckForBans));
             EventHandlers.Add("vMenu:Internal:RequestPlayerUnban", new Action<int, string>(RemoveBanRecord));
             EventHandlers.Add("vMenu:Internal:RequestBanList", new Action<int>(SendBanList));
         }
@@ -123,15 +123,22 @@ namespace vMenuServer
         /// <param name="source"></param>
         /// <param name="playerName"></param>
         /// <param name="kickCallback"></param>
-        private void CheckForBans(int playerId, string playerName, CallbackDelegate kickCallback)
+        private void CheckForBans(int playerId, string playerName)
         {
-            Player source = null;
-
-            if (playerId != 0)
+            Player player = null;
+            
+            if (playerId > 0)
             {
-                source = Players[playerId];
+                try
+                {
+                    player = Players[playerId];
+                }
+                catch
+                {
+                    // Player might not be fully connected yet
+                }
             }
-
+            
             // Take care of expired bans.
             var oldBans = GetBanList().Where(banRecord =>
             {
@@ -152,9 +159,10 @@ namespace vMenuServer
             // Find any bans with matching player identifiers.
             var record = records.Find(br =>
             {
+                if (player == null) return false;
                 return br.identifiers.Any(identifier =>
                 {
-                    return source.Identifiers.Contains(identifier);
+                    return player.Identifiers.Contains(identifier);
                 });
             });
 
@@ -167,13 +175,13 @@ namespace vMenuServer
             // Perm banned.
             if (record.bannedUntil.Year >= 3000)
             {
-                kickCallback($"You have been permanently banned from this server. Banned by: {record.bannedBy}. Ban reason: {record.banReason}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
+                DropPlayer(player.Handle, $"You have been permanently banned from this server. Banned by: {record.bannedBy}. Ban reason: {record.banReason}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
                 CancelEvent();
             }
             // Temp banned
             else
             {
-                kickCallback($"You are banned from this server. Ban time remaining: {GetRemainingTimeMessage(record.bannedUntil.Subtract(DateTime.Now))}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
+                DropPlayer(player.Handle, "You are banned from this server. Ban time remaining: {GetRemainingTimeMessage(record.bannedUntil.Subtract(DateTime.Now))}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.");
                 CancelEvent();
             }
         }

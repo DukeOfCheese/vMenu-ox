@@ -26,7 +26,7 @@ RegisterNetEvent("vMenu:PermBanPlayer", function(targetPlayer, banReason)
 end)
 
 RegisterNetEvent("playerConnecting", function(playerName, setKickReason, deferrals)
-    TriggerEvent("vMenu:Internal:playerConnecting", playerName, setKickReason, deferrals)
+    TriggerEvent("vMenu:Internal:playerConnecting", source, playerName)
 end)
 
 ---@class RequestPlayerUnban
