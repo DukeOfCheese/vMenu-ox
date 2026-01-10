@@ -30,9 +30,10 @@
   },
   "engine_sounds": {
     "Adder": "adder",
-    "Baller": "baller"
+    "Baller": "baller",
+    "Dodge Hemi Hellcat": "dodgehemihellcat"
   },
   "siren_sounds": {
-    "Test Siren": "123"
+    "Firetruck": "firetruk"
   }
 }

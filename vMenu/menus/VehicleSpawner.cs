@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 
 using CitizenFX.Core;
 
@@ -35,10 +35,10 @@ namespace vMenuClient.menus
 
             #region vehicle classes submenus
             // Loop through all the vehicle classes.
-            RefreshSpawnableVehicles(menu, SearchTerm);
+            RefreshSpawnableVehicles(menu);
         }
 
-        private void RefreshSpawnableVehicles(Menu menu, string searchTerm)
+        private void RefreshSpawnableVehicles(Menu menu)
         {
             menu.ClearMenuItems(true);
             // These are the max speed, acceleration, braking and traction values per vehicle class.
@@ -361,7 +361,7 @@ namespace vMenuClient.menus
                 else if (item == searchButton)
                 {
                     SearchTerm = await GetUserInput(windowTitle: "Enter Search Term (Leave BLANK to reset)", maxInputLength: 100);
-                    RefreshSpawnableVehicles(menu, SearchTerm);
+                    RefreshSpawnableVehicles(menu);
                     SearchTerm = "";
                 }
             };
