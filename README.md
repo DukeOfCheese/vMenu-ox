@@ -130,7 +130,7 @@ end)
 - [x] Ratelimit on close all/open all doors (exploit to make cars fly)
 - [x] Configurable vehicle spawn cooldown
 - [x] ~~Take weapon spawning functionality out of c# and add export for LUA so that devs can easily integrate ox_inventory~~
-- [ ] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
+- [x] Export to add weapons + attachments into vmenu categories without them having to rebuild [REMOVE ADDON WEAPON SUBMENU / CODE] (maybe this gets extended to peds/vehicles?)
 - [x] Add a export before weapon/vehicle spawning/teleports such as isRestrained() so developers can easily block actions and add their own cuff/death scripts etc
 - [x] ~~Separate branch (maybe?) for outfit/weapon/vehicle code system~~ Planned to go ahead in main fork and add dependency of oxmysql as most servers use it. Maybe ill just do a resource check so if the resource isnt installed the buttons just error and say plugin not installed or smth?
 - [x] Update weapon attachment right button if it is equipped (checkmark)
@@ -143,7 +143,8 @@ end)
 - [ ] Searchable menus (incl. convar to enable / disable)
 - [x] Convert show player names to LUA function to allow for easier developer integration
 - [x] Fix non-custom notifications
-- [ ] Add option for brake multiplier
+- [ ] Incorporate engine / siren sound modification to VO
+- [ ] Allow live handling editing for vehicles
 
 --------
 

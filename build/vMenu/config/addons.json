@@ -1,0 +1,22 @@
+{
+  "vehicles": [
+    "redeye"
+  ],
+  "peds": [
+    "addonpedname1",
+    "addonpedname2"
+  ],
+  "weapons": {
+    "MK18MD1": "WEAPON_MK18MD1"
+  },
+  "weapon_components": {
+    "Scope": "COMPONENT_AT_SCOPE_MK18MD"
+  },
+  "engine_sounds": {
+    "Adder": "adder",
+    "Baller": "baller"
+  },
+  "siren_sounds": {
+    "Test Siren": "123"
+  }
+}

@@ -1206,5 +1206,22 @@ namespace vMenuServer
             return Players[serverId];
         }
         #endregion
+    
+        #region Change Engine Sound
+        [EventHandler("vMenu:changeEngineSound")]
+        internal void ChangeEngineSound([FromSource] Player source, int vehicle, string engineSound)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.VOEngineSound, source) && (!PermissionsManager.IsAllowed(PermissionsManager.Permission.VOAll, source)))  
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            Vehicle veh = new Vehicle(NetworkGetEntityFromNetworkId(vehicle));
+            EnsureEntityStateBag(veh.Handle);
+
+            veh.State.Set("vMenu:engineSound", engineSound, true);
+        }
+        #endregion
     }
 }

@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 using CitizenFX.Core;
 
@@ -20,6 +22,22 @@ namespace vMenuClient
 {
     public class ExternalFunctions : BaseScript
     {
+        private static ExternalFunctions _instance;
+        
+        public ExternalFunctions()
+        {
+            _instance = this;
+        }
+        
+        // public static Dictionary<string, string> GetCustomWeapons()
+        // {
+        //     if (_instance != null)
+        //     {
+        //         return _instance.Exports["vMenu"].customWeapons() ?? new Dictionary<string, string>();
+        //     }
+        //     return new Dictionary<string, string>();
+        // }
+        
         public async Task<string> GetCustomInput(string windowTitle, string defaultText, int maxInputLength)
         {
             return await Exports["vMenu"].inputDialog(windowTitle, defaultText, maxInputLength);
@@ -53,6 +71,28 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].getUserConfirmation(windowTitle, description);
         }
+        
+        public List<string> LoadEngineSounds()
+        {
+            var sounds = Exports["vMenu"].LoadEngineSounds();
+            var soundList = new List<string>();
+            foreach (var sound in sounds)
+            {
+                soundList.Add(sound.ToString());
+            }
+            return soundList;
+        }
+
+        public List<string> LoadSirenSounds()
+        {
+            var sounds = Exports["vMenu"].LoadSirenSounds();
+            var soundList = new List<string>();
+            foreach (var sound in sounds)
+            {
+                soundList.Add(sound.ToString());
+            }
+            return soundList;
+        }
     }
 
         public static class CommonFunctions
@@ -68,6 +108,8 @@ namespace vMenuClient
 
         internal static bool DriveToWpTaskActive = false;
         internal static bool DriveWanderTaskActive = false;
+        public static List<string> EngineSounds = new List<string>();
+        public static List<string> SirenSounds = new List<string>();
         #endregion
 
         #region some misc functions copied from base script
@@ -1953,6 +1995,18 @@ namespace vMenuClient
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetUserConfirmation(windowTitle, description);
         }
+        public static List<string> GetEngineSounds()
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return ExternalFunctions.LoadEngineSounds();
+        }
+
+        public static List<string> GetSirenSounds()
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return ExternalFunctions.LoadSirenSounds();
+        }
+
         #endregion
 
         #region Set License Plate Text

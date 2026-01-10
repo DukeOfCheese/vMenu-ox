@@ -4,6 +4,9 @@ using System;
 
 using CitizenFX.Core;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using MenuAPI;
 
 using vMenuClient.data;
@@ -159,6 +162,21 @@ namespace vMenuClient.menus
             menu.AddMenuItem(spawnInVeh);
             menu.AddMenuItem(replacePrev);
             #endregion
+
+            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
+            var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
+
+            if (addons.ContainsKey("vehicles"))
+                {
+                    var vehiclesList = JArray.FromObject(addons["vehicles"])
+                            .ToObject<List<string>>();
+
+                    VehicleData.Vehicles.ProcessAddonVehicles(vehiclesList);
+                }
+            else
+            {
+                Debug.WriteLine("[VMENU] No vehicles in addons.json");
+            }
 
             for (var vehClass = 0; vehClass < 23; vehClass++)
             {

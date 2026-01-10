@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using CitizenFX.Core;
 
 using MenuAPI;
@@ -15,7 +18,7 @@ using static vMenuShared.PermissionsManager;
 
 namespace vMenuClient.menus
 {
-    public class VehicleOptions
+    public class VehicleOptions : BaseScript
     {
         #region Variables
         // Menu variable, will be defined in CreateMenu()
@@ -31,6 +34,8 @@ namespace vMenuClient.menus
         public Menu VehicleColorsMenu { get; private set; }
         public Menu DeleteConfirmMenu { get; private set; }
         public Menu VehicleUnderglowMenu { get; private set; }
+        public Menu VehicleEngineSoundMenu { get; private set; }
+        public Menu VehicleSirenSoundMenu { get; private set; }
 
         // Public variables (getters only), return the private variables.
         public bool VehicleGodMode { get; private set; } = UserDefaults.VehicleGodMode;
@@ -131,6 +136,14 @@ namespace vMenuClient.menus
             {
                 Label = "→→→"
             };
+            var engineSoundMenuBtn = new MenuItem("Vehicle Engine Sound", "Modify your vehicle's engine sound!")
+            {
+                Label = "→→→"
+            };
+            var sirenSoundMenuBtn = new MenuItem("Vehicle Siren Sound", "Modify your vehicle's siren sound!")
+            {
+                Label = "→→→"
+            };
             var vehicleInvisible = new MenuItem("Toggle Vehicle Visibility", "Makes your vehicle visible/invisible. ~r~Your vehicle will be made visible again as soon as you leave the vehicle. Otherwise you would not be able to get back in.");
             var flipVehicle = new MenuItem("Flip Vehicle", "Sets your current vehicle on all 4 wheels.");
             var vehicleAlarm = new MenuItem("Toggle Vehicle Alarm", "Starts/stops your vehicle's alarm.");
@@ -206,8 +219,6 @@ namespace vMenuClient.menus
             var torqueMultiplier = new MenuListItem("Set Engine Torque Multiplier", torqueMultiplierList, 0, "Set the engine torque multiplier.");
             var powerMultiplierList = new List<string> { "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256", "x512", "x1024" };
             var powerMultiplier = new MenuListItem("Set Engine Power Multiplier", powerMultiplierList, 0, "Set the engine power multiplier.");
-            var brakeMultiplierList = new List<string>() { "x2", "x4", "x8", "x16", "x32", "x64", "x128", "x256", "x512", "x1024" };
-            var brakeMultiplier = new MenuListItem("Set Brake Power Multiplier", brakeMultiplierList, 0, "Sets the brake multiplier.");
             var speedLimiterOptions = new List<string>() { "Set", "Reset", "Custom Speed Limit" };
             var speedLimiter = new MenuListItem("Speed Limiter", speedLimiterOptions, 0, "Set your vehicles max speed to your ~y~current speed~s~. Resetting your vehicles max speed will set the max speed of your current vehicle back to default. Only your current vehicle is affected by this option.");
             #endregion
@@ -242,6 +253,8 @@ namespace vMenuClient.menus
             VehicleColorsMenu = new Menu("Vehicle Colors", "Vehicle Colors");
             DeleteConfirmMenu = new Menu("Confirm Action", "Delete Vehicle, Are You Sure?");
             VehicleUnderglowMenu = new Menu("Vehicle Neon Kits", "Vehicle Neon Underglow Options");
+            VehicleEngineSoundMenu = new Menu("Engine Sounds", "Engine Sound Management");
+            VehicleSirenSoundMenu = new Menu("Siren Sound", "Siren Sound Management");
 
             MenuController.AddSubmenu(menu, VehicleModMenu);
             MenuController.AddSubmenu(menu, VehicleDoorsMenu);
@@ -251,6 +264,8 @@ namespace vMenuClient.menus
             MenuController.AddSubmenu(menu, VehicleColorsMenu);
             MenuController.AddSubmenu(menu, DeleteConfirmMenu);
             MenuController.AddSubmenu(menu, VehicleUnderglowMenu);
+            MenuController.AddSubmenu(menu, VehicleEngineSoundMenu);
+            MenuController.AddSubmenu(menu, VehicleSirenSoundMenu);
             #endregion
 
             #region Add items to the menu.
@@ -338,6 +353,14 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(componentsMenuBtn);
             }
+            if (IsAllowed(Permission.VOEngineSound))
+            {
+                menu.AddMenuItem(engineSoundMenuBtn);
+            }
+            if (IsAllowed(Permission.VOSirenSound))
+            {
+                menu.AddMenuItem(sirenSoundMenuBtn);
+            }
             if (IsAllowed(Permission.VOEngine)) // TOGGLE ENGINE ON/OFF
             {
                 menu.AddMenuItem(toggleEngine);
@@ -372,11 +395,6 @@ namespace vMenuClient.menus
             {
                 menu.AddMenuItem(powerEnabled); // POWER ENABLED
                 menu.AddMenuItem(powerMultiplier); // POWER LIST
-            }
-            if (IsAllowed(Permission.VOBrakeMultiplier))
-            {
-                menu.AddMenuItem(brakeEnabled);
-                menu.AddMenuItem(brakeMultiplier);
             }
             if (IsAllowed(Permission.VODisableTurbulence))
             {
@@ -497,6 +515,8 @@ namespace vMenuClient.menus
             MenuController.BindMenuItem(menu, VehicleDoorsMenu, doorsMenuBtn);
             MenuController.BindMenuItem(menu, VehicleWindowsMenu, windowsMenuBtn);
             MenuController.BindMenuItem(menu, VehicleComponentsMenu, componentsMenuBtn);
+            MenuController.BindMenuItem(menu, VehicleEngineSoundMenu, engineSoundMenuBtn);
+            MenuController.BindMenuItem(menu, VehicleSirenSoundMenu, sirenSoundMenuBtn);
             MenuController.BindMenuItem(menu, VehicleLiveriesMenu, liveriesMenuBtn);
             MenuController.BindMenuItem(menu, VehicleColorsMenu, colorsMenuBtn);
             MenuController.BindMenuItem(menu, DeleteConfirmMenu, deleteBtn);
@@ -645,53 +665,6 @@ namespace vMenuClient.menus
                         }
                     }
                 }
-                else if (item == brakeEnabled)
-                {
-                    VehicleBrakeMultiplier = _checked;
-                    var state = vehicle.State;
-                    if (_checked)
-                    {
-                        if (vehicle != null && vehicle.Exists())
-                        {
-                            float brakeForce = GetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeForce");
-                            if (state.Get("OriginalBrakeForce") != null)
-                            {
-                                float originalBrakeForce = (float) state["OriginalBrakeForce"];
-                                
-                                state["OriginalBrakeForce"] = null;
-                                
-                            };
-
-                            if (state.Get("OriginalBrakeBias") == null)
-                            {
-                                float originalBias = GetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeBiasFront");
-                                state.Set("OriginalBrakeBias", originalBias, false);
-                            };
-
-                            SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeForce", brakeForce * VehicleBrakeMultiplierAmount * 100);
-                            SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeBiasFront", 0.85f);
-                        }
-                    }
-                    else
-                    {
-                        if (vehicle != null && vehicle.Exists())
-                        {
-                            if (state.Get("OriginalBrakeForce") != null)
-                            {
-                                float originalBrakeForce = (float)state["OriginalBrakeForce"];
-                                SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeForce", originalBrakeForce);
-                                state["OriginalBrakeForce"] = null;
-                            }
-
-                            if (state.Get("OriginalBrakeBias") != null)
-                            {
-                                float originalBias = (float)state["OriginalBrakeBias"];
-                                SetVehicleHandlingFloat(vehicle.Handle, "CHandlingData", "fBrakeBiasFront", originalBias);
-                                state["OriginalBrakeBias"] = null;
-                            }
-                        }
-                    }
-                }
                 else if (item == vehicleEngineAO) // Leave Engine Running (vehicle always on) Toggled
                 {
                     VehicleEngineAlwaysOn = _checked;
@@ -827,32 +800,6 @@ namespace vMenuClient.menus
                         if (VehiclePowerMultiplier)
                         {
                             SetVehicleEnginePowerMultiplier(veh.Handle, VehiclePowerMultiplierAmount);
-                        }
-                    }
-                    else if (item == brakeMultiplier)
-                    {
-                        var value = brakeMultiplierList[newIndex].ToString().Replace("x", "");
-                        VehicleBrakeMultiplierAmount = float.Parse(value);
-
-                        if (veh != null && veh.Exists() && VehiclePowerMultiplier)
-                        {
-                            var state = veh.State;
-
-                            if (state.Get("OriginalBrakeForce") == null)
-                            {
-                                float originalBrake = GetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeForce");
-                                state.Set("OriginalBrakeForce", originalBrake, false);
-                            }
-
-                            if (state.Get("OriginalBrakeBias") == null)
-                            {
-                                float originalBias = GetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeBiasFront");
-                                state.Set("OriginalBrakeBias", originalBias, false);
-                            }
-
-                            float brakeForce = (float)state["OriginalBrakeForce"];
-                            SetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeForce", brakeForce * VehicleBrakeMultiplierAmount * 100);
-                            SetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fBrakeBiasFront", 0.85f);
                         }
                     }
                     else if (item == setLicensePlateType)
@@ -1790,6 +1737,118 @@ namespace vMenuClient.menus
                         menu.OpenMenu();
                     }
 
+                }
+            };
+            #endregion
+
+            #region Vehicle Engine Sound Submenu Stuff
+            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
+            var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
+            
+            List<string> soundNameList = new List<string>();
+            List<string> soundList = new List<string>();
+
+            if (addons.ContainsKey("engine_sounds"))
+            {
+                var soundDict = JObject.FromObject(addons["engine_sounds"])
+                        .ToObject<Dictionary<string, string>>();
+
+                foreach (var soundEntry in soundDict)
+                {
+                    soundNameList.Add(soundEntry.Key);
+                    soundList.Add(soundEntry.Value);
+                }
+            }
+            else
+            {
+                Debug.WriteLine("[VMENU] No engine sounds in addons.json");
+            }
+
+            var resetEngineSoundBtn = new MenuItem("Reset Engine Sound", "Resets vehicle engine sound to default");
+            var soundMenuList = new MenuListItem("Set Engine Sound", soundNameList, 0, "Select the vehicle engine sound here");
+
+            VehicleEngineSoundMenu.AddMenuItem(resetEngineSoundBtn);
+            VehicleEngineSoundMenu.AddMenuItem(soundMenuList);
+            
+            menu.OnItemSelect += (sender, item, index) =>
+            {
+                if (item == engineSoundMenuBtn)
+                {
+                    var veh = GetVehicle();
+                    
+                    if (soundList.Count == 0)
+                    {
+                        Notify.Error("No engine sounds found in the config file.");
+                    }
+
+                    VehicleEngineSoundMenu.OnItemSelect += (sender, item, index) =>
+                    {
+                        Notify.Success("Resetting your vehicle's engine sound");
+                        TriggerServerEvent("vMenu:changeEngineSound", "resetenginesound");
+                    };
+
+                    VehicleEngineSoundMenu.OnListItemSelect += (sender, item, index, itemIndex) =>
+                    {
+                        string selected = soundNameList[index];
+                        int vehicle = VehToNet(veh.Handle);
+                        Notify.Success("Setting your vehicle's engine sound to " + selected);
+                        TriggerServerEvent("vMenu:changeEngineSound", vehicle, selected);
+                    };
+                }
+            };
+
+            #endregion
+
+            #region Vehicle Siren Sound Submenu Stuff
+            List<string> sirenNameList = new List<string>();
+            List<string> sirenList = new List<string>();
+
+            if (addons.ContainsKey("siren_sounds"))
+            {
+                var sirenDict = JObject.FromObject(addons["siren_sounds"])
+                        .ToObject<Dictionary<string, string>>();
+
+                foreach (var sirenEntry in sirenDict)
+                {
+                    sirenNameList.Add(sirenEntry.Key);
+                    sirenList.Add(sirenEntry.Value);
+                }
+            }
+            else
+            {
+                Debug.WriteLine("[VMENU] No siren sounds in addons.json");
+            }
+
+            var resetSirenBtn = new MenuItem("Reset Siren Sound", "Resets vehicle siren sound to default");
+            var sirenMenuList = new MenuListItem("Set Siren Sound", sirenNameList, 0, "Select the vehicle siren sound here");
+
+            VehicleSirenSoundMenu.AddMenuItem(resetSirenBtn);
+            VehicleSirenSoundMenu.AddMenuItem(sirenMenuList);
+            
+            menu.OnItemSelect += (sender, item, index) =>
+            {
+                if (item == sirenSoundMenuBtn)
+                {
+                    var veh = GetVehicle();
+                    
+                    if (soundList.Count == 0)
+                    {
+                        Notify.Error("No siren sounds found in the config file.");
+                    }
+
+                    VehicleSirenSoundMenu.OnItemSelect += (sender, item, index) =>
+                    {
+                        Notify.Success("Resetting your vehicle's siren sound");
+                        TriggerServerEvent("vMenu:changeSirenSound", "resetsirensound");
+                    };
+
+                    VehicleSirenSoundMenu.OnListItemSelect += (sender, item, index, itemIndex) =>
+                    {
+                        string selected = sirenNameList[index];
+                        int vehicle = VehToNet(veh.Handle);
+                        Notify.Success("Setting your vehicle's siren sound to " + selected);
+                        TriggerServerEvent("vMenu:changeSirenSound", vehicle, selected);
+                    };
                 }
             };
             #endregion
