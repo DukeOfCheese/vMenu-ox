@@ -330,10 +330,12 @@ namespace vMenuClient.menus
                 var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
                 var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
 
-                if (addons.ContainsKey("peds"))
+                if (addons != null && addons.ContainsKey("peds"))
                 {
                     var pedsData = JObject.FromObject(addons["peds"])
                         .ToObject<Dictionary<string, Dictionary<string, string>>>();
+
+                    int pedCount = 0;
                     
                     foreach (var category in pedsData)
                     {
@@ -346,6 +348,7 @@ namespace vMenuClient.menus
                             string spawnName = pedEntry.Value;
 
                             AddTextEntry(spawnName, pedName);
+                            pedCount += 1;
 
                             switch (categoryName.ToLower())
                             {
@@ -374,10 +377,12 @@ namespace vMenuClient.menus
                             }
                         }
                     }
+
+                    Debug.WriteLine($"[VMENU] Loaded {pedCount} addon peds");
                 }
                 else
                 {
-                    Debug.WriteLine("[VMENU] No peds in addons.json");
+                    Debug.WriteLine("[VMENU] No addon peds in addons.json");
                 }
 
                 foreach (var animal in animalModels)

@@ -119,7 +119,7 @@ namespace vMenuClient.data
             var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
             var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
 
-            if (addons.ContainsKey("weapons"))
+            if (addons != null && addons.ContainsKey("weapons"))
             {
                 var weaponDict = JObject.FromObject(addons["weapons"])
                         .ToObject<Dictionary<string, string>>();
@@ -133,13 +133,15 @@ namespace vMenuClient.data
                         DynamicWeaponPermissions[weaponEntry.Value] = permissionName;
                     }
                 }
+
+                Debug.WriteLine($"[VMENU] Loaded {weaponDict.Count} addon weapons");
             }
             else
             {
                 Debug.WriteLine("[VMENU] No addon weapons found in addons.json");
             }
             
-            if (addons.ContainsKey("weapon_components"))
+            if (addons != null && addons.ContainsKey("weapon_components"))
             {
                 var componentDict = JObject.FromObject(addons["weapon_components"])
                         .ToObject<Dictionary<string, string>>();
@@ -150,6 +152,8 @@ namespace vMenuClient.data
                         weaponComponentNames[componentEntry.Value] = componentEntry.Key;
                     }
                 }
+
+                Debug.WriteLine($"[VMENU] Loaded {componentDict.Count} addon weapon components");
             }
             else
             {

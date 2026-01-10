@@ -166,16 +166,18 @@ namespace vMenuClient.menus
             var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
             var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
 
-            if (addons.ContainsKey("vehicles"))
+            if (addons != null && addons.ContainsKey("vehicles"))
                 {
                     var vehiclesList = JArray.FromObject(addons["vehicles"])
                             .ToObject<List<string>>();
 
                     VehicleData.Vehicles.ProcessAddonVehicles(vehiclesList);
+
+                    Debug.WriteLine($"[VMENU] Loaded {vehiclesList.Count} addon vehicles");
                 }
             else
             {
-                Debug.WriteLine("[VMENU] No vehicles in addons.json");
+                Debug.WriteLine("[VMENU] No addon vehicles in addons.json");
             }
 
             for (var vehClass = 0; vehClass < 23; vehClass++)
