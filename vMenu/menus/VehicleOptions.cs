@@ -1748,7 +1748,7 @@ namespace vMenuClient.menus
             List<string> soundNameList = new List<string>();
             List<string> soundList = new List<string>();
 
-            if (addons.ContainsKey("engine_sounds"))
+            if (addons != null && addons.ContainsKey("engine_sounds"))
             {
                 var soundDict = JObject.FromObject(addons["engine_sounds"])
                         .ToObject<Dictionary<string, string>>();
@@ -1758,6 +1758,8 @@ namespace vMenuClient.menus
                     soundNameList.Add(soundEntry.Key);
                     soundList.Add(soundEntry.Value);
                 }
+
+                Debug.WriteLine($"[VMENU] Loaded {soundDict.Count} engine sounds");
             }
             else
             {
@@ -1803,7 +1805,7 @@ namespace vMenuClient.menus
             List<string> sirenNameList = new List<string>();
             List<string> sirenList = new List<string>();
 
-            if (addons.ContainsKey("siren_sounds"))
+            if (addons != null && addons.ContainsKey("siren_sounds"))
             {
                 var sirenDict = JObject.FromObject(addons["siren_sounds"])
                         .ToObject<Dictionary<string, string>>();
@@ -1813,6 +1815,8 @@ namespace vMenuClient.menus
                     sirenNameList.Add(sirenEntry.Key);
                     sirenList.Add(sirenEntry.Value);
                 }
+
+                Debug.WriteLine($"[VMENU] Loaded {sirenDict.Count} siren sounds");
             }
             else
             {
