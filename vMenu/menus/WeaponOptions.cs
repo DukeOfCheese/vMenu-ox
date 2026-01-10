@@ -75,7 +75,6 @@ namespace vMenuClient.menus
             }
             #endregion
 
-
             #region parachute options menu
 
             if (IsAllowed(Permission.WPParachute))
@@ -345,6 +344,61 @@ namespace vMenuClient.menus
                         LeftIcon = MenuItem.Icon.AMMO
                     };
                     weaponMenu.AddMenuItem(fillAmmo);
+
+                    if (IsAllowed(Permission.WPEditStats))
+                    {
+                        var statsMenu = new Menu("Edit Weapon Stats", "Edit Weapon Stats");
+                        var statsBtn =  new MenuItem("Edit Weapon Stats", "Edit the stats of the weapon here.") { Label = "→→→" };
+
+                        MenuController.AddSubmenu(weaponMenu, statsMenu);
+                        weaponMenu.AddMenuItem(statsBtn);
+                        MenuController.BindMenuItem(weaponMenu, statsMenu, statsBtn);
+
+                        var defaultDmgMult = GetWeaponDamageModifier(weapon.Hash).ToString();
+                        var dmgMultBtn = new MenuItem("Weapon Damage Multiplier", "Edit the weapon damage multiplier for this weapon") { Label = defaultDmgMult + "x"};
+
+                        var defaultShakeAmplitude = GetWeaponRecoilShakeAmplitude(weapon.Hash).ToString();
+                        var shakeAmplitudeBtn = new MenuItem("Weapon Shake Amplitude", "Edit the weapon shake amplitude for this weapon") { Label = defaultShakeAmplitude + "x"};
+                        
+                        statsMenu.AddMenuItem(dmgMultBtn);
+                        statsMenu.AddMenuItem(shakeAmplitudeBtn);
+
+                        statsMenu.OnItemSelect += async (sender, item, index) =>
+                        {
+                            var hash = weapon.Hash;
+
+                            if (item == dmgMultBtn)
+                            {
+                                var multString = await GetUserInput("Weapon Damage Multiplier", defaultDmgMult);
+                                if (float.TryParse(multString, out float multInput))
+                                {
+                                    SetWeaponDamageModifier(weapon.Hash, multInput);
+                                    item.Label = multInput + "x";
+                                    defaultDmgMult = multInput.ToString();
+                                    Notify.Success("Set damage modifier to " + multInput + "x");
+                                }
+                                else
+                                {
+                                    Notify.Error("You must input an integer for the damage multiplier.");
+                                }
+                            }
+                            else if (item == shakeAmplitudeBtn)
+                            {
+                                var shakeString = await GetUserInput("Weapon Shake Amplitude", defaultShakeAmplitude);
+                                if (float.TryParse(shakeString, out float shakeInput))
+                                {
+                                    SetWeaponDamageModifier(weapon.Hash, shakeInput);
+                                    item.Label = shakeInput + "x";
+                                    defaultShakeAmplitude = shakeInput.ToString();
+                                    Notify.Success("Set damage modifier to " + shakeInput + "x");
+                                }
+                                else
+                                {
+                                    Notify.Error("You must input an integer for the damage multiplier.");
+                                }
+                            }
+                        };
+                    }
 
                     var tints = new List<string>();
                     if (weapon.Name.Contains(" Mk II"))
