@@ -129,6 +129,7 @@ namespace vMenuClient.data
                     {
                         string permissionName = $"WP{weaponEntry.Value.Substring("weapon_".Length)}";
                         weaponNames[weaponEntry.Value] = weaponEntry.Key;
+                        AddTextEntry(weaponEntry.Value, weaponEntry.Key);
                         DynamicWeaponPermissions[weaponEntry.Value] = permissionName;
                     }
                 }
