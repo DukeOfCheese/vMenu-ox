@@ -206,6 +206,7 @@ namespace vMenuShared
             WPUnlimitedAmmo,
             WPNoReload,
             WPSpawn,
+            WPEditStats,
             WPSpawnByName,
             WPSetAllAmmo,
             #endregion
