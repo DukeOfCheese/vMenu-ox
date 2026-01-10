@@ -2,15 +2,31 @@
   "vehicles": [
     "redeye"
   ],
-  "peds": [
-    "addonpedname1",
-    "addonpedname2"
-  ],
+  "peds": {
+    "main": {
+
+    },
+    "animal": {
+
+    },
+    "male": {
+      "Wick": "wick2"
+    },
+    "female": {
+
+    },
+    "other": {
+
+    }
+  },
   "weapons": {
     "MK18MD1": "WEAPON_MK18MD1"
   },
   "weapon_components": {
-    "Scope": "COMPONENT_AT_SCOPE_MK18MD"
+    "Scope": "COMPONENT_AT_SCOPE_MK18MD",
+    "Clip": "COMPONENT_MK18MD_CLIP_01",
+    "Suppressor": "COMPONENT_AT_MK18MD_SUPP",
+    "Flashlight": "COMPONENT_AT_MK18MD_FLSH"
   },
   "engine_sounds": {
     "Adder": "adder",

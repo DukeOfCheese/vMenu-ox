@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using CitizenFX.Core;
 
 using MenuAPI;
@@ -323,6 +326,59 @@ namespace vMenuClient.menus
                 MenuController.BindMenuItem(spawnPedsMenu, malePedsMenu, malePedsBtn);
                 MenuController.BindMenuItem(spawnPedsMenu, femalePedsMenu, femalePedsBtn);
                 MenuController.BindMenuItem(spawnPedsMenu, otherPedsMenu, otherPedsBtn);
+
+                var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
+                var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
+
+                if (addons.ContainsKey("peds"))
+                {
+                    var pedsData = JObject.FromObject(addons["peds"])
+                        .ToObject<Dictionary<string, Dictionary<string, string>>>();
+                    
+                    foreach (var category in pedsData)
+                    {
+                        string categoryName = category.Key;
+                        var pedList = category.Value;
+
+                        foreach (var pedEntry in pedList)
+                        {
+                            string pedName = pedEntry.Key;
+                            string spawnName = pedEntry.Value;
+
+                            AddTextEntry(spawnName, pedName);
+
+                            switch (categoryName.ToLower())
+                            {
+                                case "main":
+                                    mainModels.Add(spawnName, pedName);
+                                    break;
+                                
+                                case "animal":
+                                    animalModels.Add(spawnName, pedName);
+                                    break;
+                                
+                                case "male":
+                                    maleModels.Add(spawnName, pedName);
+                                    break;
+                                
+                                case "female":
+                                    femaleModels.Add(spawnName, pedName);
+                                    break;
+
+                                case "other":
+                                    otherPeds.Add(spawnName, pedName);
+                                    break;
+
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("[VMENU] No peds in addons.json");
+                }
 
                 foreach (var animal in animalModels)
                 {
