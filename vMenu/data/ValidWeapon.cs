@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using CitizenFX.Core;
@@ -6,7 +7,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using static CitizenFX.Core.Native.API;
-using static vMenuClient.CommonFunctions;
 using static vMenuShared.PermissionsManager;
 
 namespace vMenuClient.data
@@ -15,7 +15,7 @@ namespace vMenuClient.data
     {
         public uint Hash;
         public string Name;
-        [Newtonsoft.Json.JsonConverter(typeof(DictionaryConverter))]
+        [JsonConverter(typeof(DictionaryConverter))]
         public Dictionary<string, uint> Components;
         public Permission Perm;
         public string SpawnName;
@@ -110,10 +110,51 @@ namespace vMenuClient.data
             }
         }
 
+        public static Dictionary<string, string> DynamicWeaponPermissions = new Dictionary<string, string>();
+
 
         private static void CreateWeaponsList()
         {
             _weaponsList.Clear();
+            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
+            var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
+
+            if (addons.ContainsKey("weapons"))
+            {
+                var weaponDict = JObject.FromObject(addons["weapons"])
+                        .ToObject<Dictionary<string, string>>();
+                foreach (var weaponEntry in weaponDict)
+                {
+                    if (!weaponNames.ContainsKey(weaponEntry.Value))
+                    {
+                        string permissionName = $"WP{weaponEntry.Value.Substring("weapon_".Length)}";
+                        weaponNames[weaponEntry.Value] = weaponEntry.Key;
+                        DynamicWeaponPermissions[weaponEntry.Value] = permissionName;
+                    }
+                }
+            }
+            else
+            {
+                Debug.WriteLine("[VMENU] No addon weapons found in addons.json");
+            }
+            
+            if (addons.ContainsKey("weapon_components"))
+            {
+                var componentDict = JObject.FromObject(addons["weapon_components"])
+                        .ToObject<Dictionary<string, string>>();
+                foreach (var componentEntry in componentDict)
+                {
+                    if (!weaponComponentNames.ContainsKey(componentEntry.Value))
+                    {
+                        weaponComponentNames[componentEntry.Value] = componentEntry.Key;
+                    }
+                }
+            }
+            else
+            {
+                Debug.WriteLine("[VMENU] No addon weapon components in addons.json");
+            }
+
             foreach (var weapon in weaponNames)
             {
                 var realName = weapon.Key;
@@ -141,7 +182,13 @@ namespace vMenuClient.data
                     SpawnName = realName,
                     Name = localizedName,
                     Components = componentHashes,
-                    Perm = weaponPermissions[realName]
+                    Perm = weaponPermissions.ContainsKey(realName) 
+                        ? weaponPermissions[realName]
+                        : (DynamicWeaponPermissions.ContainsKey(realName) 
+                            ? Enum.TryParse<Permission>(DynamicWeaponPermissions[realName], out var dynamicPerm) 
+                                ? dynamicPerm
+                                : Permission.WPAll
+                            : Permission.WPAll)
                 };
                 if (!_weaponsList.Contains(vw))
                 {

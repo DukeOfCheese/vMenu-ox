@@ -24,7 +24,7 @@ experimental_features_enabled '0'
 files {
     'Newtonsoft.Json.dll',
     'MenuAPI.dll',
-    'config/locations.json',
+    'config/*.json',
     'storage.html'
 }
 

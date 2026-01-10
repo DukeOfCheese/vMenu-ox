@@ -1378,6 +1378,44 @@ namespace vMenuClient.data
             };
             #endregion
 
+            #region Addon Vehicles
+            public static void ProcessAddonVehicles(List<string> addonNames)
+            {
+                foreach (string addon in addonNames)
+                {
+                    uint modelHash = (uint)GetHashKey(addon);
+                    int vehicleClass = GetVehicleClassFromName(modelHash);
+
+                    switch (vehicleClass)
+                    {
+                        case 0:  Compacts.Add(addon); break;
+                        case 1:  Sedans.Add(addon); break;
+                        case 2:  SUVs.Add(addon); break;
+                        case 3:  Coupes.Add(addon); break;
+                        case 4:  Muscle.Add(addon); break;
+                        case 5:  SportsClassics.Add(addon); break;
+                        case 6:  Sports.Add(addon); break;
+                        case 7:  Super.Add(addon); break;
+                        case 8:  Motorcycles.Add(addon); break;
+                        case 9:  OffRoad.Add(addon); break;
+                        case 10: Industrial.Add(addon); break;
+                        case 11: Utility.Add(addon); break;
+                        case 12: Vans.Add(addon); break;
+                        case 13: Cycles.Add(addon); break;
+                        case 14: Boats.Add(addon); break;
+                        case 15: Helicopters.Add(addon); break;
+                        case 16: Planes.Add(addon); break;
+                        case 17: Service.Add(addon); break;
+                        case 18: Emergency.Add(addon); break;
+                        case 19: Military.Add(addon); break;
+                        case 20: Commercial.Add(addon); break;
+                        case 22: OpenWheel.Add(addon); break;
+                        default: 
+                            break;
+                    }
+                }
+            }
+            #endregion
 
             /*
             Compacts = 0,
