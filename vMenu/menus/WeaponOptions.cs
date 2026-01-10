@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using CitizenFX.Core;
@@ -22,6 +23,8 @@ namespace vMenuClient.menus
         public bool AutoEquipChute { get; private set; } = UserDefaults.AutoEquipChute;
         public bool UnlimitedParachutes { get; private set; } = UserDefaults.WeaponsUnlimitedParachutes;
 
+        private string SearchTerm = "";
+
         private Dictionary<Menu, ValidWeapon> weaponInfo;
         private Dictionary<MenuItem, string> weaponComponents;
 
@@ -31,13 +34,16 @@ namespace vMenuClient.menus
         /// </summary>
         private void CreateMenu()
         {
+            menu = new Menu(Game.Player.Name, "Weapon Options");
+            RefreshSpawnableWeapons(menu);
+        }
+        private void RefreshSpawnableWeapons(Menu menu)
+        {
             // Setup weapon dictionaries.
             weaponInfo = new Dictionary<Menu, ValidWeapon>();
             weaponComponents = new Dictionary<MenuItem, string>();
 
             #region create main weapon options menu and add items
-            // Create the menu.
-            menu = new Menu(Game.Player.Name, "Weapon Options");
 
             var getAllWeapons = new MenuItem("Get All Weapons", "Get all weapons.");
             var removeAllWeapons = new MenuItem("Remove All Weapons", "Removes all weapons in your inventory.");
@@ -46,6 +52,7 @@ namespace vMenuClient.menus
             var setAmmo = new MenuItem("Set All Ammo Count", "Set the amount of ammo in all your weapons.");
             var refillMaxAmmo = new MenuItem("Refill All Ammo", "Give all your weapons max ammo.");
             var spawnByName = new MenuItem("Spawn Weapon By Name", "Enter a weapon mode name to spawn.");
+            var searchButton = new MenuItem("Search for Weapon", "This will allow you to search through the available weapons.");
 
             // Add items based on permissions
             if (IsAllowed(Permission.WPGetAll))
@@ -69,6 +76,7 @@ namespace vMenuClient.menus
                 menu.AddMenuItem(setAmmo);
                 menu.AddMenuItem(refillMaxAmmo);
             }
+            menu.AddMenuItem(searchButton);
             if (IsAllowed(Permission.WPSpawnByName))
             {
                 menu.AddMenuItem(spawnByName);
@@ -372,14 +380,14 @@ namespace vMenuClient.menus
                                 var multString = await GetUserInput("Weapon Damage Multiplier", defaultDmgMult);
                                 if (float.TryParse(multString, out float multInput))
                                 {
-                                    SetWeaponDamageModifier(weapon.Hash, multInput);
+                                    SetWeaponDamageModifier(hash, multInput);
                                     item.Label = multInput + "x";
                                     defaultDmgMult = multInput.ToString();
                                     Notify.Success("Set damage modifier to " + multInput + "x");
                                 }
                                 else
                                 {
-                                    Notify.Error("You must input an integer for the damage multiplier.");
+                                    Notify.Error("You must input a valid number for the damage multiplier.");
                                 }
                             }
                             else if (item == shakeAmplitudeBtn)
@@ -387,14 +395,14 @@ namespace vMenuClient.menus
                                 var shakeString = await GetUserInput("Weapon Shake Amplitude", defaultShakeAmplitude);
                                 if (float.TryParse(shakeString, out float shakeInput))
                                 {
-                                    SetWeaponDamageModifier(weapon.Hash, shakeInput);
+                                    SetWeaponRecoilShakeAmplitude(hash, shakeInput);
                                     item.Label = shakeInput + "x";
                                     defaultShakeAmplitude = shakeInput.ToString();
                                     Notify.Success("Set damage modifier to " + shakeInput + "x");
                                 }
                                 else
                                 {
-                                    Notify.Error("You must input an integer for the damage multiplier.");
+                                    Notify.Error("You must input a valid number for the damage multiplier.");
                                 }
                             }
                         };
@@ -718,7 +726,7 @@ namespace vMenuClient.menus
             #endregion
 
             #region Handle button presses
-            menu.OnItemSelect += (sender, item, index) =>
+            menu.OnItemSelect += async (sender, item, index) =>
             {
                 var ped = Game.PlayerPed;
                 if (item == getAllWeapons)
@@ -766,6 +774,12 @@ namespace vMenuClient.menus
                             SetPedAmmo(Game.PlayerPed.Handle, vw.Hash, ammo);
                         }
                     }
+                }
+                else if (item == searchButton)
+                {
+                    SearchTerm = await GetUserInput(windowTitle: "Enter Search Term (Leave BLANK to reset)", maxInputLength: 100);
+                    RefreshSpawnableWeapons(menu);
+                    SearchTerm = "";
                 }
                 else if (item == spawnByName)
                 {

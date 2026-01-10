@@ -116,6 +116,8 @@ namespace vMenuClient.data
         private static void CreateWeaponsList()
         {
             _weaponsList.Clear();
+            DynamicWeaponPermissions.Clear();
+
             var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
             var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
 

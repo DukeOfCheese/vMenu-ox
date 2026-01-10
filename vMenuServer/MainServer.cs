@@ -1148,7 +1148,7 @@ namespace vMenuServer
                 PermissionsManager.SetPermissionsForPlayer(player);
             }
         }
-
+        
         [EventHandler("playerJoining")]
         internal void OnPlayerJoining([FromSource] Player sourcePlayer)
         {
@@ -1206,7 +1206,7 @@ namespace vMenuServer
             return Players[serverId];
         }
         #endregion
-    
+
         #region Change Engine Sound
         [EventHandler("vMenu:changeEngineSound")]
         internal void ChangeEngineSound([FromSource] Player source, int vehicle, string engineSound)
@@ -1221,6 +1221,23 @@ namespace vMenuServer
             EnsureEntityStateBag(veh.Handle);
 
             veh.State.Set("vMenu:engineSound", engineSound, true);
+        }
+        #endregion
+
+        #region Change Siren Sound
+        [EventHandler("vMenu:changeSirenSound")]
+        internal void ChangeSirenSound([FromSource] Player source, int vehicle, string sirenSound)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.VOSirenSound, source) && (!PermissionsManager.IsAllowed(PermissionsManager.Permission.VOAll, source)))  
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            Vehicle veh = new Vehicle(NetworkGetEntityFromNetworkId(vehicle));
+            EnsureEntityStateBag(veh.Handle);
+
+            veh.State.Set("vMenu:sirenSound", sirenSound, true);
         }
         #endregion
     }

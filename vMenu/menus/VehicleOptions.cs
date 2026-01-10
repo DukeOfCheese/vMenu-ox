@@ -70,6 +70,28 @@ namespace vMenuClient.menus
         private readonly Dictionary<MenuItem, int> vehicleExtras = new();
         #endregion
 
+        #region Vehicle Sound Syncing
+        [EventHandler("onClientResourceStart")]
+        public void onClientResourceStart(string resName)
+        {
+            if (resName != GetCurrentResourceName()) return;
+            AddStateBagChangeHandler("vMenu:engineSound", null,
+                new Action<string, string, dynamic, int, bool>
+            (HandleVehicleSoundChange));
+            AddStateBagChangeHandler("vMenu:sirenSound", null,
+                new Action<string, string, dynamic, int, bool>
+            (HandleVehicleSoundChange));
+        }
+
+        private static void HandleVehicleSoundChange(string bagName, string key, dynamic value, int reserved, bool replicated)
+        {
+            var entity = GetEntityFromStateBagName(bagName);
+            if (entity == 0) return;
+            if (!IsEntityAVehicle(entity)) return;
+            ForceUseAudioGameObject(entity, value);
+        }
+        #endregion
+
         #region CreateMenu()
         /// <summary>
         /// Create menu creates the vehicle options menu.
@@ -1769,34 +1791,41 @@ namespace vMenuClient.menus
             var resetEngineSoundBtn = new MenuItem("Reset Engine Sound", "Resets vehicle engine sound to default");
             var soundMenuList = new MenuListItem("Set Engine Sound", soundNameList, 0, "Select the vehicle engine sound here");
 
-            VehicleEngineSoundMenu.AddMenuItem(resetEngineSoundBtn);
             VehicleEngineSoundMenu.AddMenuItem(soundMenuList);
+            VehicleEngineSoundMenu.AddMenuItem(resetEngineSoundBtn);
             
             menu.OnItemSelect += (sender, item, index) =>
             {
                 if (item == engineSoundMenuBtn)
-                {
-                    var veh = GetVehicle();
-                    
+                {                   
                     if (soundList.Count == 0)
                     {
                         Notify.Error("No engine sounds found in the config file.");
                     }
-
-                    VehicleEngineSoundMenu.OnItemSelect += (sender, item, index) =>
-                    {
-                        Notify.Success("Resetting your vehicle's engine sound");
-                        TriggerServerEvent("vMenu:changeEngineSound", "resetenginesound");
-                    };
-
-                    VehicleEngineSoundMenu.OnListItemSelect += (sender, item, index, itemIndex) =>
-                    {
-                        string selected = soundNameList[index];
-                        int vehicle = VehToNet(veh.Handle);
-                        Notify.Success("Setting your vehicle's engine sound to " + selected);
-                        TriggerServerEvent("vMenu:changeEngineSound", vehicle, selected);
-                    };
                 }
+            };
+
+            VehicleEngineSoundMenu.OnItemSelect += (sender, item, index) =>
+            {
+                var veh = GetVehicle();
+                int vehicle = VehToNet(veh.Handle);
+                NetworkRegisterEntityAsNetworked(veh.Handle);
+                
+                Notify.Success("Resetting your vehicle's engine sound");
+                TriggerServerEvent("vMenu:changeEngineSound", vehicle, "resetenginesound");
+            };
+
+            VehicleEngineSoundMenu.OnListItemSelect += (sender, item, index, itemIndex) =>
+            {
+                var veh = GetVehicle();
+                int vehicle = VehToNet(veh.Handle);
+                NetworkRegisterEntityAsNetworked(veh.Handle);
+
+                string name = soundNameList[index];
+                string selected = soundList[index];
+                
+                Notify.Success("Setting your vehicle's engine sound to " + name);
+                TriggerServerEvent("vMenu:changeEngineSound", vehicle, selected);
             };
 
             #endregion
@@ -1826,8 +1855,8 @@ namespace vMenuClient.menus
             var resetSirenBtn = new MenuItem("Reset Siren Sound", "Resets vehicle siren sound to default");
             var sirenMenuList = new MenuListItem("Set Siren Sound", sirenNameList, 0, "Select the vehicle siren sound here");
 
-            VehicleSirenSoundMenu.AddMenuItem(resetSirenBtn);
             VehicleSirenSoundMenu.AddMenuItem(sirenMenuList);
+            VehicleSirenSoundMenu.AddMenuItem(resetSirenBtn);
             
             menu.OnItemSelect += (sender, item, index) =>
             {
@@ -1839,21 +1868,36 @@ namespace vMenuClient.menus
                     {
                         Notify.Error("No siren sounds found in the config file.");
                     }
-
-                    VehicleSirenSoundMenu.OnItemSelect += (sender, item, index) =>
-                    {
-                        Notify.Success("Resetting your vehicle's siren sound");
-                        TriggerServerEvent("vMenu:changeSirenSound", "resetsirensound");
-                    };
-
-                    VehicleSirenSoundMenu.OnListItemSelect += (sender, item, index, itemIndex) =>
-                    {
-                        string selected = sirenNameList[index];
-                        int vehicle = VehToNet(veh.Handle);
-                        Notify.Success("Setting your vehicle's siren sound to " + selected);
-                        TriggerServerEvent("vMenu:changeSirenSound", vehicle, selected);
-                    };
                 }
+            };
+
+            VehicleSirenSoundMenu.OnItemSelect += (sender, item, index) =>
+            {
+                var veh = GetVehicle();
+
+                int vehicle = VehToNet(veh.Handle);
+                NetworkRegisterEntityAsNetworked(veh.Handle);
+
+                SetVehicleHasMutedSirens(veh.Handle, false);
+
+                Notify.Success("Resetting your vehicle's siren sound");
+                TriggerServerEvent("vMenu:changeSirenSound", vehicle, "resetsirensound");
+            };
+
+            VehicleSirenSoundMenu.OnListItemSelect += (sender, item, index, itemIndex) =>
+            {
+                var veh = GetVehicle();
+
+                int vehicle = VehToNet(veh.Handle);
+                NetworkRegisterEntityAsNetworked(veh.Handle);
+
+                SetVehicleHasMutedSirens(veh.Handle, true);
+
+                string name = sirenNameList[index];        
+                string selected = sirenList[index];      
+                
+                Notify.Success("Setting your vehicle's siren sound to " + name);
+                TriggerServerEvent("vMenu:changeSirenSound", vehicle, selected);
             };
             #endregion
 
