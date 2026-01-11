@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -35,6 +36,7 @@ namespace vMenuClient.menus
         public Menu DeleteConfirmMenu { get; private set; }
         public Menu VehicleUnderglowMenu { get; private set; }
         public Menu VehicleEngineSoundMenu { get; private set; }
+        public Menu VehicleHandlingMenu { get; private set; }
 
         // Public variables (getters only), return the private variables.
         public bool VehicleGodMode { get; private set; } = UserDefaults.VehicleGodMode;
@@ -89,6 +91,48 @@ namespace vMenuClient.menus
         }
         #endregion
 
+        #region Vehicle Stat Modification
+        private async Task HandleVehicleStat(MenuItem item, string field, string title, string suffix = "", double min = -1f, double max = -1f)
+        {
+            var veh = GetVehicle();
+            if (veh == null || !veh.Exists()) return;
+
+            bool isInteger = field.StartsWith("n"); 
+            float current = isInteger ? GetVehicleHandlingInt(veh.Handle, "CHandlingData", field) 
+                            : GetVehicleHandlingFloat(veh.Handle, "CHandlingData", field);
+
+            float parsedValue;
+
+            if (min != -1f && max != -1f)
+            {
+                if (isInteger)
+                {
+                    parsedValue = await GetUserInputSlider(title, (int)current, (int)min, (int)max, 1);
+                }
+                else
+                {
+                    parsedValue = await GetUserInputSlider(title, (int)current, (int)min, (int)max, 0.01);
+                }
+                
+            }
+            else
+            {
+                string input = await GetUserInput(title, current.ToString());
+                if (!float.TryParse(input, out parsedValue)) 
+                {
+                    if (!string.IsNullOrEmpty(input)) Notify.Error("Invalid input.");
+                    return;
+                }
+            }
+
+            if (isInteger) SetVehicleHandlingInt(veh.Handle, "CHandlingData", field, (int)parsedValue);
+            else SetVehicleHandlingFloat(veh.Handle, "CHandlingData", field, parsedValue);
+
+            item.Label = parsedValue.ToString() + suffix;
+            Notify.Success($"Set {item.Text} to {parsedValue.ToString()}{suffix}");
+        }
+        #endregion
+
         #region CreateMenu()
         /// <summary>
         /// Create menu creates the vehicle options menu.
@@ -128,6 +172,10 @@ namespace vMenuClient.menus
             var toggleEngine = new MenuItem("Toggle Engine On/Off", "Turn your engine on/off.");
             var setLicensePlateText = new MenuItem("Set License Plate Text", "Enter a custom license plate for your vehicle.");
             var modMenuBtn = new MenuItem("Mod Menu", "Tune and customize your vehicle here.")
+            {
+                Label = "→→→"
+            };
+            var handlingMenuBtn = new MenuItem("Handling Menu", "Edit your vehicle's handle here.")
             {
                 Label = "→→→"
             };
@@ -241,6 +289,7 @@ namespace vMenuClient.menus
             #region Submenus
             // Submenu's
             VehicleModMenu = new Menu("Mod Menu", "Vehicle Mods");
+            VehicleHandlingMenu = new Menu("Handling Menu", "Vehicle Handing");
             VehicleModMenu.InstructionalButtons.Add(Control.Jump, "Toggle Vehicle Doors");
             VehicleModMenu.ButtonPressHandlers.Add(new Menu.ButtonPressHandler(Control.Jump, Menu.ControlPressCheckType.JUST_PRESSED, new Action<Menu, Control>((m, c) =>
             {
@@ -271,6 +320,7 @@ namespace vMenuClient.menus
             VehicleEngineSoundMenu = new Menu("Engine Sounds", "Engine Sound Management");
 
             MenuController.AddSubmenu(menu, VehicleModMenu);
+            MenuController.AddSubmenu(menu, VehicleHandlingMenu);
             MenuController.AddSubmenu(menu, VehicleDoorsMenu);
             MenuController.AddSubmenu(menu, VehicleWindowsMenu);
             MenuController.AddSubmenu(menu, VehicleComponentsMenu);
@@ -348,6 +398,10 @@ namespace vMenuClient.menus
             if (IsAllowed(Permission.VOMod)) // MOD MENU
             {
                 menu.AddMenuItem(modMenuBtn);
+            }
+            if (IsAllowed(Permission.VOHandling))
+            {
+                menu.AddMenuItem(handlingMenuBtn);
             }
             if (IsAllowed(Permission.VOColors)) // COLORS MENU
             {
@@ -521,6 +575,7 @@ namespace vMenuClient.menus
 
             #region Bind Submenus to their buttons.
             MenuController.BindMenuItem(menu, VehicleModMenu, modMenuBtn);
+            MenuController.BindMenuItem(menu, VehicleHandlingMenu, handlingMenuBtn);
             MenuController.BindMenuItem(menu, VehicleDoorsMenu, doorsMenuBtn);
             MenuController.BindMenuItem(menu, VehicleWindowsMenu, windowsMenuBtn);
             MenuController.BindMenuItem(menu, VehicleComponentsMenu, componentsMenuBtn);
@@ -1749,6 +1804,267 @@ namespace vMenuClient.menus
             };
             #endregion
 
+            #region Vehicle Handling Submenu Stuff
+            var massBtn = new MenuItem("Mass", "Changes the vehicle's mass.");
+            var dragCoeffBtn = new MenuItem("Drag Coefficient", "Changes the vehicle's maximum speed.");
+            var downforceBtn = new MenuItem("Downforce Modifier", "Changes the amount of downforce the vehicle has.");
+            var submergedBtn = new MenuItem("Percent Submerged", "Changes the percentage of the vehicle height that floats.");
+            var driveBiasBtn = new MenuItem("Drive Bias Front", "Determines whether a vehicle is FWD, RWD or 4WD.");
+            var driveGearsBtn = new MenuItem("Drive Gears", "Changes the number of forward speeds a transmission contains.");
+            var driveForceBtn = new MenuItem("Drive Force", "Change the drive force of the car at the wheels.");
+            var driveInertiaBtn = new MenuItem("Drive Inertia", "Changes how fast an engine will rev.");
+            var clutchRateUpBtn = new MenuItem("Clutch Change Rate Up Shift", "Changes how fast a vehicle's up shifts are.");
+            var clutchRateDownBtn = new MenuItem("Clutch Change Rate Down Shift", "Changes how fast a vehicle's down shifts are.");
+            var driveMaxFlatBtn = new MenuItem("Drive Max Flat Velocity", "Changes the speed at redline in top gear.");
+            var brakeForceBtn = new MenuItem("Brake Force", "Changes the multiplier for the game's calculation of deceleration.");
+            var brakeBiasBtn = new MenuItem("Brake Bias Front", "Changes the distribution of the braking force between front and rear.");
+            var handbrakeBtn = new MenuItem("Handbrake Force", "Changes the braking power of the handbrake.");
+            var steeringLockBtn = new MenuItem("Steering Lock", "Changes the maximum angle that steered wheels wil be able to turn.");
+            var tractionCurveMaxBtn = new MenuItem("Traction Curve Max", "Changes maximum cornering / accerlation coefficient of grip.");
+            var tractionCurveMinBtn = new MenuItem("Traction Curve Min", "Changes sliding cornering / accerlation coefficient of grip.");
+            var tractionCurveLateralBtn = new MenuItem("Traction Curve Lateral", "Changes shape of lateral traction curve where lower values make grip more responsive and higher levels make grip less responsive.");
+            var tractionSpringDeltaBtn = new MenuItem("Traction Spring Delta", "Changes the max distance of lateral sidewall travel in meters.");
+            var lowSpeedTractionLossBtn = new MenuItem("Low Speed Traction Loss", "Changes how much traction is reduced at low speed, mostly affecting burnout.");
+            var camberStiffBtn = new MenuItem("Camber Stiffness", "Changes how much vehicle is pushed towards its roll direction.");
+            var tractionBiasFrontBtn = new MenuItem("Traction Bias Front", "Determines the distribution of traction from front to rear.");
+            var tractionLossBtn = new MenuItem("Traction Loss", "Changes how much traction is affectedf by material grip differences.");
+            var suspensionForceBtn = new MenuItem("Suspension Force", "Affects how strong suspension is.");
+            var suspensionCompBtn = new MenuItem("Suspension Compression", "Affects the damping during strut comrpession.");
+            var suspensionReboundBtn = new MenuItem("Suspension Rebound", "Affects the damping during strut rebound.");
+            var suspensionUpperBtn = new MenuItem("Suspension Upper Limit", "Changes how far the wheels can move up from their original position.");
+            var suspensionLowerBtn = new MenuItem("Suspension Lower Limit", "Changes how far the wheels can move down from their original position.");
+            var suspensionRaiseBtn = new MenuItem("Suspension Raise", "Changes the amount the suspension raises the body off the wheels.");
+            var suspensionBiasBtn = new MenuItem("Suspension Bias Front", "Changes the force damping scale from front to back.");
+            var antiRollBtn = new MenuItem("Anti Rollbar Force", "Changes the spring constant where larger numbers reduce body roll.");
+            var antiRollBiasBtn = new MenuItem("Anti Rollbar Bias Front", "Changes the bias between the front and rear of the antiroll bar.");
+            var rollCentreFrontBtn = new MenuItem("Roll Centre Height Front", "Changes the roll centre height for the front axle from the road in metres.");
+            var rollCentreRearBtn = new MenuItem("Roll Centre Height Rear", "Change the roll center height for the rear axle from the road in metres.");
+            var collisionDmgBtn = new MenuItem("Collision Damage", "Changes the multiplier for the game's collision damage.");
+            var weaponDmgBtn = new MenuItem("Weapon Damage", "Changes the multiplier for the game's weapon damage.");
+            var deformDmgBtn = new MenuItem("Deformation Damage", "Changes the multiplier for the game's visual deformation.");
+            var engineDmgBtn = new MenuItem("Engine Damage", "Changes the multiplier for the game's engine damage.");
+            var petrolVolBtn = new MenuItem("Petrol Tank Volume", "Changes the amount of petrol in the vehicle's petrol tank.");
+            var oilVolBtn = new MenuItem("Oil Volume", "Changes the black smoke time before the engine dies.");
+
+            VehicleHandlingMenu.AddMenuItem(massBtn);
+            VehicleHandlingMenu.AddMenuItem(dragCoeffBtn);
+            VehicleHandlingMenu.AddMenuItem(downforceBtn);
+            VehicleHandlingMenu.AddMenuItem(submergedBtn);
+            VehicleHandlingMenu.AddMenuItem(driveBiasBtn);
+            VehicleHandlingMenu.AddMenuItem(driveGearsBtn);
+            VehicleHandlingMenu.AddMenuItem(driveForceBtn);
+            VehicleHandlingMenu.AddMenuItem(driveInertiaBtn);
+            VehicleHandlingMenu.AddMenuItem(clutchRateUpBtn);
+            VehicleHandlingMenu.AddMenuItem(clutchRateDownBtn);
+            VehicleHandlingMenu.AddMenuItem(driveMaxFlatBtn);
+            VehicleHandlingMenu.AddMenuItem(brakeBiasBtn);
+            VehicleHandlingMenu.AddMenuItem(steeringLockBtn);
+            VehicleHandlingMenu.AddMenuItem(tractionCurveMaxBtn);
+            VehicleHandlingMenu.AddMenuItem(tractionCurveMinBtn);
+            VehicleHandlingMenu.AddMenuItem(tractionCurveLateralBtn);
+            VehicleHandlingMenu.AddMenuItem(tractionSpringDeltaBtn);
+            VehicleHandlingMenu.AddMenuItem(lowSpeedTractionLossBtn);
+            VehicleHandlingMenu.AddMenuItem(camberStiffBtn);
+            VehicleHandlingMenu.AddMenuItem(tractionBiasFrontBtn);
+            VehicleHandlingMenu.AddMenuItem(tractionLossBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionForceBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionCompBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionReboundBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionUpperBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionLowerBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionRaiseBtn);
+            VehicleHandlingMenu.AddMenuItem(suspensionBiasBtn);
+            VehicleHandlingMenu.AddMenuItem(antiRollBtn);
+            VehicleHandlingMenu.AddMenuItem(antiRollBiasBtn);
+            VehicleHandlingMenu.AddMenuItem(rollCentreFrontBtn);
+            VehicleHandlingMenu.AddMenuItem(rollCentreRearBtn);
+            VehicleHandlingMenu.AddMenuItem(collisionDmgBtn);
+            VehicleHandlingMenu.AddMenuItem(weaponDmgBtn);
+            VehicleHandlingMenu.AddMenuItem(deformDmgBtn);
+            VehicleHandlingMenu.AddMenuItem(engineDmgBtn);
+            VehicleHandlingMenu.AddMenuItem(petrolVolBtn);
+            VehicleHandlingMenu.AddMenuItem(oilVolBtn);
+
+            VehicleHandlingMenu.OnMenuOpen += (sender) =>
+            {
+                var veh = GetVehicle();
+                if (veh != null && veh.Exists())
+                {
+                    int currentMass = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fMass");
+                    massBtn.Label = currentMass.ToString("F2") + "kg";
+                    
+                    int currentDragCoeff = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fInitialDragCoeff");
+                    dragCoeffBtn.Label = currentDragCoeff.ToString("F2") + "x";
+
+                    int currentDownforce = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fDownForceModifier");
+                    downforceBtn.Label = currentDownforce.ToString("F2") + "x";
+
+                    int currentSubmerged = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fPercentSubmerged");
+                    submergedBtn.Label = currentSubmerged.ToString("F2") + "%";
+
+                    int currentDriveBias = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fDriveBiasFront");
+                    driveBiasBtn.Label = currentDriveBias.ToString("F2");
+
+                    int currentDriveGears = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "nInitialDriveGears");
+                    driveGearsBtn.Label = currentDriveGears.ToString("F2");
+
+                    int currentDriveForce = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fInitialDriveForce");
+                    driveForceBtn.Label = currentDriveForce.ToString("F2");
+
+                    int currentDriveInertia = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fDriveInertia");
+                    driveInertiaBtn.Label = currentDriveInertia.ToString("F2");
+
+                    int currentClutchRateUp = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fClutchChangeRateScaleUpShift");
+                    clutchRateUpBtn.Label = currentClutchRateUp.ToString("F2") + "x";
+
+                    int currentDriveMaxFlat = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fInitialDriveMaxFlatVel");
+                    driveMaxFlatBtn.Label = currentDriveMaxFlat.ToString("F2") + "x";
+
+                    int currentBrakeForce = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fBrakeForce");
+                    brakeForceBtn.Label = currentBrakeForce.ToString("F2") + "x";
+
+                    int currentBrakeBias = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fBrakeBiasFront");
+                    brakeBiasBtn.Label = currentBrakeBias.ToString("F2");
+
+                    int currentHandbrakeForce = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fHandBrakeForce");
+                    handbrakeBtn.Label = currentHandbrakeForce.ToString("F2");
+
+                    int currentSteeringLock = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSteeringLock");
+                    steeringLockBtn.Label = currentSteeringLock.ToString("F2");
+
+                    int currentTractionCurveMax = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionCurveMax");
+                    tractionCurveMaxBtn.Label = currentSteeringLock.ToString("F2");
+
+                    int currentTractionCurveMin = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionCurveMin");
+                    tractionCurveMinBtn.Label = currentSteeringLock.ToString("F2");
+
+                    int currentTractionCurveLateral = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionCurveLateral");
+                    tractionCurveLateralBtn.Label = currentTractionCurveLateral.ToString("F2");
+
+                    int currentTractionSpringDelta = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionSpringDeltaMax");
+                    tractionSpringDeltaBtn.Label = currentTractionSpringDelta.ToString("F2");
+
+                    int currentLowSpeedTractionLoss = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fLowSpeedTractionLossMult");
+                    lowSpeedTractionLossBtn.Label = currentLowSpeedTractionLoss.ToString("F2");
+
+                    int currentCamberStiff = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fCamberStiffnesss");
+                    camberStiffBtn.Label = currentCamberStiff.ToString("F2");
+
+                    int currentTractionBiasFront = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionBiasFront");
+                    tractionBiasFrontBtn.Label = currentTractionBiasFront.ToString("F2");
+
+                    int currentTractionLoss = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionLossMult");
+                    tractionLossBtn.Label = currentTractionLoss.ToString("F2");
+
+                    int currentSuspensionForce = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionForce");
+                    suspensionForceBtn.Label = currentSuspensionForce.ToString("F2");
+
+                    int currentSuspensionCompression = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionCompDamp");
+                    suspensionCompBtn.Label = currentSuspensionCompression.ToString("F2");
+
+                    int currentCompressionRebound = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionReboundDamp");
+                    suspensionReboundBtn.Label = currentCompressionRebound.ToString("F2");
+
+                    int currentSuspensionUpper = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionUpperLimit");
+                    suspensionUpperBtn.Label = currentSuspensionUpper.ToString("F2");
+
+                    int currentSuspensionLower = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionLowerLimit");
+                    suspensionLowerBtn.Label = currentSuspensionLower.ToString("F2");
+
+                    int currentSuspensionRaise = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionRaise");
+                    suspensionRaiseBtn.Label = currentSuspensionRaise.ToString("F2");
+
+                    int currentSuspensionBias = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fSuspensionBiasFront");
+                    suspensionBiasBtn.Label = currentSuspensionBias.ToString("F2");
+
+                    int currentAntiRoll = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fAntiRollBarForce");
+                    antiRollBtn.Label = currentAntiRoll.ToString("F2");
+
+                    int currentAntiRollBias = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fAntiRollBarBiasFront");
+                    antiRollBiasBtn.Label = currentAntiRollBias.ToString("F2");
+
+                    int currentRollCentreFront = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fRollCentreHeightFront");
+                    rollCentreFrontBtn.Label = currentRollCentreFront.ToString("F2");
+
+                    int currentRollCentreRear = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fRollCentreHeightRear");
+                    rollCentreRearBtn.Label = currentRollCentreRear.ToString("F2");
+
+                    int currentCollisionDmg = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fCollisionDamageMult");
+                    collisionDmgBtn.Label = currentCollisionDmg.ToString("F2") + "x";
+
+                    int currentWeaponDmg = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fWeaponDamageMult");
+                    weaponDmgBtn.Label = currentWeaponDmg.ToString("F2") + "x";
+
+                    int currentDeformDmg = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fDeformationDamageMult");
+                    deformDmgBtn.Label = currentDeformDmg.ToString("F2") + "x";
+
+                    int currentEngineDmg = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fEngineDamageMult");
+                    engineDmgBtn.Label = currentEngineDmg.ToString("F2") + "x";
+
+                    int currentPetrolVol = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fPetrolTankVolume");
+                    petrolVolBtn.Label = currentPetrolVol.ToString("F2");
+
+                    int currentOilVol = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fOilVolume");
+                    oilVolBtn.Label = currentOilVol.ToString("F2");
+                }
+            };
+
+            VehicleHandlingMenu.OnItemSelect += async (sender, item, index) =>
+            {
+                var veh = GetVehicle();
+                string fieldName = null;
+                int? value = null;
+
+                if (item == massBtn) await HandleVehicleStat(item, "fMass", "Set Mass", "kg");
+                else if (item == dragCoeffBtn) await HandleVehicleStat(item, "fInitialDragCoeff", "Set Drag Coefficient", "x", 10, 120);
+                else if (item == downforceBtn) await HandleVehicleStat(item, "fDownForceModifier", "Set Downforce", "x");
+                else if (item == submergedBtn) await HandleVehicleStat(item, "fPercentSubmerged", "Set Submerged", "%", 0, 100);
+                else if (item == driveBiasBtn) await HandleVehicleStat(item, "fDriveBiasFront", "Set Drive Bias", "", 0, 1);
+                else if (item == driveGearsBtn) await HandleVehicleStat(item, "nInitialDriveGears", "Set Gears", "", 0, 10);
+                else if (item == driveForceBtn) await HandleVehicleStat(item, "fInitialDriveForce", "Set Drive Force");
+                else if (item == driveInertiaBtn) await HandleVehicleStat(item, "fDriveInertia", "Set Drive Inertia", "", 0.01, 2);
+                else if (item == clutchRateUpBtn) await HandleVehicleStat(item, "fClutchChangeRateScaleUpShift", "Set Clutch Change Rate Up Shift", "x", 0, 13);
+                else if (item == clutchRateDownBtn) await HandleVehicleStat(item, "fClutchChangeRateScaleDownShift", "Set Clutch Change Rate Down Shift", "x", 0, 13);
+                else if (item == driveMaxFlatBtn) await HandleVehicleStat(item, "fInitialDriveMaxFlatVel", "");
+                else if (item == brakeForceBtn) await HandleVehicleStat(item, "fBrakeForce", "Change Brake Force", "x");
+                else if (item == brakeBiasBtn) await HandleVehicleStat(item, "fBrakeBiasFront", "Change Brake Bias", "", 0.0, 1);
+                else if (item == handbrakeBtn) await HandleVehicleStat(item, "fHandBrakeForce", "Change Handbrke Force", "");
+                else if (item == steeringLockBtn) await HandleVehicleStat(item, "fSteeringLock", "Change Steering Lock", "", 1, 90);
+                else if (item == tractionCurveMaxBtn) await HandleVehicleStat(item, "fTractionCurveMax", "Change Traction Curve Max", "");
+                else if (item == tractionCurveMinBtn) await HandleVehicleStat(item, "fTractionCurveMin", "Change Traction Curve Min", "");
+                else if (item == tractionCurveLateralBtn) await HandleVehicleStat(item, "fTractionCurveLateral", "Change Traction Curve Lateral", "");
+                else if (item == tractionSpringDeltaBtn) await HandleVehicleStat(item, "fTractionSpringDeltaMax", "Change Traction Spring Delta", "");
+                else if (item == lowSpeedTractionLossBtn) await HandleVehicleStat(item, "fLowSpeedTractionLossMult", "Change Low Speed Traction Loss", "");
+                else if (item == camberStiffBtn) await HandleVehicleStat(item, "fCamberStiffnesss", "Change Camber Stiffness", "");
+                else if (item == tractionBiasFrontBtn) await HandleVehicleStat(item, "fTractionBiasFront", "Change Traction Bias", "", 0.01, 0.99);
+                else if (item == tractionLossBtn) await HandleVehicleStat(item, "fTractionLossMult", "Change Traction Loss", "");
+                else if (item == suspensionForceBtn) await HandleVehicleStat(item, "fSuspensionForce", "Change Suspension Force", "");
+                else if (item == suspensionCompBtn) await HandleVehicleStat(item, "fSuspensionCompDamp", "Change Suspension Compression", "");
+                else if (item == suspensionReboundBtn) await HandleVehicleStat(item, "fSuspensionReboundDamp", "Change Suspension Redbound", "");
+                else if (item == suspensionUpperBtn) await HandleVehicleStat(item, "fSuspensionUpperLimit", "Change Upper Suspension", "");
+                else if (item == suspensionLowerBtn) await HandleVehicleStat(item, "fSuspensionLowerLimit", "Change Lower Suspension", "");
+                else if (item == suspensionRaiseBtn) await HandleVehicleStat(item, "fSuspensionRaise", "Change Suspension Raise", "");
+                else if (item == suspensionBiasBtn) await HandleVehicleStat(item, "fSuspensionBiasFront", "Change Suspension Bias", "");
+                else if (item == antiRollBtn) await HandleVehicleStat(item, "fAntiRollBarForce", "Change Anti Rollbar Force", "");
+                else if (item == antiRollBiasBtn) await HandleVehicleStat(item, "fAntiRollBarBiasFront", "Change Anti Rollbar Bias", "", 0, 1);
+                else if (item == rollCentreFrontBtn) await HandleVehicleStat(item, "fRollCentreHeightFront", "Change Roll Centre Height Front", "");
+                else if (item == rollCentreRearBtn) await HandleVehicleStat(item, "fRollCentreHeightRear", "Change Roll Centre Height Rear", "");
+                else if (item == collisionDmgBtn) await HandleVehicleStat(item, "fCollisionDamageMult", "Change Collision Damage", "x", 0, 10);
+                else if (item == weaponDmgBtn) await HandleVehicleStat(item, "fWeaponDamageMult", "Change Weapon Damage", "x", 0, 10);
+                else if (item == deformDmgBtn) await HandleVehicleStat(item, "fDeformationDamageMult", "Change Deformation Damage", "x", 0, 10);
+                else if (item == engineDmgBtn) await HandleVehicleStat(item, "fEngineDamageMult", "Change Engine Damage", "x", 0, 10);
+                else if (item == petrolVolBtn) await HandleVehicleStat(item, "fPetrolTankVolume", "Change Petrol Tank Volume", "");
+                else if (item == oilVolBtn) await HandleVehicleStat(item, "fOilVolume", "Change Oil Volume", "");
+                
+                if (fieldName != null && value != null)
+                {
+                    SetVehicleHandlingInt(veh.Handle, "CHandlingData", fieldName, value.Value);
+                    ModifyVehicleTopSpeed(veh.Handle, 1);
+                }
+                
+            };
+            #endregion
+            
             #region Vehicle Engine Sound Submenu Stuff
             var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
             var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);

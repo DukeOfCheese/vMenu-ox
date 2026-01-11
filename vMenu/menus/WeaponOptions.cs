@@ -402,7 +402,7 @@ namespace vMenuClient.menus
                                 }
                                 else
                                 {
-                                    Notify.Error("You must input a valid number for the damage multiplier.");
+                                    Notify.Error("You must input a valid number for the shake multiplier.");
                                 }
                             }
                         };

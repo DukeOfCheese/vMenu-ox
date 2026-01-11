@@ -597,6 +597,7 @@ namespace vMenuClient
                         MainMenu.VehicleOptionsMenu.VehicleDoorsMenu,
                         MainMenu.VehicleOptionsMenu.VehicleLiveriesMenu,
                         MainMenu.VehicleOptionsMenu.VehicleModMenu,
+                        MainMenu.VehicleOptionsMenu.VehicleHandlingMenu,
                         MainMenu.VehicleOptionsMenu.VehicleUnderglowMenu,
                         MainMenu.VehicleOptionsMenu.VehicleWindowsMenu,
                         MainMenu.VehicleOptionsMenu.VehicleEngineSoundMenu,

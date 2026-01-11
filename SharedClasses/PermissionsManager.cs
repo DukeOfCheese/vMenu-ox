@@ -82,6 +82,7 @@ namespace vMenuShared
             VOSpeedLimiter,
             VOChangePlate,
             VOMod,
+            VOHandling,
             VOColors,
             VOLiveries,
             VOEngineSound,
