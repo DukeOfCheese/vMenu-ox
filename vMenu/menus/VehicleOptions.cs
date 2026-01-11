@@ -1917,6 +1917,9 @@ namespace vMenuClient.menus
                     int currentClutchRateUp = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fClutchChangeRateScaleUpShift");
                     clutchRateUpBtn.Label = currentClutchRateUp.ToString("F2") + "x";
 
+                    int currentClutchRateDown = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fClutchChangeRateScaleDownShift");
+                    clutchRateDownBtn.Label = currentClutchRateDown.ToString("F2") + "x";
+
                     int currentDriveMaxFlat = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fInitialDriveMaxFlatVel");
                     driveMaxFlatBtn.Label = currentDriveMaxFlat.ToString("F2") + "x";
 
@@ -1936,7 +1939,7 @@ namespace vMenuClient.menus
                     tractionCurveMaxBtn.Label = currentSteeringLock.ToString("F2");
 
                     int currentTractionCurveMin = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionCurveMin");
-                    tractionCurveMinBtn.Label = currentSteeringLock.ToString("F2");
+                    tractionCurveMinBtn.Label = currentTractionCurveMin.ToString("F2");
 
                     int currentTractionCurveLateral = GetVehicleHandlingInt(veh.Handle, "CHandlingData", "fTractionCurveLateral");
                     tractionCurveLateralBtn.Label = currentTractionCurveLateral.ToString("F2");
@@ -2036,7 +2039,7 @@ namespace vMenuClient.menus
                 else if (item == tractionSpringDeltaBtn) await HandleVehicleStat(item, "fTractionSpringDeltaMax", "Change Traction Spring Delta", "");
                 else if (item == lowSpeedTractionLossBtn) await HandleVehicleStat(item, "fLowSpeedTractionLossMult", "Change Low Speed Traction Loss", "");
                 else if (item == camberStiffBtn) await HandleVehicleStat(item, "fCamberStiffnesss", "Change Camber Stiffness", "");
-                else if (item == tractionBiasFrontBtn) await HandleVehicleStat(item, "fTractionBiasFront", "Change Traction Bias", "", 0.01, 0.99);
+                else if (item == tractionBiasFrontBtn) await HandleVehicleStat(item, "fTractionBiasFront", "Change Traction Bias", "", 0.01, 1);
                 else if (item == tractionLossBtn) await HandleVehicleStat(item, "fTractionLossMult", "Change Traction Loss", "");
                 else if (item == suspensionForceBtn) await HandleVehicleStat(item, "fSuspensionForce", "Change Suspension Force", "");
                 else if (item == suspensionCompBtn) await HandleVehicleStat(item, "fSuspensionCompDamp", "Change Suspension Compression", "");
