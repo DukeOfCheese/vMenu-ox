@@ -42,6 +42,10 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].inputDialog(windowTitle, defaultText, maxInputLength);
         }
+        public async Task<int> GetCustomSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
+        {
+            return await Exports["vMenu"].sliderDialog(windowTitle, defaultVal, minimum, maximum, step);
+        }
         public async Task<string> GetCustomColourInput(int type)
         {
             return await Exports["vMenu"].colourDialog(type);
@@ -1936,6 +1940,12 @@ namespace vMenuClient
         {
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetCustomInput(windowTitle, defaultText, maxInputLength);
+        }
+        public static async Task<int> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum) => await GetUserInputSlider(windowTitle, defaultVal, minimum, maximum, 1);
+        public static async Task<int> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
+        {
+            var ExternalFunctions = new ExternalFunctions();
+            return await ExternalFunctions.GetCustomSlider(windowTitle, defaultVal, minimum, maximum, step);
         }
         public static async Task<string> GetUserColourInput(int type)
         {

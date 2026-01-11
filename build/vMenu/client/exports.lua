@@ -19,6 +19,26 @@ exports(
 	end
 )
 
+exports(
+	"sliderDialog",
+	---@param windowTitle string
+	---@param defaultVal integer
+	---@param minimum integer
+	---@param maximum integer
+	---@param step float | 0.01
+	---@return string
+	function(windowTitle, defaultVal, minimum, maximum, step)
+		local input = 
+			lib.inputDialog(
+				"vMenu",
+				{
+					{ type = "slider", label = windowTitle, default = defaultVal, min = minimum, max = maximum, step = step or 0.01}
+				}
+			)
+		return input and input[1] or ""
+	end
+)
+
 function RgbToHex(r, g, b)
 	r = math.max(0, math.min(255, r))
 	g = math.max(0, math.min(255, g))
