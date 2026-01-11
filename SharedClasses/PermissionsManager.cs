@@ -85,7 +85,6 @@ namespace vMenuShared
             VOColors,
             VOLiveries,
             VOEngineSound,
-            VOSirenSound,
             VOComponents,
             VODoors,
             VOWindows,

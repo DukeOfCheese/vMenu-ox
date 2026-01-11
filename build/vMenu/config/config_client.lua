@@ -55,17 +55,5 @@ Config = {
                 position = "center-right"
             })
         end
-    end,
-    Vehicles = {
-
-    },
-    Weapons = {
-        ["weapon_MK18MD1"] = GetLabelText("W_AR_MK18MD"),
-    },
-    EngineSounds = {
-        "baller",
-    },
-    SirenSounds = {
-
-    },
+    end
 }
