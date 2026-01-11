@@ -71,17 +71,6 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].getUserConfirmation(windowTitle, description);
         }
-        
-        public List<string> LoadEngineSounds()
-        {
-            var sounds = Exports["vMenu"].LoadEngineSounds();
-            var soundList = new List<string>();
-            foreach (var sound in sounds)
-            {
-                soundList.Add(sound.ToString());
-            }
-            return soundList;
-        }
     }
 
         public static class CommonFunctions
@@ -1982,11 +1971,6 @@ namespace vMenuClient
         {
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetUserConfirmation(windowTitle, description);
-        }
-        public static List<string> GetEngineSounds()
-        {
-            var ExternalFunctions = new ExternalFunctions();
-            return ExternalFunctions.LoadEngineSounds();
         }
         #endregion
 
