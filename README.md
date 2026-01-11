@@ -144,7 +144,7 @@ end)
 - [x] Convert show player names to LUA function to allow for easier developer integration
 - [x] Fix non-custom notifications
 - [x] Incorporate engine / ~~siren~~ sound modification to VO
-- [ ] Allow live handling editing for vehicles
+- [x] Allow live handling editing for vehicles
 
 --------
 
