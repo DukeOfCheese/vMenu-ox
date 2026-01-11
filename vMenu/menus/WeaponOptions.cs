@@ -383,7 +383,7 @@ namespace vMenuClient.menus
                                     SetWeaponDamageModifier(hash, multInput);
                                     item.Label = multInput + "x";
                                     defaultDmgMult = multInput.ToString();
-                                    Notify.Success("Set damage modifier to " + multInput + "x");
+                                    Notify.Success("Set damage modifier to " + multInput.ToString("F2") + "x");
                                 }
                                 else
                                 {
@@ -398,7 +398,7 @@ namespace vMenuClient.menus
                                     SetWeaponRecoilShakeAmplitude(hash, shakeInput);
                                     item.Label = shakeInput + "x";
                                     defaultShakeAmplitude = shakeInput.ToString();
-                                    Notify.Success("Set damage modifier to " + shakeInput + "x");
+                                    Notify.Success("Set damage modifier to " + shakeInput.ToString("F2") + "x");
                                 }
                                 else
                                 {
