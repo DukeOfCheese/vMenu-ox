@@ -143,7 +143,7 @@ end)
 - [ ] Searchable menus (incl. convar to enable / disable)
 - [x] Convert show player names to LUA function to allow for easier developer integration
 - [x] Fix non-custom notifications
-- [ ] Incorporate engine / siren sound modification to VO
+- [ ] Incorporate engine / ~~siren~~ sound modification to VO
 - [ ] Allow live handling editing for vehicles
 
 --------

@@ -600,7 +600,6 @@ namespace vMenuClient
                         MainMenu.VehicleOptionsMenu.VehicleUnderglowMenu,
                         MainMenu.VehicleOptionsMenu.VehicleWindowsMenu,
                         MainMenu.VehicleOptionsMenu.VehicleEngineSoundMenu,
-                        MainMenu.VehicleOptionsMenu.VehicleSirenSoundMenu,
                     };
                 foreach (var m in subMenus)
                 {
@@ -693,11 +692,6 @@ namespace vMenuClient
 
             await Task.FromResult(0);
         }
-        
-        // private void EngineSoundStateBags(Vehicle vehicle)
-        // {
-        //     AddStateBagChangeHandler("vMenu:engineSound", nil, Function())
-        // }
         #endregion
 
         #region Weather Options

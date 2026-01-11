@@ -82,17 +82,6 @@ namespace vMenuClient
             }
             return soundList;
         }
-
-        public List<string> LoadSirenSounds()
-        {
-            var sounds = Exports["vMenu"].LoadSirenSounds();
-            var soundList = new List<string>();
-            foreach (var sound in sounds)
-            {
-                soundList.Add(sound.ToString());
-            }
-            return soundList;
-        }
     }
 
         public static class CommonFunctions
@@ -109,7 +98,6 @@ namespace vMenuClient
         internal static bool DriveToWpTaskActive = false;
         internal static bool DriveWanderTaskActive = false;
         public static List<string> EngineSounds = new List<string>();
-        public static List<string> SirenSounds = new List<string>();
         #endregion
 
         #region some misc functions copied from base script
@@ -2000,13 +1988,6 @@ namespace vMenuClient
             var ExternalFunctions = new ExternalFunctions();
             return ExternalFunctions.LoadEngineSounds();
         }
-
-        public static List<string> GetSirenSounds()
-        {
-            var ExternalFunctions = new ExternalFunctions();
-            return ExternalFunctions.LoadSirenSounds();
-        }
-
         #endregion
 
         #region Set License Plate Text
