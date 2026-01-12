@@ -52,7 +52,9 @@ _Say goodbye to huge spreadsheets with different numbers and say hello to simple
 
 Previously, addons.json would load into a separate section of the menu for vehicles, weapons and peds. This has since been changed so that the addons load directly into existing lists and show up in the menu like a base game asset. 
 
-Custom weapons also support component menus and are assigned a permission similar to the usual vMenu standard of `WP{weapon_name}` for ease of use
+Custom weapons also support component menus
+  - Currently custom weapons are UNABLE to be assigned custom permissions without a recompile as the Permission enum is compiled not generated at runtime
+  - Custom weapons can only be accessed through the `WP.All` permission or can be assigned a permission in the Permission file (you can get support for this [here](https://discord.atlasdevops.com))
 
 ### Vehicle
 
