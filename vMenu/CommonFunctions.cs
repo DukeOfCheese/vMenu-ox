@@ -42,7 +42,7 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].inputDialog(windowTitle, defaultText, maxInputLength);
         }
-        public async Task<int> GetCustomSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
+        public async Task<double> GetCustomSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
         {
             return await Exports["vMenu"].sliderDialog(windowTitle, defaultVal, minimum, maximum, step);
         }
@@ -1941,8 +1941,8 @@ namespace vMenuClient
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetCustomInput(windowTitle, defaultText, maxInputLength);
         }
-        public static async Task<int> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum) => await GetUserInputSlider(windowTitle, defaultVal, minimum, maximum, 1);
-        public static async Task<int> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
+        public static async Task<double> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum) => await GetUserInputSlider(windowTitle, defaultVal, minimum, maximum, 1.0);
+        public static async Task<double> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
         {
             var ExternalFunctions = new ExternalFunctions();
             return await ExternalFunctions.GetCustomSlider(windowTitle, defaultVal, minimum, maximum, step);

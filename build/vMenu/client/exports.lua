@@ -22,9 +22,9 @@ exports(
 exports(
 	"sliderDialog",
 	---@param windowTitle string
-	---@param defaultVal integer
-	---@param minimum integer
-	---@param maximum integer
+	---@param defaultVal double
+	---@param minimum double
+	---@param maximum double
 	---@param step float | 0.01
 	---@return string
 	function(windowTitle, defaultVal, minimum, maximum, step)
