@@ -29,20 +29,28 @@ Support for this repository going forward can be found below!
 
 - Input Dialog Replace
   - Replaces the base game user input and replaces with ox_lib input dialog for easier use such as copy/pasting spawncodes etc.
+  - Adds ox_lib input slider for predefined values to prevent issues on inputs
 - User Confirmations
   - Important actions like weather/time changes have user confirmation buttons preventing unwanted mishaps with a misclick.
-![vmenuoxconfirmbuttons](https://github.com/user-attachments/assets/a1b53f95-f505-4ee2-9114-7082a5865685)
 
 ## Code Share System
 For code sharing to function, you will require [oxmysql](https://github.com/overextended/oxmysql/releases)<br>
 If you have oxmysql, you can enable the outfit/vehicle sharing systems in the `permissions.cfg`
 
 This is a custom sharing system I designed for vMenu to follow similar behaviour i've seen in some clothing creators on economy servers.
-This allows for super easy & simple sharing MP ped configurations between players and eventually vehicles is the plan.
+This allows for super easy & simple sharing MP ped configurations between players.
 
 Players create unique codes for a saved MP Ped and can give that code out where others can then load said outfit keeping their unique characteristics like hair, tattoos etc but getting clothing & prop options allowing super easy sharing!
 
+This has since been added to vehicles and weapon loadouts.
+
 _Say goodbye to huge spreadsheets with different numbers and say hello to simple one code input for your roleplay servers!_
+
+### Addons
+
+Previously, addons.json would load into a separate section of the menu for vehicles, weapons and peds. This has since been changed so that the addons load directly into existing lists and show up in the menu like a base game asset. 
+
+Custom weapons also support component menus and are assigned a permission similar to the usual vMenu standard of `WP{weapon_name}` for ease of use
 
 ### Vehicle
 
@@ -54,6 +62,14 @@ _Say goodbye to huge spreadsheets with different numbers and say hello to simple
 - Implemented cooldown between usage of close all doors to patch exploit to make cars float/fly
 - Configurable cooldown when spawning vehicles to prevent players from spam spawning vehicles
   - `setr vmenu_vehicle_spawner_cooldown 1000`
+- Added handling menu to be able to read and write handling live to vehicles
+- Added engine sound menu to edit the sound of the vehicle from vMenu
+
+### Weapons
+
+- Changed component buttons to checkboxes to reveal which components are equipped or not at a glance
+  - Also updates so that clashing components update each other --> when Extended Clip is selected, Default Clip unselects
+- Added live weapon statistics editing (LIMITED OPTIONS CURRENTLY)
 
 ### Weather
 
@@ -63,7 +79,6 @@ _Say goodbye to huge spreadsheets with different numbers and say hello to simple
 
 - Keybinds for Thermal & Night Vision Modes
   - This is locked to users that have the permissions assigned to them.
-    <img src="https://github.com/user-attachments/assets/d960116b-3540-485b-ad7a-ecaa1fdd42e4" width="500"><br>
 - Patched vulnerability on weather events that could easily be exploited - thanks to [this pull](https://github.com/TomGrobbe/vMenu/pull/430/) that isn't merged as of 7th Jan 25.
 - Disable AI with ease, with a simple convar in your permissions.cfg - `set vmenu_disable_ai true` (false by default)
 
