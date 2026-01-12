@@ -129,10 +129,8 @@ namespace vMenuClient.data
                 {
                     if (!weaponNames.ContainsKey(weaponEntry.Value))
                     {
-                        string permissionName = $"WP{weaponEntry.Value.Substring("weapon_".Length)}";
                         weaponNames[weaponEntry.Value] = weaponEntry.Key;
                         AddTextEntry(weaponEntry.Value, weaponEntry.Key);
-                        DynamicWeaponPermissions[weaponEntry.Value] = permissionName;
                     }
                 }
 
@@ -191,11 +189,7 @@ namespace vMenuClient.data
                     Components = componentHashes,
                     Perm = weaponPermissions.ContainsKey(realName) 
                         ? weaponPermissions[realName]
-                        : (DynamicWeaponPermissions.ContainsKey(realName) 
-                            ? Enum.TryParse<Permission>(DynamicWeaponPermissions[realName], out var dynamicPerm) 
-                                ? dynamicPerm
-                                : Permission.WPAll
-                            : Permission.WPAll)
+                            : Permission.WPAll
                 };
                 if (!_weaponsList.Contains(vw))
                 {
