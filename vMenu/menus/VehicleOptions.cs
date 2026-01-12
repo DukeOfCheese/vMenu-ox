@@ -1936,7 +1936,7 @@ namespace vMenuClient.menus
                     steeringLockBtn.Label = currentSteeringLock.ToString("F2");
 
                     double currentTractionCurveMax = GetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fTractionCurveMax");
-                    tractionCurveMaxBtn.Label = currentSteeringLock.ToString("F2");
+                    tractionCurveMaxBtn.Label = currentTractionCurveMax.ToString("F2");
 
                     double currentTractionCurveMin = GetVehicleHandlingFloat(veh.Handle, "CHandlingData", "fTractionCurveMin");
                     tractionCurveMinBtn.Label = currentTractionCurveMin.ToString("F2");
