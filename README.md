@@ -44,6 +44,8 @@ Players create unique codes for a saved MP Ped and can give that code out where 
 
 This has since been added to vehicles and weapon loadouts.
 
+Each code system is toggleable via a convar in the permissions.cfg meaning you can enable some and disable others
+
 _Say goodbye to huge spreadsheets with different numbers and say hello to simple one code input for your roleplay servers!_
 
 ### Addons
@@ -160,6 +162,7 @@ end)
 - [x] Fix non-custom notifications
 - [x] Incorporate engine / ~~siren~~ sound modification to VO
 - [x] Allow live handling editing for vehicles
+- [ ] Add in vMenu Discord webhook logs
 
 --------
 
