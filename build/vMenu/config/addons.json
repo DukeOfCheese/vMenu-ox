@@ -1,16 +1,16 @@
 {
   "vehicles": [
-    "redeye"
+    "spawncode"
   ],
   "peds": {
     "main": {
-
+      "Friendly Name": "spawncode"
     },
     "animal": {
 
     },
     "male": {
-      "Wick": "wick2"
+      
     },
     "female": {
 
@@ -20,17 +20,12 @@
     }
   },
   "weapons": {
-    "MK18MD1": "WEAPON_MK18MD1"
+    "Friendly Name": "WEAPON_NAME"
   },
   "weapon_components": {
-    "Scope": "COMPONENT_AT_SCOPE_MK18MD",
-    "Clip": "COMPONENT_MK18MD_CLIP_01",
-    "Suppressor": "COMPONENT_AT_MK18MD_SUPP",
-    "Flashlight": "COMPONENT_AT_MK18MD_FLSH"
+    "Friendly Name": "COMPONENT_NAME"
   },
   "engine_sounds": {
-    "Adder": "adder",
-    "Baller": "baller",
-    "Dodge Hemi Hellcat": "dodgehemihellcat"
+    "Friendly Name": "spawncode"
   }
 }
