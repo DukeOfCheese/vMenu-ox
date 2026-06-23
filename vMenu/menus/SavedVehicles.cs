@@ -35,6 +35,15 @@ namespace vMenuClient.menus
         // Need to be editable from other functions
         private readonly MenuListItem setCategoryBtn = new("Set Vehicle Category", new List<string> { }, 0, "Sets this Vehicle's category. Select to save.");
 
+        // Cached once because the icon enum never changes at runtime.
+        private static readonly List<string> iconNames = Enum.GetNames(typeof(MenuItem.Icon)).ToList();
+
+        // Category management buttons, recreated whenever a category is opened. Stored so OnItemSelect can compare against them.
+        private MenuItem renameBtn;
+        private MenuItem descriptionBtn;
+        private MenuItem deleteBtn;
+        private MenuCheckboxItem deleteCharsBtn;
+
         /// <summary>
         /// Creates the menu.
         /// </summary>
@@ -131,8 +140,6 @@ namespace vMenuClient.menus
                 savedVehiclesCategoryMenu.MenuSubtitle = $"~s~Category: ~y~{currentCategory.Name}";
                 savedVehiclesCategoryMenu.ClearMenuItems();
 
-                var iconNames = Enum.GetNames(typeof(MenuItem.Icon)).ToList();
-
                 string ChangeCallback(MenuDynamicListItem item, bool left)
                 {
                     int currentIndex = iconNames.IndexOf(item.CurrentItem);
@@ -156,11 +163,11 @@ namespace vMenuClient.menus
                     return iconNames[newIndex];
                 }
 
-                var renameBtn = new MenuItem("Rename Category", "Rename this category.")
+                renameBtn = new MenuItem("Rename Category", "Rename this category.")
                 {
                     Enabled = !isUncategorized
                 };
-                var descriptionBtn = new MenuItem("Change Category Description", "Change this category's description.")
+                descriptionBtn = new MenuItem("Change Category Description", "Change this category's description.")
                 {
                     Enabled = !isUncategorized
                 };
@@ -169,12 +176,12 @@ namespace vMenuClient.menus
                     Enabled = !isUncategorized,
                     RightIcon = currentCategory.Icon
                 };
-                var deleteBtn = new MenuItem("Delete Category", "Delete this category. This can not be undone!")
+                deleteBtn = new MenuItem("Delete Category", "Delete this category. This can not be undone!")
                 {
                     RightIcon = MenuItem.Icon.WARNING,
                     Enabled = !isUncategorized
                 };
-                var deleteCharsBtn = new MenuCheckboxItem("Delete All Vehicles", "If checked, when \"Delete Category\" is pressed, all the saved vehicles in this category will be deleted as well. If not checked, saved vehicles will be moved to \"Uncategorized\".")
+                deleteCharsBtn = new MenuCheckboxItem("Delete All Vehicles", "If checked, when \"Delete Category\" is pressed, all the saved vehicles in this category will be deleted as well. If not checked, saved vehicles will be moved to \"Uncategorized\".")
                 {
                     Enabled = !isUncategorized
                 };
@@ -250,54 +257,136 @@ namespace vMenuClient.menus
 
             savedVehiclesCategoryMenu.OnItemSelect += async (sender, item, index) =>
             {
-                switch (index)
+                // Rename Category
+                if (item == renameBtn)
                 {
-                    // Rename Category
-                    case 0:
-                        var name = await GetUserInput(windowTitle: "Enter a new category name", defaultText: currentCategory.Name, maxInputLength: 30);
+                    var name = await GetUserInput(windowTitle: "Enter a new category name", defaultText: currentCategory.Name, maxInputLength: 30);
 
-                        if (string.IsNullOrEmpty(name) || name.ToLower() == "uncategorized" || name.ToLower() == "create new")
+                    if (string.IsNullOrEmpty(name) || name.ToLower() == "uncategorized" || name.ToLower() == "create new")
+                    {
+                        Notify.Error(CommonErrors.InvalidInput);
+                        return;
+                    }
+                    else if (GetAllCategoryNames().Contains(name) || !string.IsNullOrEmpty(GetResourceKvpString("saved_veh_category_" + name)))
+                    {
+                        Notify.Error(CommonErrors.SaveNameAlreadyExists);
+                        return;
+                    }
+
+                    string oldName = currentCategory.Name;
+
+                    currentCategory.Name = name;
+
+                    if (StorageManager.SaveJsonData("saved_veh_category_" + name, JsonConvert.SerializeObject(currentCategory), false))
+                    {
+                        StorageManager.DeleteSavedStorageItem("saved_veh_category_" + oldName);
+
+                        int totalCount = 0;
+                        int updatedCount = 0;
+
+                        if (savedVehicles.Count > 0)
                         {
-                            Notify.Error(CommonErrors.InvalidInput);
-                            return;
-                        }
-                        else if (GetAllCategoryNames().Contains(name) || !string.IsNullOrEmpty(GetResourceKvpString("saved_veh_category_" + name)))
-                        {
-                            Notify.Error(CommonErrors.SaveNameAlreadyExists);
-                            return;
-                        }
-
-                        string oldName = currentCategory.Name;
-
-                        currentCategory.Name = name;
-
-                        if (StorageManager.SaveJsonData("saved_veh_category_" + name, JsonConvert.SerializeObject(currentCategory), false))
-                        {
-                            StorageManager.DeleteSavedStorageItem("saved_veh_category_" + oldName);
-
-                            int totalCount = 0;
-                            int updatedCount = 0;
-
-                            if (savedVehicles.Count > 0)
+                            foreach (var kvp in savedVehicles)
                             {
-                                foreach (var kvp in savedVehicles)
+                                string saveName = kvp.Key;
+                                VehicleInfo vehicle = kvp.Value;
+
+                                if (string.IsNullOrEmpty(vehicle.Category))
                                 {
-                                    string saveName = kvp.Key;
-                                    VehicleInfo vehicle = kvp.Value;
+                                    continue;
+                                }
 
-                                    if (string.IsNullOrEmpty(vehicle.Category))
-                                    {
-                                        continue;
-                                    }
+                                if (vehicle.Category != oldName)
+                                {
+                                    continue;
+                                }
 
-                                    if (vehicle.Category != oldName)
-                                    {
-                                        continue;
-                                    }
+                                totalCount++;
 
-                                    totalCount++;
+                                vehicle.Category = name;
 
-                                    vehicle.Category = name;
+                                if (StorageManager.SaveVehicleInfo(saveName, vehicle, true))
+                                {
+                                    updatedCount++;
+                                    Log($"Updated category for \"{saveName}\"");
+                                }
+                                else
+                                {
+                                    Log($"Something went wrong when updating category for \"{saveName}\"");
+                                }
+                            }
+                        }
+
+                        Notify.Success($"Your category has been renamed to ~g~<C>{name}</C>~s~. {updatedCount}/{totalCount} vehicles updated.");
+                        MenuController.CloseAllMenus();
+                        UpdateSavedVehicleCategoriesMenu();
+                        vehicleCategoryMenu.OpenMenu();
+                    }
+                    else
+                    {
+                        Notify.Error("Something went wrong while renaming your category, your old category will NOT be deleted because of this.");
+                    }
+                }
+                // Change Category Description
+                else if (item == descriptionBtn)
+                {
+                    var description = await GetUserInput(windowTitle: "Enter a new category description", defaultText: currentCategory.Description, maxInputLength: 120);
+
+                    currentCategory.Description = description;
+
+                    if (StorageManager.SaveJsonData("saved_veh_category_" + currentCategory.Name, JsonConvert.SerializeObject(currentCategory), true))
+                    {
+                        Notify.Success($"Your category description has been changed.");
+                        MenuController.CloseAllMenus();
+                        UpdateSavedVehicleCategoriesMenu();
+                        vehicleCategoryMenu.OpenMenu();
+                    }
+                    else
+                    {
+                        Notify.Error("Something went wrong while changing your category description.");
+                    }
+                }
+                // Delete Category
+                else if (item == deleteBtn)
+                {
+                    if (item.Label == "Are you sure?")
+                    {
+                        bool deleteVehicles = deleteCharsBtn != null && deleteCharsBtn.Checked;
+
+                        item.Label = "";
+                        DeleteResourceKvp("saved_veh_category_" + currentCategory.Name);
+
+                        int totalCount = 0;
+                        int updatedCount = 0;
+
+                        if (savedVehicles.Count > 0)
+                        {
+                            foreach (var kvp in savedVehicles)
+                            {
+                                string saveName = kvp.Key;
+                                VehicleInfo vehicle = kvp.Value;
+
+                                if (string.IsNullOrEmpty(vehicle.Category))
+                                {
+                                    continue;
+                                }
+
+                                if (vehicle.Category != currentCategory.Name)
+                                {
+                                    continue;
+                                }
+
+                                totalCount++;
+
+                                if (deleteVehicles)
+                                {
+                                    updatedCount++;
+
+                                    DeleteResourceKvp(saveName);
+                                }
+                                else
+                                {
+                                    vehicle.Category = "Uncategorized";
 
                                     if (StorageManager.SaveVehicleInfo(saveName, vehicle, true))
                                     {
@@ -310,127 +399,41 @@ namespace vMenuClient.menus
                                     }
                                 }
                             }
-
-                            Notify.Success($"Your category has been renamed to ~g~<C>{name}</C>~s~. {updatedCount}/{totalCount} vehicles updated.");
-                            MenuController.CloseAllMenus();
-                            UpdateSavedVehicleCategoriesMenu();
-                            vehicleCategoryMenu.OpenMenu();
                         }
-                        else
-                        {
-                            Notify.Error("Something went wrong while renaming your category, your old category will NOT be deleted because of this.");
-                        }
-                        break;
 
-                    // Change Category Description
-                    case 1:
-                        var description = await GetUserInput(windowTitle: "Enter a new category description", defaultText: currentCategory.Description, maxInputLength: 120);
-
-                        currentCategory.Description = description;
-
-                        if (StorageManager.SaveJsonData("saved_veh_category_" + currentCategory.Name, JsonConvert.SerializeObject(currentCategory), true))
-                        {
-                            Notify.Success($"Your category description has been changed.");
-                            MenuController.CloseAllMenus();
-                            UpdateSavedVehicleCategoriesMenu();
-                            vehicleCategoryMenu.OpenMenu();
-                        }
-                        else
-                        {
-                            Notify.Error("Something went wrong while changing your category description.");
-                        }
-                        break;
-
-                    // Delete Category
-                    case 3:
-                        if (item.Label == "Are you sure?")
-                        {
-                            bool deleteVehicles = (sender.GetMenuItems().ElementAt(4) as MenuCheckboxItem).Checked;
-
-                            item.Label = "";
-                            DeleteResourceKvp("saved_veh_category_" + currentCategory.Name);
-
-                            int totalCount = 0;
-                            int updatedCount = 0;
-
-                            if (savedVehicles.Count > 0)
-                            {
-                                foreach (var kvp in savedVehicles)
-                                {
-                                    string saveName = kvp.Key;
-                                    VehicleInfo vehicle = kvp.Value;
-
-                                    if (string.IsNullOrEmpty(vehicle.Category))
-                                    {
-                                        continue;
-                                    }
-
-                                    if (vehicle.Category != currentCategory.Name)
-                                    {
-                                        continue;
-                                    }
-
-                                    totalCount++;
-
-                                    if (deleteVehicles)
-                                    {
-                                        updatedCount++;
-
-                                        DeleteResourceKvp(saveName);
-                                    }
-                                    else
-                                    {
-                                        vehicle.Category = "Uncategorized";
-
-                                        if (StorageManager.SaveVehicleInfo(saveName, vehicle, true))
-                                        {
-                                            updatedCount++;
-                                            Log($"Updated category for \"{saveName}\"");
-                                        }
-                                        else
-                                        {
-                                            Log($"Something went wrong when updating category for \"{saveName}\"");
-                                        }
-                                    }
-                                }
-                            }
-
-                            Notify.Success($"Your saved category has been deleted. {updatedCount}/{totalCount} vehicles {(deleteVehicles ? "deleted" : "updated")}.");
-                            MenuController.CloseAllMenus();
-                            UpdateSavedVehicleCategoriesMenu();
-                            vehicleCategoryMenu.OpenMenu();
-                        }
-                        else
-                        {
-                            item.Label = "Are you sure?";
-                        }
-                        break;
-
-                    // Load saved vehicle menu
-                    default:
-                        List<string> categoryNames = GetAllCategoryNames();
-                        List<MenuItem.Icon> categoryIcons = GetCategoryIcons(categoryNames);
-                        int nameIndex = categoryNames.IndexOf(currentCategory.Name);
-
-                        setCategoryBtn.ItemData = categoryIcons;
-                        setCategoryBtn.ListItems = categoryNames;
-                        setCategoryBtn.ListIndex = nameIndex == 1 ? 0 : nameIndex;
-                        setCategoryBtn.RightIcon = categoryIcons[setCategoryBtn.ListIndex];
-
-                        var vehInfo = item.ItemData;
-                        selectedVehicleMenu.MenuSubtitle = $"{vehInfo.Key.Substring(4)} ({vehInfo.Value.name})";
-                        currentlySelectedVehicle = vehInfo;
+                        Notify.Success($"Your saved category has been deleted. {updatedCount}/{totalCount} vehicles {(deleteVehicles ? "deleted" : "updated")}.");
                         MenuController.CloseAllMenus();
-                        selectedVehicleMenu.OpenMenu();
-                        MenuController.AddSubmenu(savedVehiclesCategoryMenu, selectedVehicleMenu);
-                        break;
+                        UpdateSavedVehicleCategoriesMenu();
+                        vehicleCategoryMenu.OpenMenu();
+                    }
+                    else
+                    {
+                        item.Label = "Are you sure?";
+                    }
+                }
+                // Load saved vehicle menu
+                else if (item.ItemData is KeyValuePair<string, VehicleInfo> vehInfo)
+                {
+                    List<string> categoryNames = GetAllCategoryNames();
+                    List<MenuItem.Icon> categoryIcons = GetCategoryIcons(categoryNames);
+                    int nameIndex = categoryNames.IndexOf(currentCategory.Name);
+
+                    setCategoryBtn.ItemData = categoryIcons;
+                    setCategoryBtn.ListItems = categoryNames;
+                    setCategoryBtn.ListIndex = nameIndex == 1 ? 0 : nameIndex;
+                    setCategoryBtn.RightIcon = categoryIcons[setCategoryBtn.ListIndex];
+
+                    selectedVehicleMenu.MenuSubtitle = $"{vehInfo.Key.Substring(4)} ({vehInfo.Value.name})";
+                    currentlySelectedVehicle = vehInfo;
+                    MenuController.CloseAllMenus();
+                    selectedVehicleMenu.OpenMenu();
+                    MenuController.AddSubmenu(savedVehiclesCategoryMenu, selectedVehicleMenu);
                 }
             };
 
             // Change Category Icon
             savedVehiclesCategoryMenu.OnDynamicListItemSelect += (_, _, currentItem) =>
             {
-                var iconNames = Enum.GetNames(typeof(MenuItem.Icon)).ToList();
                 int iconIndex = iconNames.IndexOf(currentItem);
 
                 currentCategory.Icon = (MenuItem.Icon)iconIndex;

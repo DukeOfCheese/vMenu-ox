@@ -428,7 +428,7 @@ namespace vMenuClient
             else
             {
                 // Return the (new) value.
-                return GetResourceKvpString($"{SETTINGS_PREFIX}{kvpString}").ToLower() == "true";
+                return savedValue.ToLower() == "true";
             }
         }
 
@@ -444,23 +444,11 @@ namespace vMenuClient
 
         private static float GetSettingsFloat(string kvpString)
         {
-            var savedValue = GetResourceKvpFloat(SETTINGS_PREFIX + kvpString);
-            if (savedValue.ToString() != null) // this can still become null for some reason, so that's why we check it.
-            {
-                if (savedValue.GetType() == typeof(float))
-                {
-                    return savedValue;
-                }
-                else
-                {
-                    return -1f;
-                }
-            }
-            else
-            {
-                SetSavedSettingsFloat(SETTINGS_PREFIX + kvpString, -1f);
-                return -1f;
-            }
+            // Get the current value.
+            var savedValue = GetResourceKvpFloat($"{SETTINGS_PREFIX}{kvpString}");
+            // Check if it exists, return -1f as the default if it doesn't.
+            var exists = !string.IsNullOrEmpty(GetResourceKvpString($"{SETTINGS_PREFIX}{kvpString}"));
+            return exists ? savedValue : -1f;
         }
 
         private static void SetSavedSettingsFloat(string kvpString, float newValue)

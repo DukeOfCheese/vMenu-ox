@@ -28,6 +28,27 @@ namespace vMenuClient.menus
         private Dictionary<Menu, ValidWeapon> weaponInfo;
         private Dictionary<MenuItem, string> weaponComponents;
 
+        // Weapon category group hashes (from GetWeapontypeGroup). Named so the
+        // category switch in RefreshSpawnableWeapons no longer relies on inline magic numbers.
+        private const uint CategoryRifles = 970310034;
+        private const uint CategoryHandguns = 416676503;
+        private const uint CategoryStunGun = 690389602;
+        private const uint CategoryShotguns = 860033945;
+        private const uint CategorySubMachineGuns = 3337201093;
+        private const uint CategoryLightMachineGuns = 1159398588;
+        private const uint CategoryThrowables = 1548507267;
+        private const uint CategoryFireExtinguisher = 4257178988;
+        private const uint CategoryJerryCan = 1595662460;
+        private const uint CategoryMelee = 3566412244;
+        private const uint CategoryKnuckleDuster = 2685387236;
+        private const uint CategoryHeavyWeapons = 2725924767;
+        private const uint CategorySniperRifles = 3082541095;
+
+        // Cache of weapon hash -> category group hash. GetWeapontypeGroup is a native call
+        // and the category for a given weapon hash never changes, so we compute it once per
+        // weapon and reuse the result across repeated RefreshSpawnableWeapons calls (searches).
+        private readonly Dictionary<uint, uint> weaponCategoryCache = new Dictionary<uint, uint>();
+
         #region Create Menu
         /// <summary>
         /// Creates the menu.
@@ -314,7 +335,11 @@ namespace vMenuClient.menus
             #region Loop through all weapons, create menus for them and add all menu items and handle events.
             foreach (var weapon in ValidWeapons.WeaponList)
             {
-                var cat = (uint)GetWeapontypeGroup(weapon.Hash);
+                if (!weaponCategoryCache.TryGetValue(weapon.Hash, out uint cat))
+                {
+                    cat = (uint)GetWeapontypeGroup(weapon.Hash);
+                    weaponCategoryCache[weapon.Hash] = cat;
+                }
                 if (!string.IsNullOrEmpty(weapon.Name) && IsAllowed(weapon.Perm))
                 {
                     //Log($"[DEBUG LOG] [WEAPON-BUG] {weapon.Name} - {weapon.Perm} = {IsAllowed(weapon.Perm)} & All = {IsAllowed(Permission.WPGetAll)}");
@@ -459,21 +484,7 @@ namespace vMenuClient.menus
                             {
                                 RemoveWeaponFromPed(Game.PlayerPed.Handle, hash);
                                 bool hasWeapon = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
-                                foreach (var kvp in weaponComponents)
-                                {
-                                    var compKey = kvp.Value;
-                                    if (kvp.Key is MenuCheckboxItem compItem)
-                                    {
-                                        if (weapon.Components.ContainsKey(compKey))
-                                        {
-                                            if (weapon.Components.TryGetValue(compKey, out uint compHash))
-                                            {
-                                                compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
-                                                compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
-                                            }
-                                        }
-                                    }
-                                }
+                                RefreshComponentStates(weapon);
                                 weaponMenu.RefreshIndex();
                                 Subtitle.Custom("Weapon removed.");
                             }
@@ -488,21 +499,7 @@ namespace vMenuClient.menus
                                 GetMaxAmmo(Game.PlayerPed.Handle, hash, ref ammo);
                                 GiveWeaponToPed(Game.PlayerPed.Handle, hash, ammo, false, true);
                                 bool hasWeapon = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
-                                foreach (var kvp in weaponComponents)
-                                {
-                                    var compKey = kvp.Value;
-                                    if (kvp.Key is MenuCheckboxItem compItem)
-                                    {
-                                        if (weapon.Components.ContainsKey(compKey))
-                                        {
-                                            if (weapon.Components.TryGetValue(compKey, out uint compHash))
-                                            {
-                                                compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
-                                                compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
-                                            }
-                                        }
-                                    }
-                                }
+                                RefreshComponentStates(weapon);
                                 Subtitle.Custom("Weapon added.");
                             }
                         }
@@ -562,41 +559,13 @@ namespace vMenuClient.menus
                                     if (HasPedGotWeaponComponent(Game.PlayerPed.Handle, weaponData.Hash, componentHash))
                                     {
                                         RemoveWeaponComponentFromPed(Game.PlayerPed.Handle, weaponData.Hash, componentHash);
-                                        foreach (var kvp in weaponComponents)
-                                        {
-                                            var compKey = kvp.Value;
-                                            if (kvp.Key is MenuCheckboxItem compItem)
-                                            {
-                                                if (weapon.Components.ContainsKey(compKey))
-                                                {
-                                                    if (weapon.Components.TryGetValue(compKey, out uint compHash))
-                                                    {
-                                                        compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
-                                                        compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        RefreshComponentStates(weapon);
                                         Subtitle.Custom("Component removed.");
                                     }
                                     else
                                     {
                                         EquipWeaponComponent(weaponData.Hash, componentHash);
-                                        foreach (var kvp in weaponComponents)
-                                        {
-                                            var compKey = kvp.Value;
-                                            if (kvp.Key is MenuCheckboxItem compItem)
-                                            {
-                                                if (weapon.Components.ContainsKey(compKey))
-                                                {
-                                                    if (weapon.Components.TryGetValue(compKey, out uint compHash))
-                                                    {
-                                                        compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
-                                                        compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        RefreshComponentStates(weapon);
                                         Subtitle.Custom("Component equipped.");
                                     }
                                 }
@@ -621,53 +590,57 @@ namespace vMenuClient.menus
                     #endregion
                     #region refresh and add to menu.
                     weaponMenu.RefreshIndex();
-                    if (cat == 970310034) // 970310034 rifles
+                    if (cat == CategoryRifles)
                     {
                         MenuController.AddSubmenu(rifles, weaponMenu);
                         MenuController.BindMenuItem(rifles, weaponMenu, weaponItem);
                         rifles.AddMenuItem(weaponItem);
                     }
-                    else if (cat is 416676503 or 690389602) // 416676503 hand guns // 690389602 stun gun
+                    else if (cat is CategoryHandguns or CategoryStunGun)
                     {
                         MenuController.AddSubmenu(handGuns, weaponMenu);
                         MenuController.BindMenuItem(handGuns, weaponMenu, weaponItem);
                         handGuns.AddMenuItem(weaponItem);
                     }
-                    else if (cat == 860033945) // 860033945 shotguns
+                    else if (cat == CategoryShotguns)
                     {
                         MenuController.AddSubmenu(shotguns, weaponMenu);
                         MenuController.BindMenuItem(shotguns, weaponMenu, weaponItem);
                         shotguns.AddMenuItem(weaponItem);
                     }
-                    else if (cat is 3337201093 or 1159398588) // 3337201093 sub machine guns // 1159398588 light machine guns
+                    else if (cat is CategorySubMachineGuns or CategoryLightMachineGuns)
                     {
                         MenuController.AddSubmenu(smgs, weaponMenu);
                         MenuController.BindMenuItem(smgs, weaponMenu, weaponItem);
                         smgs.AddMenuItem(weaponItem);
                     }
-                    else if (cat is 1548507267 or 4257178988 or 1595662460) // 1548507267 throwables // 4257178988 fire extinghuiser // jerry can
+                    else if (cat is CategoryThrowables or CategoryFireExtinguisher or CategoryJerryCan)
                     {
                         MenuController.AddSubmenu(throwables, weaponMenu);
                         MenuController.BindMenuItem(throwables, weaponMenu, weaponItem);
                         throwables.AddMenuItem(weaponItem);
                     }
-                    else if (cat is 3566412244 or 2685387236) // 3566412244 melee weapons // 2685387236 knuckle duster
+                    else if (cat is CategoryMelee or CategoryKnuckleDuster)
                     {
                         MenuController.AddSubmenu(melee, weaponMenu);
                         MenuController.BindMenuItem(melee, weaponMenu, weaponItem);
                         melee.AddMenuItem(weaponItem);
                     }
-                    else if (cat == 2725924767) // 2725924767 heavy weapons
+                    else if (cat == CategoryHeavyWeapons)
                     {
                         MenuController.AddSubmenu(heavy, weaponMenu);
                         MenuController.BindMenuItem(heavy, weaponMenu, weaponItem);
                         heavy.AddMenuItem(weaponItem);
                     }
-                    else if (cat == 3082541095) // 3082541095 sniper rifles
+                    else if (cat == CategorySniperRifles)
                     {
                         MenuController.AddSubmenu(snipers, weaponMenu);
                         MenuController.BindMenuItem(snipers, weaponMenu, weaponItem);
                         snipers.AddMenuItem(weaponItem);
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[VMENU] Weapon '{weapon.Name}' ({weapon.SpawnName}) has unrecognized category group {cat}; it will not appear in any weapon category submenu.");
                     }
                     #endregion
                 }
@@ -834,6 +807,30 @@ namespace vMenuClient.menus
             melee.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
             heavy.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
             snipers.OnMenuOpen += (sender) => { OnIndexChange(sender, sender.GetCurrentMenuItem()); };
+        }
+
+        /// <summary>
+        /// Refreshes the enabled/checked state of the component checkboxes for the given weapon.
+        /// Scoped to the current weapon's components (filtered via <paramref name="weapon"/>.Components).
+        /// </summary>
+        /// <param name="weapon">The weapon whose component checkboxes should be refreshed.</param>
+        private void RefreshComponentStates(ValidWeapon weapon)
+        {
+            foreach (var kvp in weaponComponents)
+            {
+                var compKey = kvp.Value;
+                if (kvp.Key is MenuCheckboxItem compItem)
+                {
+                    if (weapon.Components.ContainsKey(compKey))
+                    {
+                        if (weapon.Components.TryGetValue(compKey, out uint compHash))
+                        {
+                            compItem.Enabled = HasPedGotWeapon(Game.PlayerPed.Handle, weapon.Hash, false);
+                            compItem.Checked = HasPedGotWeaponComponent(Game.PlayerPed.Handle, weapon.Hash, compHash);
+                        }
+                    }
+                }
+            }
         }
 
         #endregion

@@ -27,6 +27,15 @@ namespace vMenuClient.menus
         public bool LoadoutCodesEnabled = GetSettingsBool(Setting.vmenu_loadout_codes);
         private readonly Dictionary<string, List<ValidWeapon>> SavedWeapons = new();
 
+        private static readonly JsonSerializerSettings SavedWeaponsJsonSettings = new()
+        {
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            Error = (sender, args) =>
+            {
+                args.ErrorContext.Handled = true;
+            }
+        };
+
         public static Dictionary<string, List<ValidWeapon>> GetSavedWeapons()
         {
             var handle = StartFindKvp("vmenu_string_saved_weapon_loadout_");
@@ -43,15 +52,7 @@ namespace vMenuClient.menus
                     var jsonString = GetResourceKvpString(kvp);
                     if (!string.IsNullOrEmpty(jsonString))
                     {
-                        var settings = new JsonSerializerSettings
-                        {
-                            MissingMemberHandling = MissingMemberHandling.Ignore,
-                            Error = (sender, args) =>
-                            {
-                                args.ErrorContext.Handled = true;
-                            }
-                        };
-                        var weapons = JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, settings);
+                        var weapons = JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, SavedWeaponsJsonSettings);
                         if (weapons != null)
                         {
                             saves.Add(kvp, weapons);
@@ -82,49 +83,9 @@ namespace vMenuClient.menus
                 SavedWeapons.Clear();
             }
 
-            var handle = StartFindKvp("vmenu_string_saved_weapon_loadout_");
-            var saves = new List<string>();
-            while (true)
+            foreach (var save in GetSavedWeapons())
             {
-                var kvp = FindKvp(handle);
-                if (string.IsNullOrEmpty(kvp))
-                {
-                    break;
-                }
-                saves.Add(kvp);
-            }
-            EndFindKvp(handle);
-
-            foreach (var save in saves)
-            {
-                try
-                {
-                    var jsonString = GetResourceKvpString(save);
-                    if (!string.IsNullOrEmpty(jsonString))
-                    {
-                        var settings = new JsonSerializerSettings
-                        {
-                            MissingMemberHandling = MissingMemberHandling.Ignore,
-                            Error = (sender, args) =>
-                            {
-                                args.ErrorContext.Handled = true;
-                            }
-                        };
-                        var weapons = JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, settings);
-                        if (weapons != null)
-                        {
-                            SavedWeapons.Add(save, weapons);
-                        }
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    CitizenFX.Core.Debug.WriteLine($"[vMenu] Error deserializing weapon loadout '{save}': {ex.Message}");
-                }
-                catch (System.Exception ex)
-                {
-                    CitizenFX.Core.Debug.WriteLine($"[vMenu] Unexpected error deserializing weapon loadout '{save}': {ex.Message}");
-                }
+                SavedWeapons.Add(save.Key, save.Value);
             }
 
             return SavedWeapons;
@@ -178,7 +139,7 @@ namespace vMenuClient.menus
 
                 foreach (var sw in SavedWeapons)
                 {
-                    var btn = new MenuItem(sw.Key.Replace("vmenu_string_saved_weapon_loadout_", ""), "Click to manage this loadout.") { Label = "→→→" };
+                    var btn = new MenuItem(sw.Key.Replace("vmenu_string_saved_weapon_loadout_", ""), "Click to manage this loadout.") { Label = "→→→", ItemData = sw.Key };
                     SavedLoadoutsMenu.AddMenuItem(btn);
                     MenuController.BindMenuItem(SavedLoadoutsMenu, ManageLoadoutMenu, btn);
                 }
@@ -357,9 +318,9 @@ namespace vMenuClient.menus
             // Set the current saved loadout whenever a loadout is selected.
             SavedLoadoutsMenu.OnItemSelect += (sender, item, index) =>
             {
-                if (SavedWeapons.ContainsKey("vmenu_string_saved_weapon_loadout_" + item.Text))
+                if (item.ItemData is string key && SavedWeapons.ContainsKey(key))
                 {
-                    SelectedSavedLoadoutName = "vmenu_string_saved_weapon_loadout_" + item.Text;
+                    SelectedSavedLoadoutName = key;
                 }
                 else // shouldn't ever happen, but just in case
                 {

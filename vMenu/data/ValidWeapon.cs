@@ -96,12 +96,13 @@ namespace vMenuClient.data
     public static class ValidWeapons
     {
         private static readonly List<ValidWeapon> _weaponsList = new();
+        private static bool _initialized;
 
         public static List<ValidWeapon> WeaponList
         {
             get
             {
-                if (_weaponsList.Count == weaponNames.Count - 1)
+                if (_initialized)
                 {
                     return _weaponsList;
                 }
@@ -127,10 +128,27 @@ namespace vMenuClient.data
                         .ToObject<Dictionary<string, string>>();
                 foreach (var weaponEntry in weaponDict)
                 {
-                    if (!weaponNames.ContainsKey(weaponEntry.Value))
+                    var spawnName = weaponEntry.Value;
+                    if (string.IsNullOrWhiteSpace(spawnName) || !spawnName.StartsWith("weapon_") || spawnName.Length > 64)
                     {
-                        weaponNames[weaponEntry.Value] = weaponEntry.Key;
-                        AddTextEntry(weaponEntry.Value, weaponEntry.Key);
+                        Debug.WriteLine($"[VMENU] Skipping addon weapon with malformed spawn name: '{spawnName}'");
+                        continue;
+                    }
+                    var addonHash = (uint)GetHashKey(spawnName);
+                    if (!IsWeaponValid(addonHash))
+                    {
+                        Debug.WriteLine($"[VMENU] Skipping invalid addon weapon: '{spawnName}'");
+                        continue;
+                    }
+                    if (!weaponNames.ContainsKey(spawnName))
+                    {
+                        var label = weaponEntry.Key ?? "";
+                        if (label.Length > 64)
+                        {
+                            label = label.Substring(0, 64);
+                        }
+                        weaponNames[spawnName] = label;
+                        AddTextEntry(spawnName, label);
                     }
                 }
 
@@ -160,6 +178,14 @@ namespace vMenuClient.data
                 Debug.WriteLine("[VMENU] No addon weapon components in addons.json");
             }
 
+            // Pre-compute the hash for every component name once, so the per-weapon
+            // loop below only does dictionary lookups instead of native GetHashKey calls.
+            var componentHashCache = new Dictionary<string, uint>();
+            foreach (var comp in weaponComponentNames.Keys)
+            {
+                componentHashCache[comp] = (uint)GetHashKey(comp);
+            }
+
             foreach (var weapon in weaponNames)
             {
                 var realName = weapon.Key;
@@ -167,14 +193,12 @@ namespace vMenuClient.data
                 if (realName == "weapon_unarmed") continue;
                 var hash = (uint)GetHashKey(realName);
                 var componentHashes = new Dictionary<string, uint>();
-                var weaponComponents = weaponComponentNames;
-                var weaponComponentKeys = weaponComponents.Keys;
-                foreach (var comp in weaponComponentKeys)
+                foreach (var comp in componentHashCache)
                 {
-                    var componentHash = (uint)GetHashKey(comp);
+                    var componentHash = comp.Value;
                     if (DoesWeaponTakeWeaponComponent(hash, componentHash))
                     {
-                        var componentName = weaponComponents[comp];
+                        var componentName = weaponComponentNames[comp.Key];
                         if (!componentHashes.ContainsKey(componentName))
                         {
                             componentHashes[componentName] = componentHash;
@@ -197,11 +221,14 @@ namespace vMenuClient.data
                 }
             }
             _weaponsList.Sort((x, y) => string.Compare(x.Name, y.Name));
+            _initialized = true;
         }
 
         #region Weapon names, hashes and localized names (+ all components & tints).
         #region weapon descriptions & names
-        public static readonly Dictionary<string, string> weaponDescriptions = new()
+        // Lazily initialized: the ~95 GetLabelText native calls only run on first access,
+        // not at type-load. Access via weaponDescriptions.Value.
+        public static readonly Lazy<Dictionary<string, string>> weaponDescriptions = new(() => new()
         {
             { "weapon_advancedrifle", GetLabelText("WTD_RIFLE_ADV") },
             { "weapon_appistol", GetLabelText("WTD_PIST_AP") },
@@ -320,7 +347,7 @@ namespace vMenuClient.data
             { "weapon_snowlauncher", GetLabelText("WTD_SNOWLNCHR") },
             // MP2024_01 DLC (V 3258)
             { "weapon_stunrod", GetLabelText("WTD_STUNROD") },
-        };
+        });
 
         public static readonly Dictionary<string, string> weaponNames = new()
         {

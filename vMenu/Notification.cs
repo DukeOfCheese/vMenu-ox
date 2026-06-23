@@ -78,7 +78,9 @@ namespace vMenuClient
     public static class Notify
     {
 
-        static bool usingCustomNotifications = GetSettingsBool(Setting.vmenu_using_custom_notify);
+        // Read lazily at notify time: the config/convars may not be loaded yet at type-init,
+        // which would otherwise cache a stale value for the resource lifetime.
+        static bool UsingCustomNotifications => GetSettingsBool(Setting.vmenu_using_custom_notify);
 
         /// <summary>
         /// Show a custom notification above the minimap.
@@ -87,8 +89,8 @@ namespace vMenuClient
         /// <param name="blink">Should the notification blink 3 times?</param>
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Custom(string message, bool blink = true, bool saveToBrief = true)
-        {   
-            if (usingCustomNotifications)
+        {
+            if (UsingCustomNotifications)
             {
                 TriggerEvent("vMenu:CustomNotify", message, "inform");
                 return;
@@ -112,7 +114,7 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Alert(string message, bool blink = true, bool saveToBrief = true)
         {
-            if (usingCustomNotifications)
+            if (UsingCustomNotifications)
             {
                 TriggerEvent("vMenu:CustomNotify", message, "alert");
                 return;
@@ -144,7 +146,7 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Error(string message, bool blink = true, bool saveToBrief = true)
         {
-            if (usingCustomNotifications)
+            if (UsingCustomNotifications)
             {
                 TriggerEvent("vMenu:CustomNotify", message, "error");
                 return;
@@ -174,7 +176,7 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Info(string message, bool blink = true, bool saveToBrief = true)
         {
-            if (usingCustomNotifications)
+            if (UsingCustomNotifications)
             {
                 TriggerEvent("vMenu:CustomNotify", message, "inform");
                 return;
@@ -190,7 +192,7 @@ namespace vMenuClient
         /// <param name="saveToBrief">Should the notification be logged to the brief (PAUSE menu > INFO > Notifications)?</param>
         public static void Success(string message, bool blink = true, bool saveToBrief = true)
         {
-            if (usingCustomNotifications)
+            if (UsingCustomNotifications)
             {
                 TriggerEvent("vMenu:CustomNotify", message, "success");
                 return;

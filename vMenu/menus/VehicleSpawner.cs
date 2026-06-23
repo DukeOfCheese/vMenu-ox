@@ -27,6 +27,118 @@ namespace vMenuClient.menus
         private string SearchTerm = "";
         public static List<bool> allowedCategories;
 
+        // Tracks whether addon vehicles have already been loaded & inserted into the vehicle class lists.
+        // Loading is a one-time operation (the lists are static and persist), so guard against re-reading
+        // addons.json and re-inserting the same vehicles on every search refresh.
+        private static bool addonsLoaded = false;
+
+        // These are the max speed, acceleration, braking and traction values per vehicle class.
+        // Hoisted to static readonly fields so they're allocated once instead of on every RefreshSpawnableVehicles call.
+        private static readonly float[] speedValues = new float[23]
+        {
+            44.9374657f,
+            50.0000038f,
+            48.862133f,
+            48.1321335f,
+            50.7077942f,
+            51.3333359f,
+            52.3922348f,
+            53.86687f,
+            52.03867f,
+            49.2241631f,
+            39.6176529f,
+            37.5559425f,
+            42.72843f,
+            21.0f,
+            45.0f,
+            65.1952744f,
+            109.764259f,
+            42.72843f,
+            56.5962219f,
+            57.5398865f,
+            43.3140678f,
+            26.66667f,
+            53.0537224f
+        };
+        private static readonly float[] accelerationValues = new float[23]
+        {
+            0.34f,
+            0.29f,
+            0.335f,
+            0.28f,
+            0.395f,
+            0.39f,
+            0.66f,
+            0.42f,
+            0.425f,
+            0.475f,
+            0.21f,
+            0.3f,
+            0.32f,
+            0.17f,
+            18.0f,
+            5.88f,
+            21.0700016f,
+            0.33f,
+            14.0f,
+            6.86f,
+            0.32f,
+            0.2f,
+            0.76f
+        };
+        private static readonly float[] brakingValues = new float[23]
+        {
+            0.72f,
+            0.95f,
+            0.85f,
+            0.9f,
+            1.0f,
+            1.0f,
+            1.3f,
+            1.25f,
+            1.52f,
+            1.1f,
+            0.6f,
+            0.7f,
+            0.8f,
+            3.0f,
+            0.4f,
+            3.5920403f,
+            20.58f,
+            0.9f,
+            2.93960738f,
+            3.9472363f,
+            0.85f,
+            5.0f,
+            1.3f
+        };
+        private static readonly float[] tractionValues = new float[23]
+        {
+            2.3f,
+            2.55f,
+            2.3f,
+            2.6f,
+            2.625f,
+            2.65f,
+            2.8f,
+            2.782f,
+            2.9f,
+            2.95f,
+            2.0f,
+            3.3f,
+            2.175f,
+            2.05f,
+            0.0f,
+            1.6f,
+            2.15f,
+            2.55f,
+            2.57f,
+            3.7f,
+            2.05f,
+            2.5f,
+            3.2925f
+        };
+
         private void CreateMenu()
         {
             #region initial setup.
@@ -41,111 +153,6 @@ namespace vMenuClient.menus
         private void RefreshSpawnableVehicles(Menu menu)
         {
             menu.ClearMenuItems(true);
-            // These are the max speed, acceleration, braking and traction values per vehicle class.
-            var speedValues = new float[23]
-            {
-                44.9374657f,
-                50.0000038f,
-                48.862133f,
-                48.1321335f,
-                50.7077942f,
-                51.3333359f,
-                52.3922348f,
-                53.86687f,
-                52.03867f,
-                49.2241631f,
-                39.6176529f,
-                37.5559425f,
-                42.72843f,
-                21.0f,
-                45.0f,
-                65.1952744f,
-                109.764259f,
-                42.72843f,
-                56.5962219f,
-                57.5398865f,
-                43.3140678f,
-                26.66667f,
-                53.0537224f
-            };
-            var accelerationValues = new float[23]
-            {
-                0.34f,
-                0.29f,
-                0.335f,
-                0.28f,
-                0.395f,
-                0.39f,
-                0.66f,
-                0.42f,
-                0.425f,
-                0.475f,
-                0.21f,
-                0.3f,
-                0.32f,
-                0.17f,
-                18.0f,
-                5.88f,
-                21.0700016f,
-                0.33f,
-                14.0f,
-                6.86f,
-                0.32f,
-                0.2f,
-                0.76f
-            };
-            var brakingValues = new float[23]
-            {
-                0.72f,
-                0.95f,
-                0.85f,
-                0.9f,
-                1.0f,
-                1.0f,
-                1.3f,
-                1.25f,
-                1.52f,
-                1.1f,
-                0.6f,
-                0.7f,
-                0.8f,
-                3.0f,
-                0.4f,
-                3.5920403f,
-                20.58f,
-                0.9f,
-                2.93960738f,
-                3.9472363f,
-                0.85f,
-                5.0f,
-                1.3f
-            };
-            var tractionValues = new float[23]
-            {
-                2.3f,
-                2.55f,
-                2.3f,
-                2.6f,
-                2.625f,
-                2.65f,
-                2.8f,
-                2.782f,
-                2.9f,
-                2.95f,
-                2.0f,
-                3.3f,
-                2.175f,
-                2.05f,
-                0.0f,
-                1.6f,
-                2.15f,
-                2.55f,
-                2.57f,
-                3.7f,
-                2.05f,
-                2.5f,
-                3.2925f
-            };
 
             // Create the buttons and checkboxes.
             var spawnByName = new MenuItem("Spawn Vehicle By Model Name", "Enter the name of a vehicle to spawn.");
@@ -163,21 +170,29 @@ namespace vMenuClient.menus
             menu.AddMenuItem(replacePrev);
             #endregion
 
-            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-            var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-
-            if (addons != null && addons.ContainsKey("vehicles"))
-                {
-                    var vehiclesList = JArray.FromObject(addons["vehicles"])
-                            .ToObject<List<string>>();
-
-                    VehicleData.Vehicles.ProcessAddonVehicles(vehiclesList);
-
-                    Debug.WriteLine($"[VMENU] Loaded {vehiclesList.Count} addon vehicles");
-                }
-            else
+            // Load addon vehicles exactly once. The vehicle class lists are static and persist across
+            // refreshes, so re-reading addons.json and re-inserting on every search would duplicate
+            // vehicles and waste a file read + JSON parse each time.
+            if (!addonsLoaded)
             {
-                Debug.WriteLine("[VMENU] No addon vehicles in addons.json");
+                var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
+                var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
+
+                if (addons != null && addons.ContainsKey("vehicles"))
+                    {
+                        var vehiclesList = JArray.FromObject(addons["vehicles"])
+                                .ToObject<List<string>>();
+
+                        VehicleData.Vehicles.ProcessAddonVehicles(vehiclesList);
+
+                        Debug.WriteLine($"[VMENU] Loaded {vehiclesList.Count} addon vehicles");
+                    }
+                else
+                {
+                    Debug.WriteLine("[VMENU] No addon vehicles in addons.json");
+                }
+
+                addonsLoaded = true;
             }
 
             for (var vehClass = 0; vehClass < 23; vehClass++)
@@ -210,6 +225,10 @@ namespace vMenuClient.menus
                 // Create a dictionary for the duplicate vehicle names (in this vehicle class).
                 var duplicateVehNames = new Dictionary<string, int>();
 
+                // Track the (un-suffixed) display names already added to this class menu so duplicate
+                // detection is an O(1) set lookup instead of an O(n) scan over every existing menu item.
+                var addedVehNames = new HashSet<string>();
+
                 #region Add vehicles per class
                 // Loop through all the vehicles in the vehicle class.
                 foreach (var veh in VehicleData.Vehicles.VehicleClasses[className])
@@ -229,16 +248,14 @@ namespace vMenuClient.menus
                         var maxBraking = Map(GetVehicleModelMaxBraking(model), 0f, brakingValues[vehClass], 0f, 1f);
                         var maxTraction = Map(GetVehicleModelMaxTraction(model), 0f, tractionValues[vehClass], 0f, 1f);
 
-                        // Loop through all the menu items and check each item's title/text and see if it matches the current vehicle (display) name.
+                        // Check whether this (un-suffixed) display name has already been added to this class menu.
                         var duplicate = false;
-                        for (var itemIndex = 0; itemIndex < vehicleClassMenu.Size; itemIndex++)
+                        if (addedVehNames.Contains(vehName))
                             {
-                                // If it matches...
-                                if (vehicleClassMenu.GetMenuItems()[itemIndex].Text.ToString() == vehName)
                                 {
 
                                     // Check if the model was marked as duplicate before.
-                                    if (duplicateVehNames.Keys.Contains(vehName))
+                                    if (duplicateVehNames.ContainsKey(vehName))
                                     {
                                         // If so, add 1 to the duplicate counter for this model name.
                                         duplicateVehNames[vehName]++;
@@ -277,15 +294,17 @@ namespace vMenuClient.menus
                                         vehBtn.RightIcon = MenuItem.Icon.LOCK;
                                     }
 
-                                    // Mark duplicate as true and break from the loop because we already found the duplicate.
+                                    // Mark duplicate as true.
                                     duplicate = true;
-                                    break;
                                 }
                             }
 
                             // If it's not a duplicate, add the model name.
                             if (!duplicate)
                             {
+                                // Remember this (un-suffixed) name so later vehicles with the same name are detected as duplicates.
+                                addedVehNames.Add(vehName);
+
                                 if (DoesModelExist(veh))
                                 {
                                     var vehBtn = new MenuItem(vehName)
