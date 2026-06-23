@@ -85,26 +85,39 @@ namespace vMenuClient
         /// </summary>
         private async void SetAppearanceOnFirstSpawn()
         {
-            if (firstSpawn)
+            try
             {
-                firstSpawn = false;
-                if (MainMenu.MiscSettingsMenu != null && MainMenu.MpPedCustomizationMenu != null && MainMenu.MiscSettingsMenu.MiscRespawnDefaultCharacter && !string.IsNullOrEmpty(GetResourceKvpString("vmenu_default_character")) && !GetSettingsBool(Setting.vmenu_disable_spawning_as_default_character))
+                if (firstSpawn)
                 {
-                    await MainMenu.MpPedCustomizationMenu.SpawnThisCharacter(GetResourceKvpString("vmenu_default_character"), false);
-                }
-                while (!IsScreenFadedIn() || IsPlayerSwitchInProgress() || IsPauseMenuActive() || GetIsLoadingScreenActive())
-                {
-                    await Delay(0);
-                }
-                if (MainMenu.WeaponLoadoutsMenu != null && MainMenu.WeaponLoadoutsMenu.WeaponLoadoutsSetLoadoutOnRespawn && IsAllowed(Permission.WLEquipOnRespawn))
-                {
-                    var saveName = GetResourceKvpString("vmenu_string_default_loadout");
-                    if (!string.IsNullOrEmpty(saveName))
+                    firstSpawn = false;
+                    if (MainMenu.MiscSettingsMenu != null && MainMenu.MpPedCustomizationMenu != null && MainMenu.MiscSettingsMenu.MiscRespawnDefaultCharacter && !string.IsNullOrEmpty(GetResourceKvpString("vmenu_default_character")) && !GetSettingsBool(Setting.vmenu_disable_spawning_as_default_character))
                     {
-                        await SpawnWeaponLoadoutAsync(saveName, true, false, true);
+                        await MainMenu.MpPedCustomizationMenu.SpawnThisCharacter(GetResourceKvpString("vmenu_default_character"), false);
                     }
+                    var fadeWaitStart = GetGameTimer();
+                    while (!IsScreenFadedIn() || IsPlayerSwitchInProgress() || IsPauseMenuActive() || GetIsLoadingScreenActive())
+                    {
+                        if (GetGameTimer() - fadeWaitStart > 30000)
+                        {
+                            Debug.WriteLine("[vMenu] [Warning] SetAppearanceOnFirstSpawn timed out waiting for the screen to fade in.");
+                            break;
+                        }
+                        await Delay(0);
+                    }
+                    if (MainMenu.WeaponLoadoutsMenu != null && MainMenu.WeaponLoadoutsMenu.WeaponLoadoutsSetLoadoutOnRespawn && IsAllowed(Permission.WLEquipOnRespawn))
+                    {
+                        var saveName = GetResourceKvpString("vmenu_string_default_loadout");
+                        if (!string.IsNullOrEmpty(saveName))
+                        {
+                            await SpawnWeaponLoadoutAsync(saveName, true, false, true);
+                        }
 
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in SetAppearanceOnFirstSpawn: {ex}");
             }
         }
 
@@ -133,6 +146,11 @@ namespace vMenuClient
             {
                 // load new extras.
                 var extras = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, string>>>(jsonData);
+
+                if (extras == null)
+                {
+                    return;
+                }
 
                 foreach (string model in extras.Keys)
                 {
@@ -208,17 +226,28 @@ namespace vMenuClient
         /// OnTick loop to keep the weather synced.
         /// </summary>
         /// <returns></returns>
+        // Tracks the game timer (ms) at which the weather change is expected to complete.
+        // 0 means no weather change is currently in progress.
+        private int weatherChangeCompleteTimer = 0;
         private async Task WeatherSync()
         {
             await UpdateWeatherParticles();
             SetArtificialLightsState(IsBlackoutEnabled);
             SetArtificialLightsStateAffectsVehicles(!IsVehicleLightsEnabled);
 
-            if (GetNextWeatherType() != GetHashKey(GetServerWeather))
+            if (weatherChangeCompleteTimer == 0)
             {
-                SetWeatherTypeOvertimePersist(GetServerWeather, (float)WeatherChangeTime);
-                await Delay((WeatherChangeTime * 1000) + 2000);
-
+                // No change in progress: start one if the weather no longer matches the server's.
+                if (GetNextWeatherType() != GetHashKey(GetServerWeather))
+                {
+                    SetWeatherTypeOvertimePersist(GetServerWeather, (float)WeatherChangeTime);
+                    weatherChangeCompleteTimer = GetGameTimer() + (WeatherChangeTime * 1000) + 2000;
+                }
+            }
+            else if (GetGameTimer() >= weatherChangeCompleteTimer)
+            {
+                // Enough time has elapsed for the in-progress change to finish.
+                weatherChangeCompleteTimer = 0;
                 TriggerEvent("vMenu:WeatherChangeComplete", GetServerWeather);
             }
 
@@ -283,6 +312,10 @@ namespace vMenuClient
         /// </summary>
         private void KillMe(string sourceName)
         {
+            if (!string.IsNullOrEmpty(sourceName) && sourceName.Length > 32)
+            {
+                sourceName = sourceName.Substring(0, 32);
+            }
             Notify.Alert($"You have been killed by <C>{GetSafePlayerName(sourceName)}</C>~s~ using the ~r~Kill Player~s~ option in vMenu.");
             SetEntityHealth(Game.PlayerPed.Handle, 0);
         }
@@ -301,11 +334,18 @@ namespace vMenuClient
         /// </summary>
         private async void UpdatePedDecors()
         {
-            await Delay(1000);
-            var backup = PlayerAppearance.ClothingAnimationType;
-            PlayerAppearance.ClothingAnimationType = -1;
-            await Delay(100);
-            PlayerAppearance.ClothingAnimationType = backup;
+            try
+            {
+                await Delay(1000);
+                var backup = PlayerAppearance.ClothingAnimationType;
+                PlayerAppearance.ClothingAnimationType = -1;
+                await Delay(100);
+                PlayerAppearance.ClothingAnimationType = backup;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in UpdatePedDecors: {ex}");
+            }
         }
 
         /// <summary>
@@ -314,7 +354,15 @@ namespace vMenuClient
         /// <param name="jsonData"></param>
         private void UpdateTeleportLocations(string jsonData)
         {
-            MiscSettings.TpLocations = JsonConvert.DeserializeObject<List<vMenuShared.ConfigManager.TeleportLocation>>(jsonData);
+            try
+            {
+                MiscSettings.TpLocations = JsonConvert.DeserializeObject<List<vMenuShared.ConfigManager.TeleportLocation>>(jsonData);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in UpdateTeleportLocations: {ex}");
+                MiscSettings.TpLocations = new List<vMenuShared.ConfigManager.TeleportLocation>();
+            }
         }
     }
 }

@@ -586,7 +586,7 @@ namespace vMenuClient.menus
                             Notify.Error(CommonErrors.InvalidInput);
                         }
 
-                        EntitySpawner.SpawnEntity(result, Game.PlayerPed.Position);
+                        await EntitySpawner.SpawnEntity(result, Game.PlayerPed.Position);
                     }
                     else if (item == confirmEntityPosition || item == confirmAndDuplicate)
                     {

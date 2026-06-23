@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text;
 using System.Text.RegularExpressions;
 
 using CitizenFX.Core;
@@ -23,7 +24,9 @@ namespace vMenuClient
     public class ExternalFunctions : BaseScript
     {
         private static ExternalFunctions _instance;
-        
+
+        internal static ExternalFunctions Instance => _instance ??= new ExternalFunctions();
+
         public ExternalFunctions()
         {
             _instance = this;
@@ -80,6 +83,7 @@ namespace vMenuClient
         public static class CommonFunctions
         {
         #region Variables
+        private static readonly Random _rng = new Random();
         private static string _currentScenario = "";
         private static Vehicle _previousVehicle;
 
@@ -144,7 +148,7 @@ namespace vMenuClient
                 {
                     // Randomize duration of the alarm and start the alarm.
                     vehicle.IsAlarmSet = true;
-                    vehicle.AlarmTimeLeft = new Random().Next(8000, 45000);
+                    vehicle.AlarmTimeLeft = _rng.Next(8000, 45000);
                     vehicle.StartAlarm();
                 }
             }
@@ -154,28 +158,35 @@ namespace vMenuClient
         #region lock or unlock vehicle doors
         public static async void LockOrUnlockDoors(Vehicle veh, bool lockDoors)
         {
-            if (veh != null && veh.Exists())
+            try
             {
-                for (var i = 0; i < 2; i++)
+                if (veh != null && veh.Exists())
                 {
-                    var timer = GetGameTimer();
-                    while (GetGameTimer() - timer < 50)
+                    for (var i = 0; i < 2; i++)
                     {
-                        SoundVehicleHornThisFrame(veh.Handle);
-                        await Delay(0);
+                        var timer = GetGameTimer();
+                        while (GetGameTimer() - timer < 50)
+                        {
+                            SoundVehicleHornThisFrame(veh.Handle);
+                            await Delay(0);
+                        }
+                        await Delay(50);
                     }
-                    await Delay(50);
+                    if (lockDoors)
+                    {
+                        Subtitle.Custom("Vehicle doors are now locked.");
+                        SetVehicleDoorsLockedForAllPlayers(veh.Handle, true);
+                    }
+                    else
+                    {
+                        Subtitle.Custom("Vehicle doors are now unlocked.");
+                        SetVehicleDoorsLockedForAllPlayers(veh.Handle, false);
+                    }
                 }
-                if (lockDoors)
-                {
-                    Subtitle.Custom("Vehicle doors are now locked.");
-                    SetVehicleDoorsLockedForAllPlayers(veh.Handle, true);
-                }
-                else
-                {
-                    Subtitle.Custom("Vehicle doors are now unlocked.");
-                    SetVehicleDoorsLockedForAllPlayers(veh.Handle, false);
-                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in LockOrUnlockDoors: {ex}");
             }
         }
         #endregion
@@ -278,7 +289,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="vehicle">Entity/vehicle.</param>
         /// <returns>Returns the (uint) model hash from a (vehicle) entity.</returns>
-        public static uint GetVehicleModel(int vehicle) => (uint)GetHashKey(GetEntityModel(vehicle).ToString());
+        public static uint GetVehicleModel(int vehicle) => (uint)GetEntityModel(vehicle);
         #endregion
 
         #region Cooldown function to block any more vehicle spawns.
@@ -423,6 +434,7 @@ namespace vMenuClient
             var waypoint = World.WaypointPosition;
 
             var veh = GetVehicle();
+            if (veh == null) { return; }
             var model = (uint)veh.Model.Hash;
 
             SetDriverAbility(Game.PlayerPed.Handle, 1f);
@@ -441,6 +453,7 @@ namespace vMenuClient
             DriveToWpTaskActive = false;
 
             var veh = GetVehicle();
+            if (veh == null) { return; }
             var model = (uint)veh.Model.Hash;
 
             SetDriverAbility(Game.PlayerPed.Handle, 1f);
@@ -461,10 +474,17 @@ namespace vMenuClient
         /// </summary>
         public static async void QuitGame()
         {
-            Notify.Info("The game will exit in 5 seconds.");
-            Debug.WriteLine("Game will be terminated in 5 seconds, because the player used the Quit Game option in vMenu.");
-            await BaseScript.Delay(5000);
-            ForceSocialClubUpdate(); // bye bye
+            try
+            {
+                Notify.Info("The game will exit in 5 seconds.");
+                Debug.WriteLine("Game will be terminated in 5 seconds, because the player used the Quit Game option in vMenu.");
+                await BaseScript.Delay(5000);
+                ForceSocialClubUpdate(); // bye bye
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in QuitGame: {ex}");
+            }
         }
         #endregion
 
@@ -802,14 +822,21 @@ namespace vMenuClient
         /// </summary>
         public static async void TeleportToWp()
         {
-            if (Game.IsWaypointActive)
+            try
             {
-                var pos = World.WaypointPosition;
-                await TeleportToCoords(pos);
+                if (Game.IsWaypointActive)
+                {
+                    var pos = World.WaypointPosition;
+                    await TeleportToCoords(pos);
+                }
+                else
+                {
+                    Notify.Error("You need to set a waypoint first!");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error("You need to set a waypoint first!");
+                Debug.WriteLine($"[vMenu] Exception in TeleportToWp: {ex}");
             }
         }
         #endregion
@@ -823,32 +850,39 @@ namespace vMenuClient
         /// <param name="providedReason"></param>
         public static async void KickPlayer(IPlayer player, bool askUserForReason, string providedReason = "You have been kicked.")
         {
-            if (player != null)
+            try
             {
-                // Default kick reason.
-                var defaultReason = "You have been kicked.";
-                // If we need to ask for the user's input and the default reason is the same as the provided reason, get the user input..
-                if (askUserForReason && providedReason == defaultReason)
+                if (player != null)
                 {
-                    var userInput = await GetUserInput(windowTitle: "Enter Kick Message", maxInputLength: 100);
-                    // If the input is not invalid, set the kick reason to the user's custom message.
-                    if (!string.IsNullOrEmpty(userInput))
+                    // Default kick reason.
+                    var defaultReason = "You have been kicked.";
+                    // If we need to ask for the user's input and the default reason is the same as the provided reason, get the user input..
+                    if (askUserForReason && providedReason == defaultReason)
                     {
-                        defaultReason += $" Reason: {userInput}";
+                        var userInput = await GetUserInput(windowTitle: "Enter Kick Message", maxInputLength: 100);
+                        // If the input is not invalid, set the kick reason to the user's custom message.
+                        if (!string.IsNullOrEmpty(userInput))
+                        {
+                            defaultReason += $" Reason: {userInput}";
+                        }
+                        else
+                        {
+                            Notify.Error("An invalid kick reason was provided. Action cancelled.");
+                            return;
+                        }
                     }
-                    else
-                    {
-                        Notify.Error("An invalid kick reason was provided. Action cancelled.");
-                        return;
-                    }
+                    // Kick the player using the specified reason.
+                    TriggerServerEvent("vMenu:KickPlayer", player.ServerId, defaultReason);
+                    Log($"Attempting to kick player {player.Name} (server id: {player.ServerId}, client id: {player.Handle}).");
                 }
-                // Kick the player using the specified reason.
-                TriggerServerEvent("vMenu:KickPlayer", player.ServerId, defaultReason);
-                Log($"Attempting to kick player {player.Name} (server id: {player.ServerId}, client id: {player.Handle}).");
+                else
+                {
+                    Notify.Error("The selected player is somehow invalid, action aborted.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error("The selected player is somehow invalid, action aborted.");
+                Debug.WriteLine($"[vMenu] Exception in KickPlayer: {ex}");
             }
         }
         #endregion
@@ -861,36 +895,25 @@ namespace vMenuClient
         /// <param name="forever">Ban forever or ban temporarily.</param>
         public static async void BanPlayer(IPlayer player, bool forever)
         {
-            var banReason = await GetUserInput(windowTitle: "Enter Ban Reason", defaultText: "Banned by staff.", maxInputLength: 200);
-            if (!string.IsNullOrEmpty(banReason) && banReason.Length > 1)
+            try
             {
-                if (forever)
+                var banReason = await GetUserInput(windowTitle: "Enter Ban Reason", defaultText: "Banned by staff.", maxInputLength: 200);
+                if (!string.IsNullOrEmpty(banReason) && banReason.Length > 1)
                 {
-                    TriggerServerEvent("vMenu:PermBanPlayer", player.ServerId, banReason);
-                }
-                else
-                {
-                    var banDurationHours = await GetUserInput(windowTitle: "Ban Duration (in hours) - Max: 720 (1 month)", defaultText: "1.5", maxInputLength: 10);
-                    if (!string.IsNullOrEmpty(banDurationHours))
+                    if (forever)
                     {
-                        if (double.TryParse(banDurationHours, out var banHours))
+                        TriggerServerEvent("vMenu:PermBanPlayer", player.ServerId, banReason);
+                    }
+                    else
+                    {
+                        var banDurationHours = await GetUserInput(windowTitle: "Ban Duration (in hours) - Max: 720 (1 month)", defaultText: "1.5", maxInputLength: 10);
+                        if (!string.IsNullOrEmpty(banDurationHours))
                         {
-                            if (banHours > 0.0)
+                            if (double.TryParse(banDurationHours, out var banHours))
                             {
-                                TriggerServerEvent("vMenu:TempBanPlayer", player.ServerId, banHours, banReason);
-                            }
-                            else
-                            {
-                                Notify.Error("You need to enter a ban duration, enter a value ~h~between~h~ 1 and 720!");
-                            }
-                        }
-                        else
-                        {
-                            if (int.TryParse(banDurationHours, out var banHoursInt))
-                            {
-                                if ((double)banHoursInt > 0.0)
+                                if (banHours > 0.0)
                                 {
-                                    TriggerServerEvent("vMenu:TempBanPlayer", player.ServerId, (double)banHoursInt, banReason);
+                                    TriggerServerEvent("vMenu:TempBanPlayer", player.ServerId, banHours, banReason);
                                 }
                                 else
                                 {
@@ -903,19 +926,23 @@ namespace vMenuClient
                                 TriggerEvent("chatMessage", $"[vMenu] The input is invalid or you cancelled the action, please try again.");
                             }
                         }
-                    }
-                    else
-                    {
-                        Notify.Error(CommonErrors.InvalidInput);
-                        TriggerEvent("chatMessage", $"[vMenu] The input is invalid or you cancelled the action, please try again.");
-                    }
+                        else
+                        {
+                            Notify.Error(CommonErrors.InvalidInput);
+                            TriggerEvent("chatMessage", $"[vMenu] The input is invalid or you cancelled the action, please try again.");
+                        }
 
+                    }
+                }
+                else
+                {
+                    Notify.Error(CommonErrors.InvalidInput);
+                    TriggerEvent("chatMessage", $"[vMenu] The input is invalid or you cancelled the action, please try again.");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error(CommonErrors.InvalidInput);
-                TriggerEvent("chatMessage", $"[vMenu] The input is invalid or you cancelled the action, please try again.");
+                Debug.WriteLine($"[vMenu] Exception in BanPlayer: {ex}");
             }
         }
         #endregion
@@ -932,106 +959,113 @@ namespace vMenuClient
         /// </summary>
         public static async void CommitSuicide()
         {
-            if (!Game.PlayerPed.IsInVehicle())
+            try
             {
-                // Get the suicide animations ready.
-                RequestAnimDict("mp_suicide");
-                while (!HasAnimDictLoaded("mp_suicide"))
+                if (!Game.PlayerPed.IsInVehicle())
                 {
-                    await Delay(0);
-                }
-                // Decide if the death should be using a pill or a gun (randomly).
-                uint? weaponHash = null;
-                var takePill = false;
+                    // Get the suicide animations ready.
+                    RequestAnimDict("mp_suicide");
+                    while (!HasAnimDictLoaded("mp_suicide"))
+                    {
+                        await Delay(0);
+                    }
+                    // Decide if the death should be using a pill or a gun (randomly).
+                    uint? weaponHash = null;
+                    var takePill = false;
 
 
-                if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.PistolMk2))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_PISTOL_MK2");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.CombatPistol))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_COMBATPISTOL");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.Pistol))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_PISTOL");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon((WeaponHash)(uint)GetHashKey("WEAPON_SNSPISTOL_MK2")))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_SNSPISTOL_MK2");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.SNSPistol))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_SNSPISTOL");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.Pistol50))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_PISTOL50");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.HeavyPistol))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_HEAVYPISTOL");
-                }
-                else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.VintagePistol))
-                {
-                    weaponHash = (uint)GetHashKey("WEAPON_VINTAGEPISTOL");
+                    if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.PistolMk2))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_PISTOL_MK2");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.CombatPistol))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_COMBATPISTOL");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.Pistol))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_PISTOL");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon((WeaponHash)(uint)GetHashKey("WEAPON_SNSPISTOL_MK2")))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_SNSPISTOL_MK2");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.SNSPistol))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_SNSPISTOL");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.Pistol50))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_PISTOL50");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.HeavyPistol))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_HEAVYPISTOL");
+                    }
+                    else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.VintagePistol))
+                    {
+                        weaponHash = (uint)GetHashKey("WEAPON_VINTAGEPISTOL");
+                    }
+                    else
+                    {
+                        takePill = true;
+                    }
+
+
+                    // If we take the pill, remove any weapons in our hands.
+                    if (takePill)
+                    {
+                        SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_unarmed"), true);
+                    }
+                    // Otherwise, give the ped a gun.
+                    else if (weaponHash != null)
+                    {
+                        SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)weaponHash, true);
+                        SetPedDropsWeaponsWhenDead(Game.PlayerPed.Handle, true);
+                    }
+                    else
+                    {
+                        GiveWeaponToPed(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_pistol_mk2"), 1, false, true);
+                        SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_pistol_mk2"), true);
+                        SetPedDropsWeaponsWhenDead(Game.PlayerPed.Handle, true);
+                    }
+
+                    // Play the animation for the pill or pistol suicide type. Pistol oddly enough does not have any sounds. Needs research.
+                    ClearPedTasks(Game.PlayerPed.Handle);
+                    TaskPlayAnim(Game.PlayerPed.Handle, "MP_SUICIDE", takePill ? "pill" : "pistol", 8f, -8f, -1, 270540800, 0, false, false, false);
+
+                    var shot = false;
+                    while (true)
+                    {
+                        var time = GetEntityAnimCurrentTime(Game.PlayerPed.Handle, "MP_SUICIDE", takePill ? "pill" : "pistol");
+                        if (HasAnimEventFired(Game.PlayerPed.Handle, (uint)GetHashKey("Fire")) && !shot) // shoot the gun if the animation event is triggered.
+                        {
+                            ClearEntityLastDamageEntity(Game.PlayerPed.Handle);
+                            SetPedShootsAtCoord(Game.PlayerPed.Handle, 0f, 0f, 0f, false);
+                            shot = true;
+                        }
+                        if (time > (takePill ? 0.536f : 0.365f))
+                        {
+                            // Kill the player.
+                            ClearEntityLastDamageEntity(Game.PlayerPed.Handle);
+                            SetEntityHealth(Game.PlayerPed.Handle, 0);
+                            break;
+                        }
+                        await Delay(0);
+                    }
+                    RemoveAnimDict("mp_suicide");
                 }
                 else
                 {
-                    takePill = true;
+                    SetEntityHealth(Game.PlayerPed.Handle, 0);
                 }
 
 
-                // If we take the pill, remove any weapons in our hands.
-                if (takePill)
-                {
-                    SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_unarmed"), true);
-                }
-                // Otherwise, give the ped a gun.
-                else if (weaponHash != null)
-                {
-                    SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)weaponHash, true);
-                    SetPedDropsWeaponsWhenDead(Game.PlayerPed.Handle, true);
-                }
-                else
-                {
-                    GiveWeaponToPed(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_pistol_mk2"), 1, false, true);
-                    SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_pistol_mk2"), true);
-                    SetPedDropsWeaponsWhenDead(Game.PlayerPed.Handle, true);
-                }
-
-                // Play the animation for the pill or pistol suicide type. Pistol oddly enough does not have any sounds. Needs research.
-                ClearPedTasks(Game.PlayerPed.Handle);
-                TaskPlayAnim(Game.PlayerPed.Handle, "MP_SUICIDE", takePill ? "pill" : "pistol", 8f, -8f, -1, 270540800, 0, false, false, false);
-
-                var shot = false;
-                while (true)
-                {
-                    var time = GetEntityAnimCurrentTime(Game.PlayerPed.Handle, "MP_SUICIDE", takePill ? "pill" : "pistol");
-                    if (HasAnimEventFired(Game.PlayerPed.Handle, (uint)GetHashKey("Fire")) && !shot) // shoot the gun if the animation event is triggered.
-                    {
-                        ClearEntityLastDamageEntity(Game.PlayerPed.Handle);
-                        SetPedShootsAtCoord(Game.PlayerPed.Handle, 0f, 0f, 0f, false);
-                        shot = true;
-                    }
-                    if (time > (takePill ? 0.536f : 0.365f))
-                    {
-                        // Kill the player.
-                        ClearEntityLastDamageEntity(Game.PlayerPed.Handle);
-                        SetEntityHealth(Game.PlayerPed.Handle, 0);
-                        break;
-                    }
-                    await Delay(0);
-                }
-                RemoveAnimDict("mp_suicide");
             }
-            else
+            catch (Exception ex)
             {
-                SetEntityHealth(Game.PlayerPed.Handle, 0);
+                Debug.WriteLine($"[vMenu] Exception in CommitSuicide: {ex}");
             }
-
-
         }
         #endregion
 
@@ -1197,6 +1231,7 @@ namespace vMenuClient
 
             // Create a new vehicle.
             var vehicle = GetVehicle();
+            if (vehicle == null || !vehicle.Exists()) { return; }
 
             // If there are enough empty seats, continue.
             if (AreAnyVehicleSeatsFree(vehicle.Handle))
@@ -1651,173 +1686,180 @@ namespace vMenuClient
         /// </summary>
         public static async void SaveVehicle(string updateExistingSavedVehicleName = null, string existingCatergory = null)
         {
-            // Only continue if the player is in a vehicle.
-            if (Game.PlayerPed.IsInVehicle())
+            try
             {
-                // Get the vehicle.
-                var veh = GetVehicle();
-                // Make sure the entity is actually a vehicle and it still exists, and it's not dead.
-                if (veh != null && veh.Exists() && !veh.IsDead && veh.IsDriveable)
+                // Only continue if the player is in a vehicle.
+                if (Game.PlayerPed.IsInVehicle())
                 {
-                    #region new saving method
-                    var mods = new Dictionary<int, int>();
-
-                    foreach (var mod in GetAllVehicleMods(veh))
+                    // Get the vehicle.
+                    var veh = GetVehicle();
+                    // Make sure the entity is actually a vehicle and it still exists, and it's not dead.
+                    if (veh != null && veh.Exists() && !veh.IsDead && veh.IsDriveable)
                     {
-                        mods.Add((int)mod.ModType, mod.Index);
-                    }
+                        #region new saving method
+                        var mods = new Dictionary<int, int>();
 
-                    #region colors
-                    var colors = new Dictionary<string, int>();
-                    var primaryColor = 0;
-                    var secondaryColor = 0;
-                    var pearlescentColor = 0;
-                    var wheelColor = 0;
-                    var dashColor = 0;
-                    var trimColor = 0;
-                    GetVehicleExtraColours(veh.Handle, ref pearlescentColor, ref wheelColor);
-                    GetVehicleColours(veh.Handle, ref primaryColor, ref secondaryColor);
-                    GetVehicleDashboardColour(veh.Handle, ref dashColor);
-                    GetVehicleInteriorColour(veh.Handle, ref trimColor);
-                    colors.Add("primary", primaryColor);
-                    colors.Add("secondary", secondaryColor);
-                    colors.Add("pearlescent", pearlescentColor);
-                    colors.Add("wheels", wheelColor);
-                    colors.Add("dash", dashColor);
-                    colors.Add("trim", trimColor);
-                    var neonR = 255;
-                    var neonG = 255;
-                    var neonB = 255;
-                    if (veh.Mods.HasNeonLights)
-                    {
-                        GetVehicleNeonLightsColour(veh.Handle, ref neonR, ref neonG, ref neonB);
-                    }
-                    colors.Add("neonR", neonR);
-                    colors.Add("neonG", neonG);
-                    colors.Add("neonB", neonB);
-                    var tyresmokeR = 0;
-                    var tyresmokeG = 0;
-                    var tyresmokeB = 0;
-                    GetVehicleTyreSmokeColor(veh.Handle, ref tyresmokeR, ref tyresmokeG, ref tyresmokeB);
-                    colors.Add("tyresmokeR", tyresmokeR);
-                    colors.Add("tyresmokeG", tyresmokeG);
-                    colors.Add("tyresmokeB", tyresmokeB);
-
-                    int customPrimaryR = -1;
-                    int customPrimaryG = -1;
-                    int customPrimaryB = -1;
-                    bool primaryColorIsCustom = GetIsVehiclePrimaryColourCustom(veh.Handle);
-
-                    if (primaryColorIsCustom)
-                    {
-                        GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
-                    }
-                    
-                    colors.Add("customPrimaryR", customPrimaryR);
-                    colors.Add("customPrimaryG", customPrimaryG);
-                    colors.Add("customPrimaryB", customPrimaryB);
-
-                    int customSecondaryR = -1;
-                    int customSecondaryG = -1;
-                    int customSecondaryB = -1;
-
-                    bool secondaryColorIsCustom = GetIsVehicleSecondaryColourCustom(veh.Handle);
-
-                    if (secondaryColorIsCustom)
-                    {
-                        GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
-                    }
-
-                    colors.Add("customSecondaryR", customSecondaryR);
-                    colors.Add("customSecondaryG", customSecondaryG);
-                    colors.Add("customSecondaryB", customSecondaryB);
-                    #endregion
-
-                    var extras = new Dictionary<int, bool>();
-                    for (var i = 0; i < 20; i++)
-                    {
-                        if (veh.ExtraExists(i))
+                        foreach (var mod in GetAllVehicleMods(veh))
                         {
-                            extras.Add(i, veh.IsExtraOn(i));
+                            mods.Add((int)mod.ModType, mod.Index);
                         }
-                    }
 
-                    var vi = new VehicleInfo()
-                    {
-                        colors = colors,
-                        customWheels = GetVehicleModVariation(veh.Handle, 23),
-                        extras = extras,
-                        livery = GetVehicleLivery(veh.Handle),
-                        model = (uint)GetEntityModel(veh.Handle),
-                        mods = mods,
-                        name = GetLabelText(GetDisplayNameFromVehicleModel((uint)GetEntityModel(veh.Handle))),
-                        neonBack = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Back),
-                        neonFront = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Front),
-                        neonLeft = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Left),
-                        neonRight = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Right),
-                        plateText = veh.Mods.LicensePlate,
-                        plateStyle = (int)veh.Mods.LicensePlateStyle,
-                        turbo = IsToggleModOn(veh.Handle, 18),
-                        tyreSmoke = IsToggleModOn(veh.Handle, 20),
-                        version = 1,
-                        wheelType = GetVehicleWheelType(veh.Handle),
-                        windowTint = (int)veh.Mods.WindowTint,
-                        xenonHeadlights = IsToggleModOn(veh.Handle, 22),
-                        bulletProofTires = !veh.CanTiresBurst,
-                        headlightColor = VehicleOptions.GetHeadlightsColorForVehicle(veh),
-                        enveffScale = GetVehicleEnveffScale(veh.Handle),
-                        Category = string.IsNullOrEmpty(existingCatergory) ? "Uncategorized" : existingCatergory
-                    };
-
-                    #endregion
-
-                    if (updateExistingSavedVehicleName == null)
-                    {
-                        // Ask the user for a save name (will be displayed to the user and will be used as unique identifier for this vehicle)
-                        var saveName = await GetUserInput(windowTitle: "Enter a save name", maxInputLength: 30);
-                        // If the name is not invalid.
-                        if (!string.IsNullOrEmpty(saveName))
+                        #region colors
+                        var colors = new Dictionary<string, int>();
+                        var primaryColor = 0;
+                        var secondaryColor = 0;
+                        var pearlescentColor = 0;
+                        var wheelColor = 0;
+                        var dashColor = 0;
+                        var trimColor = 0;
+                        GetVehicleExtraColours(veh.Handle, ref pearlescentColor, ref wheelColor);
+                        GetVehicleColours(veh.Handle, ref primaryColor, ref secondaryColor);
+                        GetVehicleDashboardColour(veh.Handle, ref dashColor);
+                        GetVehicleInteriorColour(veh.Handle, ref trimColor);
+                        colors.Add("primary", primaryColor);
+                        colors.Add("secondary", secondaryColor);
+                        colors.Add("pearlescent", pearlescentColor);
+                        colors.Add("wheels", wheelColor);
+                        colors.Add("dash", dashColor);
+                        colors.Add("trim", trimColor);
+                        var neonR = 255;
+                        var neonG = 255;
+                        var neonB = 255;
+                        if (veh.Mods.HasNeonLights)
                         {
-                            // Save everything from the dictionary into the client's kvp storage.
-                            // If the save was successfull:
-                            if (StorageManager.SaveVehicleInfo("veh_" + saveName, vi, false))
+                            GetVehicleNeonLightsColour(veh.Handle, ref neonR, ref neonG, ref neonB);
+                        }
+                        colors.Add("neonR", neonR);
+                        colors.Add("neonG", neonG);
+                        colors.Add("neonB", neonB);
+                        var tyresmokeR = 0;
+                        var tyresmokeG = 0;
+                        var tyresmokeB = 0;
+                        GetVehicleTyreSmokeColor(veh.Handle, ref tyresmokeR, ref tyresmokeG, ref tyresmokeB);
+                        colors.Add("tyresmokeR", tyresmokeR);
+                        colors.Add("tyresmokeG", tyresmokeG);
+                        colors.Add("tyresmokeB", tyresmokeB);
+
+                        int customPrimaryR = -1;
+                        int customPrimaryG = -1;
+                        int customPrimaryB = -1;
+                        bool primaryColorIsCustom = GetIsVehiclePrimaryColourCustom(veh.Handle);
+
+                        if (primaryColorIsCustom)
+                        {
+                            GetVehicleCustomPrimaryColour(veh.Handle, ref customPrimaryR, ref customPrimaryG, ref customPrimaryB);
+                        }
+                    
+                        colors.Add("customPrimaryR", customPrimaryR);
+                        colors.Add("customPrimaryG", customPrimaryG);
+                        colors.Add("customPrimaryB", customPrimaryB);
+
+                        int customSecondaryR = -1;
+                        int customSecondaryG = -1;
+                        int customSecondaryB = -1;
+
+                        bool secondaryColorIsCustom = GetIsVehicleSecondaryColourCustom(veh.Handle);
+
+                        if (secondaryColorIsCustom)
+                        {
+                            GetVehicleCustomSecondaryColour(veh.Handle, ref customSecondaryR, ref customSecondaryG, ref customSecondaryB);
+                        }
+
+                        colors.Add("customSecondaryR", customSecondaryR);
+                        colors.Add("customSecondaryG", customSecondaryG);
+                        colors.Add("customSecondaryB", customSecondaryB);
+                        #endregion
+
+                        var extras = new Dictionary<int, bool>();
+                        for (var i = 0; i < 20; i++)
+                        {
+                            if (veh.ExtraExists(i))
                             {
-                                Notify.Success($"Vehicle {saveName} saved.");
+                                extras.Add(i, veh.IsExtraOn(i));
                             }
-                            // If the save was not successfull:
+                        }
+
+                        var vi = new VehicleInfo()
+                        {
+                            colors = colors,
+                            customWheels = GetVehicleModVariation(veh.Handle, 23),
+                            extras = extras,
+                            livery = GetVehicleLivery(veh.Handle),
+                            model = (uint)GetEntityModel(veh.Handle),
+                            mods = mods,
+                            name = GetLabelText(GetDisplayNameFromVehicleModel((uint)GetEntityModel(veh.Handle))),
+                            neonBack = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Back),
+                            neonFront = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Front),
+                            neonLeft = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Left),
+                            neonRight = veh.Mods.IsNeonLightsOn(VehicleNeonLight.Right),
+                            plateText = veh.Mods.LicensePlate,
+                            plateStyle = (int)veh.Mods.LicensePlateStyle,
+                            turbo = IsToggleModOn(veh.Handle, 18),
+                            tyreSmoke = IsToggleModOn(veh.Handle, 20),
+                            version = 1,
+                            wheelType = GetVehicleWheelType(veh.Handle),
+                            windowTint = (int)veh.Mods.WindowTint,
+                            xenonHeadlights = IsToggleModOn(veh.Handle, 22),
+                            bulletProofTires = !veh.CanTiresBurst,
+                            headlightColor = VehicleOptions.GetHeadlightsColorForVehicle(veh),
+                            enveffScale = GetVehicleEnveffScale(veh.Handle),
+                            Category = string.IsNullOrEmpty(existingCatergory) ? "Uncategorized" : existingCatergory
+                        };
+
+                        #endregion
+
+                        if (updateExistingSavedVehicleName == null)
+                        {
+                            // Ask the user for a save name (will be displayed to the user and will be used as unique identifier for this vehicle)
+                            var saveName = await GetUserInput(windowTitle: "Enter a save name", maxInputLength: 30);
+                            // If the name is not invalid.
+                            if (!string.IsNullOrEmpty(saveName))
+                            {
+                                // Save everything from the dictionary into the client's kvp storage.
+                                // If the save was successfull:
+                                if (StorageManager.SaveVehicleInfo("veh_" + saveName, vi, false))
+                                {
+                                    Notify.Success($"Vehicle {saveName} saved.");
+                                }
+                                // If the save was not successfull:
+                                else
+                                {
+                                    Notify.Error(CommonErrors.SaveNameAlreadyExists, placeholderValue: "(" + saveName + ")");
+                                }
+                            }
+                            // The user did not enter a valid name to use as a save name for this vehicle.
                             else
                             {
-                                Notify.Error(CommonErrors.SaveNameAlreadyExists, placeholderValue: "(" + saveName + ")");
+                                Notify.Error(CommonErrors.InvalidSaveName);
                             }
                         }
-                        // The user did not enter a valid name to use as a save name for this vehicle.
+                        // We need to update an existing slot.
                         else
                         {
-                            Notify.Error(CommonErrors.InvalidSaveName);
+                            StorageManager.SaveVehicleInfo("veh_" + updateExistingSavedVehicleName, vi, true);
                         }
+
                     }
-                    // We need to update an existing slot.
+                    // The player is not inside a vehicle, or the vehicle is dead/not existing so we won't do anything. Only alert the user.
                     else
                     {
-                        StorageManager.SaveVehicleInfo("veh_" + updateExistingSavedVehicleName, vi, true);
+                        Notify.Error(CommonErrors.NoVehicle, placeholderValue: "to save it");
                     }
-
                 }
-                // The player is not inside a vehicle, or the vehicle is dead/not existing so we won't do anything. Only alert the user.
+                // The player is not inside a vehicle.
                 else
                 {
-                    Notify.Error(CommonErrors.NoVehicle, placeholderValue: "to save it");
+                    Notify.Error(CommonErrors.NoVehicle);
                 }
+
+                // update the saved vehicles menu list to reflect the new saved car.
+                MainMenu.SavedVehiclesMenu?.UpdateMenuAvailableCategories();
+
             }
-            // The player is not inside a vehicle.
-            else
+            catch (Exception ex)
             {
-                Notify.Error(CommonErrors.NoVehicle);
+                Debug.WriteLine($"[vMenu] Exception in SaveVehicle: {ex}");
             }
-
-            // update the saved vehicles menu list to reflect the new saved car.
-            MainMenu.SavedVehiclesMenu?.UpdateMenuAvailableCategories();
-
         }
         #endregion
 
@@ -1938,49 +1980,40 @@ namespace vMenuClient
         /// <returns></returns>
         public static async Task<string> GetUserInput(string windowTitle, string defaultText, int maxInputLength)
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.GetCustomInput(windowTitle, defaultText, maxInputLength);
+            return await ExternalFunctions.Instance.GetCustomInput(windowTitle, defaultText, maxInputLength);
         }
         public static async Task<double> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum) => await GetUserInputSlider(windowTitle, defaultVal, minimum, maximum, 1.0);
         public static async Task<double> GetUserInputSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.GetCustomSlider(windowTitle, defaultVal, minimum, maximum, step);
+            return await ExternalFunctions.Instance.GetCustomSlider(windowTitle, defaultVal, minimum, maximum, step);
         }
         public static async Task<string> GetUserColourInput(int type)
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.GetCustomColourInput(type);
+            return await ExternalFunctions.Instance.GetCustomColourInput(type);
         }
         public static void CopyToClipboard(string text)
         {
-            var ExternalFunctions = new ExternalFunctions();
-            ExternalFunctions.SetPlayerClipboard(text);
+            ExternalFunctions.Instance.SetPlayerClipboard(text);
         }
         public static bool CanDoInteraction(string type)
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return ExternalFunctions.CanDoInteraction(type);
+            return ExternalFunctions.Instance.CanDoInteraction(type);
         }
         public static async Task<bool> LoadSharedOutfit()
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.LoadSharedOutfit();
+            return await ExternalFunctions.Instance.LoadSharedOutfit();
         }
         public static async Task<bool> LoadSharedVehicle()
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.LoadSharedVehicle();
+            return await ExternalFunctions.Instance.LoadSharedVehicle();
         }
         public static async Task<bool> LoadSharedLoadout()
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.LoadSharedLoadout();
+            return await ExternalFunctions.Instance.LoadSharedLoadout();
         }
         public static async Task<bool> GetUserConfirmation(string windowTitle, string description)
         {
-            var ExternalFunctions = new ExternalFunctions();
-            return await ExternalFunctions.GetUserConfirmation(windowTitle, description);
+            return await ExternalFunctions.Instance.GetUserConfirmation(windowTitle, description);
         }
         #endregion
 
@@ -1990,52 +2023,61 @@ namespace vMenuClient
         /// </summary>
         public static async void SetLicensePlateCustomText()
         {
-            // Get the vehicle.
-            var veh = GetVehicle();
-            // If it exists.
-            if (veh != null && veh.Exists())
+            try
             {
-                if (Game.PlayerPed == veh.Driver)
+                // Get the vehicle.
+                var veh = GetVehicle();
+                // If it exists.
+                if (veh != null && veh.Exists())
                 {
-                    // Get the input.
-                    var text = await GetUserInput(windowTitle: "Enter License Plate", defaultText: veh.Mods.LicensePlate ?? "", maxInputLength: 8);
-                    // If the input is valid.
-                    if (!string.IsNullOrEmpty(text))
+                    if (Game.PlayerPed == veh.Driver)
                     {
-                        // Set the license plate.
-                        SetVehicleNumberPlateText(veh.Handle, text);
-                        var actionData = new Dictionary<string, object>
+                        // Get the input.
+                        var text = await GetUserInput(windowTitle: "Enter License Plate", defaultText: veh.Mods.LicensePlate ?? "", maxInputLength: 8);
+                        // If the input is valid.
+                        if (!string.IsNullOrEmpty(text))
                         {
-                            ["handle"] = veh.Handle,
-                            ["plate"] = text,
-                        };
-                        TriggerEvent("vMenu:Integrations:Action", "licenseplate", actionData);
+                            // Set the license plate.
+                            SetVehicleNumberPlateText(veh.Handle, text);
+                            var actionData = new Dictionary<string, object>
+                            {
+                                ["handle"] = veh.Handle,
+                                ["plate"] = text,
+                            };
+                            TriggerEvent("vMenu:Integrations:Action", "licenseplate", actionData);
+                        }
+                        // No valid text was given.
+                        else
+                        {
+                            Notify.Error(CommonErrors.InvalidInput);
+                        }
                     }
-                    // No valid text was given.
                     else
                     {
-                        Notify.Error(CommonErrors.InvalidInput);
+                        Notify.Error(CommonErrors.NeedToBeTheDriver);
                     }
+
+
+
                 }
+                // If it doesn't exist, notify the user.
                 else
                 {
-                    Notify.Error(CommonErrors.NeedToBeTheDriver);
+                    Notify.Error(CommonErrors.NoVehicle);
                 }
 
 
-
             }
-            // If it doesn't exist, notify the user.
-            else
+            catch (Exception ex)
             {
-                Notify.Error(CommonErrors.NoVehicle);
+                Debug.WriteLine($"[vMenu] Exception in SetLicensePlateCustomText: {ex}");
             }
-
-
         }
         #endregion
 
         #region ToProperString()
+        private static readonly Regex MultiSpaceRegex = new Regex("  +", RegexOptions.Compiled);
+
         /// <summary>
         /// Converts a PascalCaseString to a Propper Case String.
         /// </summary>
@@ -2043,7 +2085,7 @@ namespace vMenuClient
         /// <returns>Input string converted to a normal sentence.</returns>
         public static string ToProperString(string inputString)
         {
-            var outputString = "";
+            var sb = new StringBuilder();
             var prevUpper = true;
             foreach (var c in inputString)
             {
@@ -2051,25 +2093,21 @@ namespace vMenuClient
                 {
                     if (prevUpper)
                     {
-                        outputString += $"{c}";
+                        sb.Append(c);
                     }
                     else
                     {
-                        outputString += $" {c}";
+                        sb.Append(' ').Append(c);
                     }
                     prevUpper = true;
                 }
                 else
                 {
                     prevUpper = false;
-                    outputString += c.ToString();
+                    sb.Append(c);
                 }
             }
-            while (outputString.IndexOf("  ") != -1)
-            {
-                outputString = outputString.Replace("  ", " ");
-            }
-            return outputString;
+            return MultiSpaceRegex.Replace(sb.ToString(), " ");
         }
         #endregion
 
@@ -2307,7 +2345,7 @@ namespace vMenuClient
         /// <param name="disableTextOutline">Disables the default text outline.</param>
         public static void DrawTextOnScreen(string text, float xPosition, float yPosition, float size, CitizenFX.Core.UI.Alignment justification, int font, bool disableTextOutline)
         {
-            if (IsHudPreferenceSwitchedOn() && Hud.IsVisible && !MainMenu.MiscSettingsMenu.HideHud && !IsPlayerSwitchInProgress() && IsScreenFadedIn() && !IsPauseMenuActive() && !IsFrontendFading() && !IsPauseMenuRestarting() && !IsHudHidden())
+            if (IsHudPreferenceSwitchedOn() && Hud.IsVisible && MainMenu.MiscSettingsMenu != null && !MainMenu.MiscSettingsMenu.HideHud && !IsPlayerSwitchInProgress() && IsScreenFadedIn() && !IsPauseMenuActive() && !IsFrontendFading() && !IsPauseMenuRestarting() && !IsHudHidden())
             {
                 SetTextFont(font);
                 SetTextScale(1.0f, size);
@@ -2470,14 +2508,21 @@ namespace vMenuClient
         /// </summary>
         public static async void SpawnPedByName()
         {
-            var input = await GetUserInput(windowTitle: "Enter Ped Model Name", maxInputLength: 30);
-            if (!string.IsNullOrEmpty(input))
+            try
             {
-                await SetPlayerSkin((uint)GetHashKey(input), new PedInfo() { version = -1 });
+                var input = await GetUserInput(windowTitle: "Enter Ped Model Name", maxInputLength: 30);
+                if (!string.IsNullOrEmpty(input))
+                {
+                    await SetPlayerSkin((uint)GetHashKey(input), new PedInfo() { version = -1 });
+                }
+                else
+                {
+                    Notify.Error(CommonErrors.InvalidModel);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error(CommonErrors.InvalidModel);
+                Debug.WriteLine($"[vMenu] Exception in SpawnPedByName: {ex}");
             }
         }
         #endregion
@@ -2754,27 +2799,34 @@ namespace vMenuClient
         /// </summary>
         public static async void SetAllWeaponsAmmo()
         {
-            var inputAmmo = await GetUserInput(windowTitle: "Enter Ammo Amount", defaultText: "100");
-            if (!string.IsNullOrEmpty(inputAmmo))
+            try
             {
-                if (int.TryParse(inputAmmo, out var ammo))
+                var inputAmmo = await GetUserInput(windowTitle: "Enter Ammo Amount", defaultText: "100");
+                if (!string.IsNullOrEmpty(inputAmmo))
                 {
-                    foreach (var vw in ValidWeapons.WeaponList)
+                    if (int.TryParse(inputAmmo, out var ammo))
                     {
-                        if (HasPedGotWeapon(Game.PlayerPed.Handle, vw.Hash, false))
+                        foreach (var vw in ValidWeapons.WeaponList)
                         {
-                            SetPedAmmo(Game.PlayerPed.Handle, vw.Hash, ammo);
+                            if (HasPedGotWeapon(Game.PlayerPed.Handle, vw.Hash, false))
+                            {
+                                SetPedAmmo(Game.PlayerPed.Handle, vw.Hash, ammo);
+                            }
                         }
+                    }
+                    else
+                    {
+                        Notify.Error("You did not enter a valid number.");
                     }
                 }
                 else
                 {
-                    Notify.Error("You did not enter a valid number.");
+                    Notify.Error(CommonErrors.InvalidInput);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error(CommonErrors.InvalidInput);
+                Debug.WriteLine($"[vMenu] Exception in SetAllWeaponsAmmo: {ex}");
             }
         }
 
@@ -2783,47 +2835,54 @@ namespace vMenuClient
         /// </summary>
         public static async void SpawnCustomWeapon()
         {
-            if (!CanDoInteraction("spawnweapon"))
+            try
             {
-                return;
-            }
-
-            var ammo = 900;
-            var inputName = await GetUserInput(windowTitle: "Enter Weapon Model Name", maxInputLength: 30);
-            if (!string.IsNullOrEmpty(inputName))
-            {
-                if (!ValidWeapons.weaponPermissions.ContainsKey(inputName.ToLower()))
+                if (!CanDoInteraction("spawnweapon"))
                 {
-                    if (!IsAllowed(Permission.WPSpawn))
+                    return;
+                }
+
+                var ammo = 900;
+                var inputName = await GetUserInput(windowTitle: "Enter Weapon Model Name", maxInputLength: 30);
+                if (!string.IsNullOrEmpty(inputName))
+                {
+                    if (!ValidWeapons.weaponPermissions.ContainsKey(inputName.ToLower()))
                     {
-                        Notify.Error("Sorry, you do not have permission to spawn this weapon.");
-                        return;
+                        if (!IsAllowed(Permission.WPSpawn))
+                        {
+                            Notify.Error("Sorry, you do not have permission to spawn this weapon.");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        if (!IsAllowed(ValidWeapons.weaponPermissions[inputName.ToLower()]))
+                        {
+                            Notify.Error("Sorry, you are not allowed to spawn that weapon by name because it's a restricted weapon.");
+                            return;
+                        }
+                    }
+
+                    var model = (uint)GetHashKey(inputName.ToUpper());
+
+                    if (IsWeaponValid(model))
+                    {
+                        GiveWeaponToPed(Game.PlayerPed.Handle, model, ammo, false, true);
+                        Notify.Success("Added weapon to inventory.");
+                    }
+                    else
+                    {
+                        Notify.Error($"This ({inputName}) is not a valid weapon model name, or the model hash ({model}) could not be found in the game files.");
                     }
                 }
                 else
                 {
-                    if (!IsAllowed(ValidWeapons.weaponPermissions[inputName.ToLower()]))
-                    {
-                        Notify.Error("Sorry, you are not allowed to spawn that weapon by name because it's a restricted weapon.");
-                        return;
-                    }
-                }
-
-                var model = (uint)GetHashKey(inputName.ToUpper());
-
-                if (IsWeaponValid(model))
-                {
-                    GiveWeaponToPed(Game.PlayerPed.Handle, model, ammo, false, true);
-                    Notify.Success("Added weapon to inventory.");
-                }
-                else
-                {
-                    Notify.Error($"This ({inputName}) is not a valid weapon model name, or the model hash ({model}) could not be found in the game files.");
+                    Notify.Error(CommonErrors.InvalidInput);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error(CommonErrors.InvalidInput);
+                Debug.WriteLine($"[vMenu] Exception in SpawnCustomWeapon: {ex}");
             }
         }
         #endregion
@@ -2834,17 +2893,17 @@ namespace vMenuClient
         /// </summary>
         /// <param name="saveName"></param>
         /// <returns></returns>
+        private static readonly JsonSerializerSettings WeaponLoadoutJsonSettings = new JsonSerializerSettings
+        {
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            Error = (sender, args) =>
+            {
+                args.ErrorContext.Handled = true;
+            }
+        };
+
         public static List<ValidWeapon> GetSavedWeaponLoadout(string saveName)
         {
-            var settings = new JsonSerializerSettings
-            {
-                MissingMemberHandling = MissingMemberHandling.Ignore,
-                Error = (sender, args) =>
-                {
-                    args.ErrorContext.Handled = true;
-                }
-            };
-
             if (saveName == "vmenu_temp_weapons_loadout_before_respawn")
             {
                 var jsonString = GetResourceKvpString("vmenu_temp_weapons_loadout_before_respawn") ?? "{}";
@@ -2854,7 +2913,7 @@ namespace vMenuClient
                 }
                 try
                 {
-                    return JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, settings) ?? new List<ValidWeapon>();
+                    return JsonConvert.DeserializeObject<List<ValidWeapon>>(jsonString, WeaponLoadoutJsonSettings) ?? new List<ValidWeapon>();
                 }
                 catch
                 {
@@ -2870,7 +2929,7 @@ namespace vMenuClient
                 }
                 try
                 {
-                    return JsonConvert.DeserializeObject<List<ValidWeapon>>(kvp, settings) ?? new List<ValidWeapon>();
+                    return JsonConvert.DeserializeObject<List<ValidWeapon>>(kvp, WeaponLoadoutJsonSettings) ?? new List<ValidWeapon>();
                 }
                 catch
                 {
@@ -2916,7 +2975,14 @@ namespace vMenuClient
                 }
                 else
                 {
-                    loadout = JsonConvert.DeserializeObject<List<ValidWeapon>>(kvp);
+                    try
+                    {
+                        loadout = JsonConvert.DeserializeObject<List<ValidWeapon>>(kvp) ?? new List<ValidWeapon>();
+                    }
+                    catch
+                    {
+                        loadout = new List<ValidWeapon>();
+                    }
                 }
             }
 
@@ -3066,79 +3132,86 @@ namespace vMenuClient
         /// <param name="walkingStyle"></param>
         public static async void SetWalkingStyle(string walkingStyle)
         {
-            if (IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_f_freemode_01")) || IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_m_freemode_01")))
+            try
             {
-                var isPedMale = IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_m_freemode_01"));
-                ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 0, 1f);
-                ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 1, 1f);
-                ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 2, 1f);
-                ClearPedAlternateWalkAnim(Game.PlayerPed.Handle, 1f);
-                string animDict = null;
-                if (walkingStyle == "Injured")
+                if (IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_f_freemode_01")) || IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_m_freemode_01")))
                 {
-                    animDict = isPedMale ? "move_m@injured" : "move_f@injured";
-                }
-                else if (walkingStyle == "Tough Guy")
-                {
-                    animDict = isPedMale ? "move_m@tough_guy@" : "move_f@tough_guy@";
-                }
-                else if (walkingStyle == "Femme")
-                {
-                    animDict = isPedMale ? "move_m@femme@" : "move_f@femme@";
-                }
-                else if (walkingStyle == "Gangster")
-                {
-                    animDict = isPedMale ? "move_m@gangster@a" : "move_f@gangster@ng";
-                }
-                else if (walkingStyle == "Posh")
-                {
-                    animDict = isPedMale ? "move_m@posh@" : "move_f@posh@";
-                }
-                else if (walkingStyle == "Sexy")
-                {
-                    animDict = isPedMale ? null : "move_f@sexy@a";
-                }
-                else if (walkingStyle == "Business")
-                {
-                    animDict = isPedMale ? null : "move_f@business@a";
-                }
-                else if (walkingStyle == "Drunk")
-                {
-                    animDict = isPedMale ? "move_m@drunk@a" : "move_f@drunk@a";
-                }
-                else if (walkingStyle == "Hipster")
-                {
-                    animDict = isPedMale ? "move_m@hipster@a" : null;
-                }
-                if (animDict != null)
-                {
-                    if (!HasAnimDictLoaded(animDict))
+                    var isPedMale = IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_m_freemode_01"));
+                    ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 0, 1f);
+                    ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 1, 1f);
+                    ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 2, 1f);
+                    ClearPedAlternateWalkAnim(Game.PlayerPed.Handle, 1f);
+                    string animDict = null;
+                    if (walkingStyle == "Injured")
                     {
-                        RequestAnimDict(animDict);
-                        while (!HasAnimDictLoaded(animDict))
+                        animDict = isPedMale ? "move_m@injured" : "move_f@injured";
+                    }
+                    else if (walkingStyle == "Tough Guy")
+                    {
+                        animDict = isPedMale ? "move_m@tough_guy@" : "move_f@tough_guy@";
+                    }
+                    else if (walkingStyle == "Femme")
+                    {
+                        animDict = isPedMale ? "move_m@femme@" : "move_f@femme@";
+                    }
+                    else if (walkingStyle == "Gangster")
+                    {
+                        animDict = isPedMale ? "move_m@gangster@a" : "move_f@gangster@ng";
+                    }
+                    else if (walkingStyle == "Posh")
+                    {
+                        animDict = isPedMale ? "move_m@posh@" : "move_f@posh@";
+                    }
+                    else if (walkingStyle == "Sexy")
+                    {
+                        animDict = isPedMale ? null : "move_f@sexy@a";
+                    }
+                    else if (walkingStyle == "Business")
+                    {
+                        animDict = isPedMale ? null : "move_f@business@a";
+                    }
+                    else if (walkingStyle == "Drunk")
+                    {
+                        animDict = isPedMale ? "move_m@drunk@a" : "move_f@drunk@a";
+                    }
+                    else if (walkingStyle == "Hipster")
+                    {
+                        animDict = isPedMale ? "move_m@hipster@a" : null;
+                    }
+                    if (animDict != null)
+                    {
+                        if (!HasAnimDictLoaded(animDict))
                         {
-                            await Delay(0);
+                            RequestAnimDict(animDict);
+                            while (!HasAnimDictLoaded(animDict))
+                            {
+                                await Delay(0);
+                            }
+                        }
+                        SetPedAlternateMovementAnim(Game.PlayerPed.Handle, 0, animDict, "idle", 1f, true);
+                        SetPedAlternateMovementAnim(Game.PlayerPed.Handle, 1, animDict, "walk", 1f, true);
+                        SetPedAlternateMovementAnim(Game.PlayerPed.Handle, 2, animDict, "run", 1f, true);
+                    }
+                    else if (walkingStyle != "Normal")
+                    {
+                        if (isPedMale)
+                        {
+                            Notify.Error(CommonErrors.WalkingStyleNotForMale);
+                        }
+                        else
+                        {
+                            Notify.Error(CommonErrors.WalkingStyleNotForFemale);
                         }
                     }
-                    SetPedAlternateMovementAnim(Game.PlayerPed.Handle, 0, animDict, "idle", 1f, true);
-                    SetPedAlternateMovementAnim(Game.PlayerPed.Handle, 1, animDict, "walk", 1f, true);
-                    SetPedAlternateMovementAnim(Game.PlayerPed.Handle, 2, animDict, "run", 1f, true);
                 }
-                else if (walkingStyle != "Normal")
+                else
                 {
-                    if (isPedMale)
-                    {
-                        Notify.Error(CommonErrors.WalkingStyleNotForMale);
-                    }
-                    else
-                    {
-                        Notify.Error(CommonErrors.WalkingStyleNotForFemale);
-                    }
+                    Notify.Error("This feature only supports the multiplayer freemode male/female ped models.");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Notify.Error("This feature only supports the multiplayer freemode male/female ped models.");
+                Debug.WriteLine($"[vMenu] Exception in SetWalkingStyle: {ex}");
             }
         }
         #endregion
@@ -3245,7 +3318,7 @@ namespace vMenuClient
             {
                 return "";
             }
-            return name.Replace("^", @"\^").Replace("~", @"\~").Replace("<", "«").Replace(">", "»");
+            return name.Replace("^", @"\^").Replace("~", @"\~").Replace("<", "«").Replace(">", "»").Replace("\n", "").Replace("\r", "");
         }
         #endregion
 
@@ -3459,57 +3532,74 @@ namespace vMenuClient
         public static void PrivateMessage(string source, string message) => PrivateMessage(source, message, false);
         public static async void PrivateMessage(string source, string message, bool sent)
         {
-            MainMenu.PlayersList.RequestPlayerList();
-            await MainMenu.PlayersList.WaitRequested();
-
-            var name = MainMenu.PlayersList.ToList()
-                .Find(plr => plr.ServerId.ToString() == source)?.Name ?? "**Invalid**";
-
-            if (MainMenu.MiscSettingsMenu == null || MainMenu.MiscSettingsMenu.MiscDisablePrivateMessages)
+            try
             {
-                return;
+                if (!int.TryParse(source, out var sourceServerId))
+                {
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(message) && message.Length > 128)
+                {
+                    message = message.Substring(0, 128);
+                }
+
+                MainMenu.PlayersList.RequestPlayerList();
+                await MainMenu.PlayersList.WaitRequested();
+
+                var name = MainMenu.PlayersList.FirstOrDefault(plr => plr.ServerId == sourceServerId)?.Name ?? "**Invalid**";
+
+                if (MainMenu.MiscSettingsMenu == null || MainMenu.MiscSettingsMenu.MiscDisablePrivateMessages)
+                {
+                    return;
+                }
+
+                var sourcePlayer = new Player(GetPlayerFromServerId(sourceServerId));
+                if (sourcePlayer != null)
+                {
+                    if (sourcePlayer.Character == null) { return; }
+                    var headshotHandle = RegisterPedheadshot(sourcePlayer.Character.Handle);
+                    var timer = GetGameTimer();
+                    var tookTooLong = false;
+                    while (!IsPedheadshotReady(headshotHandle) || !IsPedheadshotValid(headshotHandle))
+                    {
+                        await Delay(0);
+                        if (GetGameTimer() - timer > 2000)
+                        {
+                            // took too long.
+                            tookTooLong = true;
+                            break;
+                        }
+                    }
+                    if (!tookTooLong)
+                    {
+                        var headshotTxd = GetPedheadshotTxdString(headshotHandle);
+                        if (sent)
+                        {
+                            Notify.CustomImage(headshotTxd, headshotTxd, message, $"<C>{GetSafePlayerName(name)}</C>", "Message Sent", true, 1);
+                        }
+                        else
+                        {
+                            Notify.CustomImage(headshotTxd, headshotTxd, message, $"<C>{GetSafePlayerName(name)}</C>", "Message Received", true, 1);
+                        }
+                    }
+                    else
+                    {
+                        if (sent)
+                        {
+                            Notify.Custom($"PM From: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
+                        }
+                        else
+                        {
+                            Notify.Custom($"PM To: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
+                        }
+                    }
+                    UnregisterPedheadshot(headshotHandle);
+                }
             }
-
-            var sourcePlayer = new Player(GetPlayerFromServerId(int.Parse(source)));
-            if (sourcePlayer != null)
+            catch (Exception ex)
             {
-                var headshotHandle = RegisterPedheadshot(sourcePlayer.Character.Handle);
-                var timer = GetGameTimer();
-                var tookTooLong = false;
-                while (!IsPedheadshotReady(headshotHandle) || !IsPedheadshotValid(headshotHandle))
-                {
-                    await Delay(0);
-                    if (GetGameTimer() - timer > 2000)
-                    {
-                        // took too long.
-                        tookTooLong = true;
-                        break;
-                    }
-                }
-                if (!tookTooLong)
-                {
-                    var headshotTxd = GetPedheadshotTxdString(headshotHandle);
-                    if (sent)
-                    {
-                        Notify.CustomImage(headshotTxd, headshotTxd, message, $"<C>{GetSafePlayerName(name)}</C>", "Message Sent", true, 1);
-                    }
-                    else
-                    {
-                        Notify.CustomImage(headshotTxd, headshotTxd, message, $"<C>{GetSafePlayerName(name)}</C>", "Message Received", true, 1);
-                    }
-                }
-                else
-                {
-                    if (sent)
-                    {
-                        Notify.Custom($"PM From: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
-                    }
-                    else
-                    {
-                        Notify.Custom($"PM To: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
-                    }
-                }
-                UnregisterPedheadshot(headshotHandle);
+                Debug.WriteLine($"[vMenu] Exception in PrivateMessage: {ex}");
             }
         }
         #endregion
@@ -3517,63 +3607,70 @@ namespace vMenuClient
         #region Keyfob personal vehicle func
         public static async void PressKeyFob(Vehicle veh)
         {
-            var player = Game.Player;
-            if (player != null && !player.IsDead && !player.Character.IsInVehicle())
+            try
             {
-                var KeyFobHashKey = (uint)GetHashKey("p_car_keys_01");
-                RequestModel(KeyFobHashKey);
-                while (!HasModelLoaded(KeyFobHashKey))
+                var player = Game.Player;
+                if (player != null && !player.IsDead && !player.Character.IsInVehicle())
                 {
-                    await Delay(0);
+                    var KeyFobHashKey = (uint)GetHashKey("p_car_keys_01");
+                    RequestModel(KeyFobHashKey);
+                    while (!HasModelLoaded(KeyFobHashKey))
+                    {
+                        await Delay(0);
+                    }
+
+                    var KeyFobObject = CreateObject((int)KeyFobHashKey, 0, 0, 0, true, true, true);
+                    AttachEntityToEntity(KeyFobObject, player.Character.Handle, GetPedBoneIndex(player.Character.Handle, 57005), 0.09f, 0.03f, -0.02f, -76f, 13f, 28f, false, true, true, true, 0, true);
+                    SetModelAsNoLongerNeeded(KeyFobHashKey); // cleanup model from memory
+
+                    ClearPedTasks(player.Character.Handle);
+                    //SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("WEAPON_UNARMED"), true);
+                    //if (player.Character.Weapons.Current.Hash != WeaponHash.Unarmed)
+                    //{
+                    //    player.Character.Weapons.Give(WeaponHash.Unarmed, 1, true, true);
+                    //}
+
+                    // if (!HasEntityClearLosToEntityInFront(player.Character.Handle, veh.Handle))
+                    {
+                        /*
+                        TODO: Work out how to get proper heading between entities.
+                        */
+
+
+                        //SetPedDesiredHeading(player.Character.Handle, )
+                        //float heading = GetHeadingFromVector_2d(player.Character.Position.X - veh.Position.Y, player.Character.Position.Y - veh.Position.X);
+                        //double x = Math.Cos(player.Character.Position.X) * Math.Sin(player.Character.Position.Y - (double)veh.Position.Y);
+                        //double y = Math.Cos(player.Character.Position.X) * Math.Sin(veh.Position.X) - Math.Sin(player.Character.Position.X) * Math.Cos(veh.Position.X) * Math.Cos(player.Character.Position.Y - (double)veh.Position.Y);
+                        //float heading = (float)Math.Atan2(x, y);
+                        //Debug.WriteLine(heading.ToString());
+                        //SetPedDesiredHeading(player.Character.Handle, heading);
+
+                        ClearPedTasks(Game.PlayerPed.Handle);
+                        TaskTurnPedToFaceEntity(player.Character.Handle, veh.Handle, 500);
+                    }
+
+                    var animDict = "anim@mp_player_intmenu@key_fob@";
+                    RequestAnimDict(animDict);
+                    while (!HasAnimDictLoaded(animDict))
+                    {
+                        await Delay(0);
+                    }
+                    player.Character.Task.PlayAnimation(animDict, "fob_click", 3f, 1000, AnimationFlags.UpperBodyOnly);
+                    PlaySoundFromEntity(-1, "Remote_Control_Fob", player.Character.Handle, "PI_Menu_Sounds", true, 0);
+
+
+                    await Delay(1250);
+                    DetachEntity(KeyFobObject, false, false);
+                    DeleteObject(ref KeyFobObject);
+                    RemoveAnimDict(animDict); // cleanup anim dict from memory
                 }
 
-                var KeyFobObject = CreateObject((int)KeyFobHashKey, 0, 0, 0, true, true, true);
-                AttachEntityToEntity(KeyFobObject, player.Character.Handle, GetPedBoneIndex(player.Character.Handle, 57005), 0.09f, 0.03f, -0.02f, -76f, 13f, 28f, false, true, true, true, 0, true);
-                SetModelAsNoLongerNeeded(KeyFobHashKey); // cleanup model from memory
-
-                ClearPedTasks(player.Character.Handle);
-                //SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("WEAPON_UNARMED"), true);
-                //if (player.Character.Weapons.Current.Hash != WeaponHash.Unarmed)
-                //{
-                //    player.Character.Weapons.Give(WeaponHash.Unarmed, 1, true, true);
-                //}
-
-                // if (!HasEntityClearLosToEntityInFront(player.Character.Handle, veh.Handle))
-                {
-                    /*
-                    TODO: Work out how to get proper heading between entities.
-                    */
-
-
-                    //SetPedDesiredHeading(player.Character.Handle, )
-                    //float heading = GetHeadingFromVector_2d(player.Character.Position.X - veh.Position.Y, player.Character.Position.Y - veh.Position.X);
-                    //double x = Math.Cos(player.Character.Position.X) * Math.Sin(player.Character.Position.Y - (double)veh.Position.Y);
-                    //double y = Math.Cos(player.Character.Position.X) * Math.Sin(veh.Position.X) - Math.Sin(player.Character.Position.X) * Math.Cos(veh.Position.X) * Math.Cos(player.Character.Position.Y - (double)veh.Position.Y);
-                    //float heading = (float)Math.Atan2(x, y);
-                    //Debug.WriteLine(heading.ToString());
-                    //SetPedDesiredHeading(player.Character.Handle, heading);
-
-                    ClearPedTasks(Game.PlayerPed.Handle);
-                    TaskTurnPedToFaceEntity(player.Character.Handle, veh.Handle, 500);
-                }
-
-                var animDict = "anim@mp_player_intmenu@key_fob@";
-                RequestAnimDict(animDict);
-                while (!HasAnimDictLoaded(animDict))
-                {
-                    await Delay(0);
-                }
-                player.Character.Task.PlayAnimation(animDict, "fob_click", 3f, 1000, AnimationFlags.UpperBodyOnly);
-                PlaySoundFromEntity(-1, "Remote_Control_Fob", player.Character.Handle, "PI_Menu_Sounds", true, 0);
-
-
-                await Delay(1250);
-                DetachEntity(KeyFobObject, false, false);
-                DeleteObject(ref KeyFobObject);
-                RemoveAnimDict(animDict); // cleanup anim dict from memory
+                await Delay(0);
             }
-
-            await Delay(0);
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in PressKeyFob: {ex}");
+            }
         }
         #endregion
 

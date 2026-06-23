@@ -26,7 +26,7 @@ namespace vMenuClient
             RegisterCommand("testEntity", new Action<int, List<object>>((source, args) =>
             {
                 var prop = (string)args[0];
-                SpawnEntity(prop, Game.PlayerPed.Position);
+                _ = SpawnEntity(prop, Game.PlayerPed.Position);
             }), false);
 
             RegisterCommand("endTest", new Action(() =>
@@ -45,9 +45,9 @@ namespace vMenuClient
         /// <param name="model">model of entity as string</param>
         /// <param name="coords">initial coords for the entity</param>
         /// <returns>true spawn was succesful</returns>
-        public static void SpawnEntity(string model, Vector3 coords)
+        public static async Task SpawnEntity(string model, Vector3 coords)
         {
-            SpawnEntity((uint)GetHashKey(model), coords);
+            await SpawnEntity((uint)GetHashKey(model), coords);
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace vMenuClient
         /// <param name="model">model of entity as hash</param>
         /// <param name="coords">initial coords for the entity</param>
         /// <returns>true spawn was succesful</returns>
-        public static async void SpawnEntity(uint model, Vector3 coords)
+        public static async Task SpawnEntity(uint model, Vector3 coords)
         {
             if (!IsModelValid(model))
             {
@@ -73,8 +73,16 @@ namespace vMenuClient
 
             int handle;
             RequestModel(model);
+            var loadStart = GetGameTimer();
             while (!HasModelLoaded(model))
             {
+                if (GetGameTimer() - loadStart > 5000)
+                {
+                    Debug.WriteLine($"[vMenu] [EntitySpawner] Timed out waiting for model {model} to load.");
+                    SetModelAsNoLongerNeeded(model);
+                    Notify.Error("Failed to load model.");
+                    return;
+                }
                 await Delay(1);
             }
             if (IsModelAPed(model))
@@ -115,7 +123,7 @@ namespace vMenuClient
                 var position = CurrentEntity.Position;
                 CurrentEntity = null;
                 await Delay(1); // Mandatory
-                SpawnEntity((uint)hash, position);
+                await SpawnEntity((uint)hash, position);
             }
             else
             {

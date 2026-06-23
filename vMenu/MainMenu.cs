@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 using CitizenFX.Core;
@@ -52,7 +54,7 @@ namespace vMenuClient
 
         public static bool DebugMode = GetResourceMetadata(GetCurrentResourceName(), "client_debug_mode", 0) == "true";
         public static bool EnableExperimentalFeatures = (GetResourceMetadata(GetCurrentResourceName(), "experimental_features_enabled", 0) ?? "0") == "1";
-        public static string Version { get { return GetResourceMetadata(GetCurrentResourceName(), "version", 0); } }
+        public static readonly string Version = GetResourceMetadata(GetCurrentResourceName(), "version", 0);
 
         public static bool DontOpenMenus { get { return MenuController.DontOpenAnyMenu; } set { MenuController.DontOpenAnyMenu = value; } }
         public static bool DisableControls { get { return MenuController.DisableMenuButtons; } set { MenuController.DisableMenuButtons = value; } }
@@ -340,15 +342,14 @@ namespace vMenuClient
             public Vector3 Coords { get; set; }
         }
 
-        private static Dictionary<long, RPCData> rpcQueue = new Dictionary<long, RPCData>();
+        private static ConcurrentDictionary<long, RPCData> rpcQueue = new ConcurrentDictionary<long, RPCData>();
         private static long rpcIdCounter = 0;
 
         [EventHandler("vMenu:GetPlayerCoords:reply")]
         public static void PlayerCoordinatesReceived(long rpcId, Vector3 coords)
         {
-            if (rpcQueue.ContainsKey(rpcId))
+            if (rpcQueue.TryGetValue(rpcId, out var rpcItem))
             {
-                var rpcItem = rpcQueue[rpcId];
                 rpcItem.IsCompleted = true;
                 rpcItem.Coords = coords;
                 rpcQueue[rpcId] = rpcItem;
@@ -361,20 +362,27 @@ namespace vMenuClient
 
         public static async Task<Vector3> RequestPlayerCoordinates(int serverId)
         {
-            long rpcId = rpcIdCounter++;
-            rpcQueue.Add(rpcId, new RPCData { IsCompleted = false, Coords = Vector3.Zero });
+            long rpcId = Interlocked.Increment(ref rpcIdCounter);
+            rpcQueue[rpcId] = new RPCData { IsCompleted = false, Coords = Vector3.Zero };
 
             TriggerServerEvent("vMenu:GetPlayerCoords", rpcId, serverId);
 
+            const int timeoutMs = 5000;
+            var startTime = GetGameTimer();
             while (!rpcQueue[rpcId].IsCompleted)
             {
+                if (GetGameTimer() - startTime > timeoutMs)
+                {
+                    Debug.WriteLine($"[vMenu] Warning: RequestPlayerCoordinates timed out for RPC ID: {rpcId}");
+                    rpcQueue.TryRemove(rpcId, out _);
+                    return Vector3.Zero;
+                }
                 await Delay(0);
             }
 
-            Vector3 coords = rpcQueue[rpcId].Coords;
-            rpcQueue.Remove(rpcId);
+            rpcQueue.TryRemove(rpcId, out var result);
 
-            return coords;
+            return result.Coords;
         }
         #endregion
 
@@ -385,40 +393,47 @@ namespace vMenuClient
         /// <param name="dict"></param>
         public static async void SetPermissions(string permissionsList)
         {
-            vMenuShared.PermissionsManager.SetPermissions(permissionsList);
+            try
+            {
+                vMenuShared.PermissionsManager.SetPermissions(permissionsList);
 
-            VehicleSpawner.allowedCategories = new List<bool>()
-            {
-                IsAllowed(Permission.VSCompacts, checkAnyway: true),
-                IsAllowed(Permission.VSSedans, checkAnyway: true),
-                IsAllowed(Permission.VSSUVs, checkAnyway: true),
-                IsAllowed(Permission.VSCoupes, checkAnyway: true),
-                IsAllowed(Permission.VSMuscle, checkAnyway: true),
-                IsAllowed(Permission.VSSportsClassic, checkAnyway: true),
-                IsAllowed(Permission.VSSports, checkAnyway: true),
-                IsAllowed(Permission.VSSuper, checkAnyway: true),
-                IsAllowed(Permission.VSMotorcycles, checkAnyway: true),
-                IsAllowed(Permission.VSOffRoad, checkAnyway: true),
-                IsAllowed(Permission.VSIndustrial, checkAnyway: true),
-                IsAllowed(Permission.VSUtility, checkAnyway: true),
-                IsAllowed(Permission.VSVans, checkAnyway: true),
-                IsAllowed(Permission.VSCycles, checkAnyway: true),
-                IsAllowed(Permission.VSBoats, checkAnyway: true),
-                IsAllowed(Permission.VSHelicopters, checkAnyway: true),
-                IsAllowed(Permission.VSPlanes, checkAnyway: true),
-                IsAllowed(Permission.VSService, checkAnyway: true),
-                IsAllowed(Permission.VSEmergency, checkAnyway: true),
-                IsAllowed(Permission.VSMilitary, checkAnyway: true),
-                IsAllowed(Permission.VSCommercial, checkAnyway: true),
-                IsAllowed(Permission.VSTrains, checkAnyway: true),
-                IsAllowed(Permission.VSOpenWheel, checkAnyway: true)
-            };
-            ArePermissionsSetup = true;
-            while (!ConfigOptionsSetupComplete)
-            {
-                await Delay(100);
+                VehicleSpawner.allowedCategories = new List<bool>()
+                {
+                    IsAllowed(Permission.VSCompacts, checkAnyway: true),
+                    IsAllowed(Permission.VSSedans, checkAnyway: true),
+                    IsAllowed(Permission.VSSUVs, checkAnyway: true),
+                    IsAllowed(Permission.VSCoupes, checkAnyway: true),
+                    IsAllowed(Permission.VSMuscle, checkAnyway: true),
+                    IsAllowed(Permission.VSSportsClassic, checkAnyway: true),
+                    IsAllowed(Permission.VSSports, checkAnyway: true),
+                    IsAllowed(Permission.VSSuper, checkAnyway: true),
+                    IsAllowed(Permission.VSMotorcycles, checkAnyway: true),
+                    IsAllowed(Permission.VSOffRoad, checkAnyway: true),
+                    IsAllowed(Permission.VSIndustrial, checkAnyway: true),
+                    IsAllowed(Permission.VSUtility, checkAnyway: true),
+                    IsAllowed(Permission.VSVans, checkAnyway: true),
+                    IsAllowed(Permission.VSCycles, checkAnyway: true),
+                    IsAllowed(Permission.VSBoats, checkAnyway: true),
+                    IsAllowed(Permission.VSHelicopters, checkAnyway: true),
+                    IsAllowed(Permission.VSPlanes, checkAnyway: true),
+                    IsAllowed(Permission.VSService, checkAnyway: true),
+                    IsAllowed(Permission.VSEmergency, checkAnyway: true),
+                    IsAllowed(Permission.VSMilitary, checkAnyway: true),
+                    IsAllowed(Permission.VSCommercial, checkAnyway: true),
+                    IsAllowed(Permission.VSTrains, checkAnyway: true),
+                    IsAllowed(Permission.VSOpenWheel, checkAnyway: true)
+                };
+                ArePermissionsSetup = true;
+                while (!ConfigOptionsSetupComplete)
+                {
+                    await Delay(100);
+                }
+                PostPermissionsSetup();
             }
-            PostPermissionsSetup();
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Exception in SetPermissions: {ex}");
+            }
         }
         #endregion
 
@@ -877,7 +892,11 @@ namespace vMenuClient
         #endregion
 
         #region Utilities
-        private static string GetKeyMappingId() => string.IsNullOrWhiteSpace(GetSettingsString(Setting.vmenu_keymapping_id)) ? "Default" : GetSettingsString(Setting.vmenu_keymapping_id);
+        private static string GetKeyMappingId()
+        {
+            var keyMappingId = GetSettingsString(Setting.vmenu_keymapping_id);
+            return string.IsNullOrWhiteSpace(keyMappingId) ? "Default" : keyMappingId;
+        }
         #endregion
     }
 }
