@@ -571,6 +571,20 @@ namespace vMenuClient.menus
 
                     var maxDrawables = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, i);
 
+                    // EUP gate: players without the EUP permission only see base-game drawables.
+                    if (!data.AddonsManager.Eup.allowed)
+                    {
+                        var eupBase = data.EupBaseCounts.For((uint)GetEntityModel(Game.PlayerPed.Handle), i);
+                        if (eupBase >= 0 && maxDrawables > eupBase)
+                        {
+                            maxDrawables = eupBase;
+                            if (currentVariationIndex >= maxDrawables)
+                            {
+                                currentVariationIndex = 0;
+                            }
+                        }
+                    }
+
                     var items = new List<string>();
                     for (var x = 0; x < maxDrawables; x++)
                     {
