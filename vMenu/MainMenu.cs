@@ -10,6 +10,7 @@ using MenuAPI;
 
 using Newtonsoft.Json;
 
+using vMenuClient.data;
 using vMenuClient.menus;
 
 using static CitizenFX.Core.Native.API;
@@ -25,6 +26,7 @@ namespace vMenuClient
 
         public static bool PermissionsSetupComplete => ArePermissionsSetup;
         public static bool ConfigOptionsSetupComplete = false;
+        public static bool AddonsSetupComplete = false;
 
         public static string MenuToggleKey { get; private set; } = "M"; // M by default
         public static string NoClipKey { get; private set; } = "F2"; // F2 by default 
@@ -49,6 +51,7 @@ namespace vMenuClient
         public static Recording RecordingMenu { get; private set; }
         public static MiscSettings MiscSettingsMenu { get; private set; }
         public static About AboutMenu { get; private set; }
+        public static Addons AddonsMenu { get; private set; }
         public static bool NoClipEnabled { get { return NoClip.IsNoclipActive(); } set { NoClip.SetNoclipActive(value); } }
         public static IPlayerList PlayersList;
 
@@ -428,6 +431,18 @@ namespace vMenuClient
                 {
                     await Delay(100);
                 }
+                // Wait for the per-player addon payload, but never hang the menu: if the
+                // server's addon response is dropped, build the menu without addons.
+                var addonWaitStart = GetGameTimer();
+                while (!AddonsSetupComplete)
+                {
+                    if (GetGameTimer() - addonWaitStart > 5000)
+                    {
+                        Debug.WriteLine("[vMenu] [Addons] Timed out waiting for addon data; building menu without addons.");
+                        break;
+                    }
+                    await Delay(100);
+                }
                 PostPermissionsSetup();
             }
             catch (Exception ex)
@@ -679,6 +694,18 @@ namespace vMenuClient
                         menu.RefreshIndex();
                     }
                 };
+            }
+
+            // Add the Addons menu (runtime addon vehicles/weapons this player is permitted to use).
+            if (data.AddonsManager.HasAny)
+            {
+                AddonsMenu = new Addons();
+                var menu = AddonsMenu.GetMenu();
+                var button = new MenuItem("Addons", "Spawn addon vehicles and weapons you have access to.")
+                {
+                    Label = "→→→"
+                };
+                AddMenu(Menu, menu, button);
             }
 
             var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = "→→→" };
