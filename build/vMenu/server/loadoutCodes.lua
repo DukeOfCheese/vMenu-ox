@@ -57,10 +57,16 @@ lib.callback.register(
             return false, 'You need to have Discord linked to generate loadout codes.'
         end
 
+        local encoded = json.encode(data)
+        if not encoded or #encoded > 65536 then
+            lib.print.error(string.format('%s [%s] tried to generate an oversized loadout code (%d bytes).', GetPlayerName(source), source, encoded and #encoded or 0))
+            return false, 'Your loadout is too large to share.'
+        end
+
         userGenerateCooldowns[source] = true
 
         local id = exports.oxmysql:insert_async('INSERT INTO `vmenu_loadouts` (`discord_id`, `data`) VALUES (?, ?)', {
-            discord, json.encode(data)
+            discord, encoded
         })
 
         SetTimeout(12500, function()
@@ -77,11 +83,15 @@ CreateThread(function()
     end
 
     if GetResourceState('oxmysql') ~= 'started' then
-        for i = 1, 10 do
-            lib.print.error('Loadout Code System is enabled but oxmysql is not started..')
-        end
+        lib.print.error('Loadout Code System is enabled but oxmysql is not started..')
         return
     end
 
     lib.print.info('Loadout Code System is enabled.')
+end)
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    userRequestCooldowns[src] = nil
+    userGenerateCooldowns[src] = nil
 end)

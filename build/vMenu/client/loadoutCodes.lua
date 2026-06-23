@@ -37,16 +37,24 @@ exports('loadSharedLoadout', function()
 
     if not Valid then
         Config.Notify('vMenu', 'The loadout code you entered is invalid!', 'error', 6500)
+        return false
     end
 
     local validData = json.decode(Valid)
+    if type(validData) ~= 'table' then
+        Config.Notify('vMenu', 'The loadout code you entered is invalid!', 'error', 6500)
+        return false
+    end
 
     for _, weapon in ipairs(validData) do
-        GiveWeaponToPed(cache.ped, weapon.Hash, weapon.GetMaxAmmo, true, false)
+        if weapon.Hash and IsWeaponValid(weapon.Hash) then
+            local ammo = math.max(0, math.min(tonumber(weapon.GetMaxAmmo) or 0, 9999))
+            GiveWeaponToPed(cache.ped, weapon.Hash, ammo, true, false)
 
-        if weapon.Components and next(weapon.Components) ~= nil then
-            for compName, compHash in pairs(weapon.Components) do
-                GiveWeaponComponentToPed(cache.ped, weapon.Hash, compHash)
+            if weapon.Components and next(weapon.Components) ~= nil then
+                for compName, compHash in pairs(weapon.Components) do
+                    GiveWeaponComponentToPed(cache.ped, weapon.Hash, compHash)
+                end
             end
         end
     end
@@ -100,13 +108,19 @@ exports('loadLoadoutFromCode', function(loadoutCode)
     end
 
     local validData = json.decode(Valid)
+    if type(validData) ~= 'table' then
+        return false
+    end
 
     for _, weapon in ipairs(validData) do
-        GiveWeaponToPed(cache.ped, weapon.Hash, weapon.GetMaxAmmo, true, false)
+        if weapon.Hash and IsWeaponValid(weapon.Hash) then
+            local ammo = math.max(0, math.min(tonumber(weapon.GetMaxAmmo) or 0, 9999))
+            GiveWeaponToPed(cache.ped, weapon.Hash, ammo, true, false)
 
-        if weapon.Components and next(weapon.Components) ~= nil then
-            for compName, compHash in pairs(weapon.Components) do
-                GiveWeaponComponentToPed(cache.ped, weapon.Hash, compHash)
+            if weapon.Components and next(weapon.Components) ~= nil then
+                for compName, compHash in pairs(weapon.Components) do
+                    GiveWeaponComponentToPed(cache.ped, weapon.Hash, compHash)
+                end
             end
         end
     end

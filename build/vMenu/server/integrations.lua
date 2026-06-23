@@ -65,6 +65,8 @@ end)
 
 -- Refreshes Show Player Names
 Citizen.CreateThread(function()
+    local lastEncoded = nil
+    local ticksSinceBroadcast = 0
     while true do
         local players = GetPlayers()
         local cache = {}
@@ -78,7 +80,17 @@ Citizen.CreateThread(function()
             }
         end
 
-        TriggerClientEvent('vMenu:SyncOverheadNames', -1, cache)
+        -- Only broadcast when the name table actually changes (join/drop/name change),
+        -- plus a periodic heartbeat (~every 10s) so newly-connected clients reliably
+        -- receive the current names even if they missed a change-triggered broadcast.
+        local encoded = json.encode(cache)
+        ticksSinceBroadcast = ticksSinceBroadcast + 1
+        if encoded ~= lastEncoded or ticksSinceBroadcast >= 10 then
+            lastEncoded = encoded
+            ticksSinceBroadcast = 0
+            TriggerClientEvent('vMenu:SyncOverheadNames', -1, cache)
+        end
+
         Citizen.Wait(1000)
     end
 end)
