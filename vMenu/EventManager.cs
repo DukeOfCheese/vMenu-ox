@@ -7,6 +7,7 @@ using CitizenFX.Core;
 
 using Newtonsoft.Json;
 
+using vMenuClient.data;
 using vMenuClient.menus;
 
 using static CitizenFX.Core.Native.API;
@@ -37,6 +38,7 @@ namespace vMenuClient
         public EventManager()
         {
             EventHandlers.Add("vMenu:SetConfigOptions", new Action(SetConfigOptions));
+            EventHandlers.Add("vMenu:SetAddons", new Action<string>(SetAddons));
             EventHandlers.Add("vMenu:SetPermissions", new Action<string>(MainMenu.SetPermissions));
             EventHandlers.Add("vMenu:KillMe", new Action<string>(KillMe));
             EventHandlers.Add("vMenu:Notify", new Action<string>(NotifyPlayer));
@@ -128,7 +130,20 @@ namespace vMenuClient
         {
             SetExtras();
 
+            // Ask the server for this player's permitted addons. Tied to the config-ready
+            // signal so it also re-fires when vMenu restarts with players connected.
+            TriggerServerEvent("vMenu:RequestAddons");
+
             MainMenu.ConfigOptionsSetupComplete = true;
+        }
+
+        /// <summary>
+        /// Receives the per-player addon payload (allowed vehicles/weapons + EUP flag) from the server.
+        /// </summary>
+        private void SetAddons(string json)
+        {
+            AddonsManager.Load(json);
+            MainMenu.AddonsSetupComplete = true;
         }
 
 
