@@ -756,6 +756,20 @@ namespace vMenuClient.menus
                 var maxVariations = GetNumberOfPedDrawableVariations(Game.PlayerPed.Handle, drawable);
                 var maxTextures = GetNumberOfPedTextureVariations(Game.PlayerPed.Handle, drawable, currentDrawable);
 
+                // EUP gate: players without the EUP permission only see base-game drawables.
+                if (!data.AddonsManager.Eup.allowed)
+                {
+                    var eupBase = data.EupBaseCounts.For((uint)GetEntityModel(Game.PlayerPed.Handle), drawable);
+                    if (eupBase >= 0 && maxVariations > eupBase)
+                    {
+                        maxVariations = eupBase;
+                        if (currentDrawable >= maxVariations)
+                        {
+                            currentDrawable = 0;
+                        }
+                    }
+                }
+
                 if (maxVariations > 0)
                 {
                     var drawableTexturesList = new List<string>();
