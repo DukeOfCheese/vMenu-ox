@@ -26,7 +26,7 @@ local function collectAllowed(src, kind, list)
                 out[#out + 1] = { spawn = entry.spawn, label = entry.label or entry.spawn }
             end
         else
-            print(('^3[vMenu] [Addons] Skipping malformed %s entry #%d (spawn=%s) in Config.Addons^7'):format(kind, idx, tostring(entry and entry.spawn)))
+            print(('^3[vMenu] [Addons] Skipping malformed %s entry #%d (spawn=%s) in Config.Addons^7'):format(kind, idx, tostring(type(entry) == 'table' and entry.spawn or entry)))
         end
     end
     return out
