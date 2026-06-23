@@ -33,6 +33,7 @@ namespace vMenuClient
         private bool SwitchedVehicle = false;
         private readonly List<int> deadPlayers = new();
         private float cameraRotationHeading = 0f;
+        private bool cameraButtonsDisabledForVehicle = false;
 
         // show location variables
         private float safeZoneSizeX = (1 / GetSafeZoneSize() / 3.0f) - 0.358f;
@@ -41,6 +42,7 @@ namespace vMenuClient
         private string headingDisplay = "";
 
         private readonly List<int> waypointPlayerIdsToRemove = new();
+        private List<Menu> vehicleOptionsSubMenus = null;
         public const string clothingAnimationDecor = "clothing_animation_type";
         private bool clothingAnimationReverse = false;
         private float clothingOpacity = 1f;
@@ -302,7 +304,7 @@ namespace vMenuClient
                 Notify.Custom("Destination reached, the car will now stop driving!");
                 DriveToWpTaskActive = false;
             }
-            await Task.FromResult(0);
+            await Delay(0);
         }
         #endregion
 
@@ -314,22 +316,16 @@ namespace vMenuClient
         private async Task DoPlayerAndVehicleChecks()
         {
             var god = IsAllowed(Permission.POGod) && MainMenu.PlayerOptionsMenu != null && MainMenu.PlayerOptionsMenu.PlayerGodMode;
-            await Delay(100);
 
             var vehGod = IsAllowed(Permission.VOGod) && MainMenu.VehicleOptionsMenu != null && MainMenu.VehicleOptionsMenu.VehicleGodMode;
-            await Delay(100);
 
             var ignored = IsAllowed(Permission.POIgnored) && MainMenu.PlayerOptionsMenu != null && MainMenu.PlayerOptionsMenu.PlayerIsIgnored;
-            await Delay(100);
 
             var stayInVeh = IsAllowed(Permission.POStayInVehicle) && MainMenu.PlayerOptionsMenu != null && MainMenu.PlayerOptionsMenu.PlayerStayInVehicle;
-            await Delay(100);
 
             var bikeSeatbelt = IsAllowed(Permission.VOBikeSeatbelt) && MainMenu.VehicleOptionsMenu != null && MainMenu.VehicleOptionsMenu.VehicleBikeSeatbelt;
-            await Delay(100);
 
             var noRagdoll = IsAllowed(Permission.PONoRagdoll) && MainMenu.PlayerOptionsMenu != null && MainMenu.PlayerOptionsMenu.PlayerNoRagdoll;
-            await Delay(100);
 
             var cantBeKnockedOff = god || vehGod || bikeSeatbelt || noRagdoll;
             var cantBeDraggedOut = god || vehGod || ignored || stayInVeh;
@@ -589,7 +585,7 @@ namespace vMenuClient
                     }
                 }
 
-                var subMenus = new List<Menu>()
+                vehicleOptionsSubMenus ??= new List<Menu>()
                     {
                         MainMenu.VehicleOptionsMenu.DeleteConfirmMenu,
                         MainMenu.VehicleOptionsMenu.VehicleColorsMenu,
@@ -602,7 +598,7 @@ namespace vMenuClient
                         MainMenu.VehicleOptionsMenu.VehicleWindowsMenu,
                         MainMenu.VehicleOptionsMenu.VehicleEngineSoundMenu,
                     };
-                foreach (var m in subMenus)
+                foreach (var m in vehicleOptionsSubMenus)
                 {
                     if (m.Visible)
                     {
@@ -615,12 +611,13 @@ namespace vMenuClient
             await Delay(1);
 
             // Manage vehicle engine always on.
-            if (MainMenu.VehicleOptionsMenu.VehicleEngineAlwaysOn && GetVehicle(true) != null && GetVehicle(true).Exists() && !Game.PlayerPed.IsInVehicle() && IsAllowed(Permission.VOEngineAlwaysOn))
+            if (MainMenu.VehicleOptionsMenu.VehicleEngineAlwaysOn && !Game.PlayerPed.IsInVehicle() && IsAllowed(Permission.VOEngineAlwaysOn))
             {
-                await Delay(100);
-                if (GetVehicle(true) != null)
+                var lastVeh = GetVehicle(true);
+                if (lastVeh != null && lastVeh.Exists())
                 {
-                    SetVehicleEngineOn(GetVehicle(true).Handle, true, true, true);
+                    await Delay(100);
+                    SetVehicleEngineOn(lastVeh.Handle, true, true, true);
                 }
             }
             await Task.FromResult(0);
@@ -652,7 +649,7 @@ namespace vMenuClient
                     }
                 }
             }
-            await Task.FromResult(0);
+            await Delay(0);
         }
 
         /// <summary>
@@ -691,7 +688,7 @@ namespace vMenuClient
                 }
             }
 
-            await Task.FromResult(0);
+            await Delay(0);
         }
         #endregion
 
@@ -738,7 +735,7 @@ namespace vMenuClient
         /// <summary>
         /// Draws various misc settings menu text items, like coordinates, location time and speed.
         /// </summary>
-        private async void DrawMiscSettingsText()
+        private async Task DrawMiscSettingsText()
         {
             // draw coordinates
             if (MainMenu.MiscSettingsMenu.ShowCoordinates && IsAllowed(Permission.MSShowCoordinates))
@@ -910,7 +907,7 @@ namespace vMenuClient
         /// <returns></returns>
         private async Task MiscSettings()
         {
-            DrawMiscSettingsText();
+            await DrawMiscSettingsText();
 
             #region Misc Settings
             // Hide radar.
@@ -1248,7 +1245,7 @@ namespace vMenuClient
                     tmpiterator++;
                     if (p.IsDead)
                     {
-                        if (deadPlayers.Contains(p.Handle)) { return; }
+                        if (deadPlayers.Contains(p.Handle)) { continue; }
                         var killer = p.Character.GetKiller();
                         if (killer != null)
                         {
@@ -1503,46 +1500,52 @@ namespace vMenuClient
         /// <returns></returns>
         private async Task ManageCamera()
         {
-            if (Game.PlayerPed.IsInVehicle())
+            var inVehicle = Game.PlayerPed.IsInVehicle();
+            // Only mutate the button descriptions when the in-vehicle state actually transitions.
+            if (inVehicle != cameraButtonsDisabledForVehicle)
             {
-                if (MainMenu.MpPedCustomizationMenu.editPedBtn != null && MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled)
+                cameraButtonsDisabledForVehicle = inVehicle;
+                if (inVehicle)
                 {
-                    MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled = false;
-                    MainMenu.MpPedCustomizationMenu.editPedBtn.LeftIcon = MenuItem.Icon.LOCK;
-                    MainMenu.MpPedCustomizationMenu.editPedBtn.Description += " ~r~You need to get out of your vehicle before you can use this.";
+                    if (MainMenu.MpPedCustomizationMenu.editPedBtn != null && MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled)
+                    {
+                        MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled = false;
+                        MainMenu.MpPedCustomizationMenu.editPedBtn.LeftIcon = MenuItem.Icon.LOCK;
+                        MainMenu.MpPedCustomizationMenu.editPedBtn.Description += " ~r~You need to get out of your vehicle before you can use this.";
+                    }
+                    if (MainMenu.MpPedCustomizationMenu.createMaleBtn != null && MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled)
+                    {
+                        MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled = false;
+                        MainMenu.MpPedCustomizationMenu.createMaleBtn.LeftIcon = MenuItem.Icon.LOCK;
+                        MainMenu.MpPedCustomizationMenu.createMaleBtn.Description += " ~r~You need to get out of your vehicle before you can use this.";
+                    }
+                    if (MainMenu.MpPedCustomizationMenu.createFemaleBtn != null && MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled)
+                    {
+                        MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled = false;
+                        MainMenu.MpPedCustomizationMenu.createFemaleBtn.LeftIcon = MenuItem.Icon.LOCK;
+                        MainMenu.MpPedCustomizationMenu.createFemaleBtn.Description += " ~r~You need to get out of your vehicle before you can use this.";
+                    }
                 }
-                if (MainMenu.MpPedCustomizationMenu.createMaleBtn != null && MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled)
+                else
                 {
-                    MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled = false;
-                    MainMenu.MpPedCustomizationMenu.createMaleBtn.LeftIcon = MenuItem.Icon.LOCK;
-                    MainMenu.MpPedCustomizationMenu.createMaleBtn.Description += " ~r~You need to get out of your vehicle before you can use this.";
-                }
-                if (MainMenu.MpPedCustomizationMenu.createFemaleBtn != null && MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled)
-                {
-                    MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled = false;
-                    MainMenu.MpPedCustomizationMenu.createFemaleBtn.LeftIcon = MenuItem.Icon.LOCK;
-                    MainMenu.MpPedCustomizationMenu.createFemaleBtn.Description += " ~r~You need to get out of your vehicle before you can use this.";
-                }
-            }
-            else
-            {
-                if (MainMenu.MpPedCustomizationMenu.editPedBtn != null && !MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled)
-                {
-                    MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled = true;
-                    MainMenu.MpPedCustomizationMenu.editPedBtn.LeftIcon = MenuItem.Icon.NONE;
-                    MainMenu.MpPedCustomizationMenu.editPedBtn.Description = MainMenu.MpPedCustomizationMenu.editPedBtn.Description.Replace(" ~r~You need to get out of your vehicle before you can use this.", "");
-                }
-                if (MainMenu.MpPedCustomizationMenu.createMaleBtn != null && !MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled)
-                {
-                    MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled = true;
-                    MainMenu.MpPedCustomizationMenu.createMaleBtn.LeftIcon = MenuItem.Icon.NONE;
-                    MainMenu.MpPedCustomizationMenu.createMaleBtn.Description = MainMenu.MpPedCustomizationMenu.createMaleBtn.Description.Replace(" ~r~You need to get out of your vehicle before you can use this.", "");
-                }
-                if (MainMenu.MpPedCustomizationMenu.createFemaleBtn != null && !MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled)
-                {
-                    MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled = true;
-                    MainMenu.MpPedCustomizationMenu.createFemaleBtn.LeftIcon = MenuItem.Icon.NONE;
-                    MainMenu.MpPedCustomizationMenu.createFemaleBtn.Description = MainMenu.MpPedCustomizationMenu.createFemaleBtn.Description.Replace(" ~r~You need to get out of your vehicle before you can use this.", "");
+                    if (MainMenu.MpPedCustomizationMenu.editPedBtn != null && !MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled)
+                    {
+                        MainMenu.MpPedCustomizationMenu.editPedBtn.Enabled = true;
+                        MainMenu.MpPedCustomizationMenu.editPedBtn.LeftIcon = MenuItem.Icon.NONE;
+                        MainMenu.MpPedCustomizationMenu.editPedBtn.Description = MainMenu.MpPedCustomizationMenu.editPedBtn.Description.Replace(" ~r~You need to get out of your vehicle before you can use this.", "");
+                    }
+                    if (MainMenu.MpPedCustomizationMenu.createMaleBtn != null && !MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled)
+                    {
+                        MainMenu.MpPedCustomizationMenu.createMaleBtn.Enabled = true;
+                        MainMenu.MpPedCustomizationMenu.createMaleBtn.LeftIcon = MenuItem.Icon.NONE;
+                        MainMenu.MpPedCustomizationMenu.createMaleBtn.Description = MainMenu.MpPedCustomizationMenu.createMaleBtn.Description.Replace(" ~r~You need to get out of your vehicle before you can use this.", "");
+                    }
+                    if (MainMenu.MpPedCustomizationMenu.createFemaleBtn != null && !MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled)
+                    {
+                        MainMenu.MpPedCustomizationMenu.createFemaleBtn.Enabled = true;
+                        MainMenu.MpPedCustomizationMenu.createFemaleBtn.LeftIcon = MenuItem.Icon.NONE;
+                        MainMenu.MpPedCustomizationMenu.createFemaleBtn.Description = MainMenu.MpPedCustomizationMenu.createFemaleBtn.Description.Replace(" ~r~You need to get out of your vehicle before you can use this.", "");
+                    }
                 }
             }
 
@@ -2079,22 +2082,9 @@ namespace vMenuClient
                         clothingAnimationReverse = true;
                     }
                 }
-                var timer = GetGameTimer();
-                while (GetGameTimer() - timer < 25)
-                {
-                    await Delay(0);
-                }
             }
-            try
-            {
-                DecorSetInt(Game.PlayerPed.Handle, clothingAnimationDecor, PlayerAppearance.ClothingAnimationType);
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(@"[CRITICAL] A critical bug in one of your scripts was detected. vMenu is unable to set or register a decorator's value because another resource has already registered 1.5k or more decorators. vMenu will NOT work as long as this bug in your other scripts is unsolved. Please fix your other scripts. This is *NOT* caused by or fixable by vMenu!!!");
-                Debug.WriteLine($"Error Location: {e.StackTrace}\nError info: {e.Message}");
-                await Delay(1000);
-            }
+            // Throttle consistently regardless of which branch was taken above.
+            await Delay(50);
         }
         #endregion
 
@@ -2217,6 +2207,8 @@ namespace vMenuClient
                             }
                         }
                     }
+                    // Throttle the steady-state happy path so it doesn't run every frame.
+                    await Delay(500);
                 }
                 else // misc settings is null
                 {
@@ -2374,7 +2366,7 @@ namespace vMenuClient
                             {
                                 SetBlipRoute(blip, false);
                                 RemoveBlip(ref blip);
-                                waypointPlayerIdsToRemove.Add(playerId);
+                                waypointPlayerIdsToRemove.Add(serverId);
                                 Notify.Custom($"~g~You've reached ~s~<C>{GetPlayerName(playerId)}</C>'s~g~ location, disabling GPS route.");
                             }
                         }
@@ -2896,6 +2888,73 @@ namespace vMenuClient
         #endregion
 
         #region animation functions
+        // Model hash sets used by SwitchHelmetOnce to pick the correct helmet animation dictionary.
+        // Computed once at static init instead of rebuilding the lists / calling GetHashKey on every invocation.
+        private static readonly HashSet<uint> sportBikeHashes = new()
+        {
+            (uint)GetHashKey("AKUMA"),
+            (uint)GetHashKey("BATI"),
+            (uint)GetHashKey("BATI2"),
+            (uint)GetHashKey("CARBONRS"),
+            (uint)GetHashKey("DEFILER"),
+            (uint)GetHashKey("DIABLOUS2"),
+            (uint)GetHashKey("DOUBLE"),
+            (uint)GetHashKey("FCR"),
+            (uint)GetHashKey("FCR2"),
+            (uint)GetHashKey("HAKUCHOU"),
+            (uint)GetHashKey("HAKUCHOU2"),
+            (uint)GetHashKey("LECTRO"),
+            (uint)GetHashKey("NEMESIS"),
+            (uint)GetHashKey("OPPRESSOR"),
+            (uint)GetHashKey("OPPRESSOR2"),
+            (uint)GetHashKey("PCJ"),
+            (uint)GetHashKey("RUFFIAN"),
+            (uint)GetHashKey("SHOTARO"),
+            (uint)GetHashKey("VADER"),
+            (uint)GetHashKey("VORTEX"),
+        };
+        private static readonly HashSet<uint> chopperBikeHashes = new()
+        {
+            (uint)GetHashKey("SANCTUS"),
+            (uint)GetHashKey("ZOMBIEA"),
+            (uint)GetHashKey("ZOMBIEB"),
+        };
+        private static readonly HashSet<uint> dirtBikeHashes = new()
+        {
+            (uint)GetHashKey("BF400"),
+            (uint)GetHashKey("ENDURO"),
+            (uint)GetHashKey("MANCHEZ"),
+            (uint)GetHashKey("SANCHEZ"),
+            (uint)GetHashKey("SANCHEZ2"),
+            (uint)GetHashKey("ESSKEY"),
+        };
+        private static readonly HashSet<uint> scooterHashes = new()
+        {
+            (uint)GetHashKey("FAGGIO"),
+            (uint)GetHashKey("FAGGIO2"),
+            (uint)GetHashKey("FAGGIO3"),
+            (uint)GetHashKey("CLIFFHANGER"),
+            (uint)GetHashKey("BAGGER"),
+        };
+        private static readonly HashSet<uint> policebHashes = new()
+        {
+            (uint)GetHashKey("AVARUS"),
+            (uint)GetHashKey("CHIMERA"),
+            (uint)GetHashKey("POLICEB"),
+            (uint)GetHashKey("SOVEREIGN"),
+            (uint)GetHashKey("HEXER"),
+            (uint)GetHashKey("INNOVATION"),
+            (uint)GetHashKey("NIGHTBLADE"),
+            (uint)GetHashKey("RATBIKE"),
+            (uint)GetHashKey("DAEMON"),
+            (uint)GetHashKey("DAEMON2"),
+            (uint)GetHashKey("DIABLOUS"),
+            (uint)GetHashKey("GARGOYLE"),
+            (uint)GetHashKey("THRUST"),
+            (uint)GetHashKey("VINDICATOR"),
+            (uint)GetHashKey("WOLFSBANE"),
+        };
+
         /// <summary>
         /// This triggers a helmet visor/goggles toggle if available.
         /// THIS IS NOT A TICK FUNCTION
@@ -2976,88 +3035,23 @@ namespace vMenuClient
                             }
                             else if (veh.Model.IsBike)
                             {
-                                var sportBikes = new List<uint>()
-                                {
-                                    (uint)GetHashKey("AKUMA"),
-                                    (uint)GetHashKey("BATI"),
-                                    (uint)GetHashKey("BATI2"),
-                                    (uint)GetHashKey("CARBONRS"),
-                                    (uint)GetHashKey("DEFILER"),
-                                    (uint)GetHashKey("DIABLOUS2"),
-                                    (uint)GetHashKey("DOUBLE"),
-                                    (uint)GetHashKey("FCR"),
-                                    (uint)GetHashKey("FCR2"),
-                                    (uint)GetHashKey("HAKUCHOU"),
-                                    (uint)GetHashKey("HAKUCHOU2"),
-                                    (uint)GetHashKey("LECTRO"),
-                                    (uint)GetHashKey("NEMESIS"),
-                                    (uint)GetHashKey("OPPRESSOR"),
-                                    (uint)GetHashKey("OPPRESSOR2"),
-                                    (uint)GetHashKey("PCJ"),
-                                    (uint)GetHashKey("RUFFIAN"),
-                                    (uint)GetHashKey("SHOTARO"),
-                                    (uint)GetHashKey("VADER"),
-                                    (uint)GetHashKey("VORTEX"),
-                                };
-                                var chopperBikes = new List<uint>()
-                                {
-                                    (uint)GetHashKey("SANCTUS"),
-                                    (uint)GetHashKey("ZOMBIEA"),
-                                    (uint)GetHashKey("ZOMBIEB"),
-                                };
-                                var dirtBikes = new List<uint>()
-                                {
-                                    (uint)GetHashKey("BF400"),
-                                    (uint)GetHashKey("ENDURO"),
-                                    (uint)GetHashKey("MANCHEZ"),
-                                    (uint)GetHashKey("SANCHEZ"),
-                                    (uint)GetHashKey("SANCHEZ2"),
-                                    (uint)GetHashKey("ESSKEY"),
-                                };
-                                var scooters = new List<uint>()
-                                {
-                                    (uint)GetHashKey("FAGGIO"),
-                                    (uint)GetHashKey("FAGGIO2"),
-                                    (uint)GetHashKey("FAGGIO3"),
-                                    (uint)GetHashKey("CLIFFHANGER"),
-                                    (uint)GetHashKey("BAGGER"),
-                                };
-                                var policeb = new List<uint>()
-                                {
-                                    (uint)GetHashKey("AVARUS"),
-                                    (uint)GetHashKey("CHIMERA"),
-                                    (uint)GetHashKey("POLICEB"),
-                                    (uint)GetHashKey("SOVEREIGN"),
-                                    (uint)GetHashKey("HEXER"),
-                                    (uint)GetHashKey("INNOVATION"),
-                                    (uint)GetHashKey("NIGHTBLADE"),
-                                    (uint)GetHashKey("RATBIKE"),
-                                    (uint)GetHashKey("DAEMON"),
-                                    (uint)GetHashKey("DAEMON2"),
-                                    (uint)GetHashKey("DIABLOUS"),
-                                    (uint)GetHashKey("GARGOYLE"),
-                                    (uint)GetHashKey("THRUST"),
-                                    (uint)GetHashKey("VINDICATOR"),
-                                    (uint)GetHashKey("WOLFSBANE"),
-                                };
-
-                                if (policeb.Contains((uint)veh.Model.Hash))
+                                if (policebHashes.Contains((uint)veh.Model.Hash))
                                 {
                                     animDict = "anim@mp_helmets@on_bike@policeb";
                                 }
-                                else if (sportBikes.Contains((uint)veh.Model.Hash))
+                                else if (sportBikeHashes.Contains((uint)veh.Model.Hash))
                                 {
                                     animDict = "anim@mp_helmets@on_bike@sports";
                                 }
-                                else if (chopperBikes.Contains((uint)veh.Model.Hash))
+                                else if (chopperBikeHashes.Contains((uint)veh.Model.Hash))
                                 {
                                     animDict = "anim@mp_helmets@on_bike@chopper";
                                 }
-                                else if (dirtBikes.Contains((uint)veh.Model.Hash))
+                                else if (dirtBikeHashes.Contains((uint)veh.Model.Hash))
                                 {
                                     animDict = "anim@mp_helmets@on_bike@dirt";
                                 }
-                                else if (scooters.Contains((uint)veh.Model.Hash))
+                                else if (scooterHashes.Contains((uint)veh.Model.Hash))
                                 {
                                     animDict = "anim@mp_helmets@on_bike@scooter";
                                 }
