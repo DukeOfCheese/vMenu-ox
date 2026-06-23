@@ -33,9 +33,9 @@ namespace vMenuClient.data
 
         private class Payload
         {
-            public List<AddonVehicle> vehicles;
-            public List<AddonWeapon> weapons;
-            public EupState eup;
+            [JsonProperty("vehicles")] public List<AddonVehicle> vehicles { get; set; }
+            [JsonProperty("weapons")]  public List<AddonWeapon>  weapons  { get; set; }
+            [JsonProperty("eup")]      public EupState           eup      { get; set; }
         }
 
         public static List<AddonVehicle> Vehicles { get; private set; } = new List<AddonVehicle>();
