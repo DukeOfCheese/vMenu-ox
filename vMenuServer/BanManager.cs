@@ -8,6 +8,8 @@ using CitizenFX.Core;
 
 using Newtonsoft.Json;
 
+using vMenuShared;
+
 using static CitizenFX.Core.Native.API;
 using static vMenuServer.DebugLog;
 
@@ -52,7 +54,7 @@ namespace vMenuServer
             EventHandlers.Add("vMenu:Internal:TempBanPlayer", new Action<int, int, double, string>(BanPlayer));
             EventHandlers.Add("vMenu:Internal:PermBanPlayer", new Action<int, int, string>(BanPlayer));
             EventHandlers.Add("vMenu:Internal:playerConnecting", new Action<int, string>(CheckForBans));
-            EventHandlers.Add("vMenu:Internal:RequestPlayerUnban", new Action<int, string>(RemoveBanRecord));
+            EventHandlers.Add("vMenu:Internal:RequestedPlayerUnban", new Action<int, string>(RemoveBanRecord));
             EventHandlers.Add("vMenu:Internal:RequestBanList", new Action<int>(SendBanList));
         }
 
@@ -68,6 +70,20 @@ namespace vMenuServer
             {
                 source = Players[playerId];
             }
+
+            // Gate the ban list (contains all identifiers + reasons) behind a permission check.
+            if (source == null)
+            {
+                return;
+            }
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPViewBannedPlayers, source)
+                && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source)
+                && !PermissionsManager.IsAllowed(PermissionsManager.Permission.Everything, source))
+            {
+                BanCheater(source);
+                return;
+            }
+
             Log("Updating player with new banlist.\n");
             var data = JsonConvert.SerializeObject(GetBanList()).ToString();
 
@@ -104,7 +120,16 @@ namespace vMenuServer
 
                 foreach (var kvpId in kvpIds)
                 {
-                    banRecords.Add(JsonConvert.DeserializeObject<BanRecord>(GetResourceKvpString(kvpId)));
+                    try
+                    {
+                        banRecords.Add(JsonConvert.DeserializeObject<BanRecord>(GetResourceKvpString(kvpId)));
+                    }
+                    catch (Exception ex)
+                    {
+                        // A single corrupt ban KVP must not break ban checking for connecting players.
+                        Log($"Failed to deserialize ban record '{kvpId}', skipping it. Error: {ex.Message}", LogLevel.error);
+                        continue;
+                    }
                 }
                 cachedBansList = banRecords;
                 return banRecords;
@@ -221,6 +246,12 @@ namespace vMenuServer
             if (playerId != 0)
             {
                 source = Players[playerId];
+            }
+
+            if (source == null)
+            {
+                Log("BanPlayer: null source, aborting.", LogLevel.error);
+                return;
             }
 
             if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.TempBan") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything") || IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All"))

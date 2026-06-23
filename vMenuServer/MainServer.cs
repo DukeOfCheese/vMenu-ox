@@ -144,6 +144,10 @@ namespace vMenuServer
         }
         private long lastWeatherChange = 0;
 
+        // Single shared RNG. Creating a new Random() per call seeds from the clock and yields
+        // identical values when called multiple times within the same tick.
+        private static readonly Random _rng = new();
+
         private readonly List<string> CloudTypes = new()
         {
             "Cloudy 01",
@@ -209,21 +213,6 @@ namespace vMenuServer
             }
             else
             {
-                // Add event handlers.
-                EventHandlers.Add("vMenu:GetPlayerIdentifiers", new Action<int, NetworkCallbackDelegate>((TargetPlayer, CallbackFunction) =>
-                {
-                    var data = new List<string>();
-                    Players[TargetPlayer].Identifiers.ToList().ForEach(e =>
-                    {
-                        if (!e.Contains("ip:"))
-                        {
-                            data.Add(e);
-                        }
-                    });
-                    CallbackFunction(JsonConvert.SerializeObject(data));
-                }));
-
-
                 // check extras file for errors
                 string extras = LoadResourceFile(GetCurrentResourceName(), "config/extras.json") ?? "{}";
                 try
@@ -483,7 +472,21 @@ namespace vMenuServer
                             return;
                         }
                         Debug.WriteLine("^5[vMenu] [INFO]^7 Importing all ban records from the bans.json file into the new storage system. ^3This may take some time...^7");
-                        var bans = JsonConvert.DeserializeObject<List<BanManager.BanRecord>>(file);
+                        List<BanManager.BanRecord> bans;
+                        try
+                        {
+                            bans = JsonConvert.DeserializeObject<List<BanManager.BanRecord>>(file);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"^1[vMenu] [ERROR]^7 Could not parse bans.json, migration aborted. Error: {ex.Message}");
+                            return;
+                        }
+                        if (bans == null)
+                        {
+                            Debug.WriteLine("^1[vMenu] [ERROR]^7 bans.json parsed to null, migration aborted.");
+                            return;
+                        }
                         bans.ForEach((br) =>
                         {
                             var record = new BanManager.BanRecord(br.playerName, br.identifiers, br.bannedUntil, br.banReason, br.bannedBy, Guid.NewGuid());
@@ -565,6 +568,17 @@ namespace vMenuServer
         [EventHandler("vMenu:ClearArea")]
         internal void ClearAreaNearPos([FromSource] Player source)
         {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.MSClearArea, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.MSAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            if (source?.Character == null)
+            {
+                return;
+            }
+
             Ped ped = source.Character;
             Vector3 position = ped.Position;
 
@@ -661,7 +675,7 @@ namespace vMenuServer
         /// </summary>
         private void RefreshWeather()
         {
-            var random = new Random().Next(20);
+            var random = _rng.Next(20);
             if (CurrentWeather is "RAIN" or "THUNDER")
             {
                 CurrentWeather = "CLEARING";
@@ -696,7 +710,7 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerWeather")]
         internal void UpdateWeather([FromSource] Player source, string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
         {
-            if (source != null && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.Menu") && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.All"))
+            if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOMenu, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
             {
                 BanManager.BanCheater(source);
                 return;
@@ -775,8 +789,8 @@ namespace vMenuServer
                     return;
                 }
 
-                var opacity = float.Parse(new Random().NextDouble().ToString());
-                var type = CloudTypes[new Random().Next(0, CloudTypes.Count)];
+                var opacity = (float)_rng.NextDouble();
+                var type = CloudTypes[_rng.Next(0, CloudTypes.Count)];
                 TriggerClientEvent("vMenu:SetClouds", opacity, type);
             }
         }
@@ -789,7 +803,7 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerTime")]
         internal void UpdateTime([FromSource] Player source, int newHours, int newMinutes, bool freezeTimeNew)
         {
-            if (source != null && !IsPlayerAceAllowed(source.Handle, "vMenu.TimeOptions.Menu") && !IsPlayerAceAllowed(source.Handle, "vMenu.TimeOptions.All"))
+            if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOMenu, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
             {
                 BanManager.BanCheater(source);
                 return;
@@ -797,6 +811,7 @@ namespace vMenuServer
 
             CurrentHours = newHours;
             CurrentMinutes = newMinutes;
+            FreezeTime = freezeTimeNew;
         }
 
         /// <summary>
@@ -875,6 +890,12 @@ namespace vMenuServer
                 return;
             }
 
+            if (PermissionsManager.IsAllowed(PermissionsManager.Permission.DontKickMe, targetPlayer))
+            {
+                source.TriggerEvent("vMenu:Notify", "Sorry, this player can ~r~not ~w~be killed.");
+                return;
+            }
+
             targetPlayer.TriggerEvent("vMenu:KillMe", source.Name);
         }
 
@@ -884,7 +905,7 @@ namespace vMenuServer
         /// <param name="source"></param>
         /// <param name="target"></param>
         [EventHandler("vMenu:SummonPlayer")]
-        internal async void SummonPlayer([FromSource] Player source, int target, int numberOfSeats)
+        internal async Task SummonPlayer([FromSource] Player source, int target, int numberOfSeats)
         {
             if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSummon, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
@@ -919,6 +940,9 @@ namespace vMenuServer
             }
 
             bool seatFound = false;
+
+            // Clamp the client-supplied seat count before using it as a loop bound.
+            numberOfSeats = MathUtil.Clamp(numberOfSeats, 0, 16);
 
             // Seat indices start at `-1`
             numberOfSeats -= 1;
@@ -967,6 +991,13 @@ namespace vMenuServer
             if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSendMessage, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
                 BanManager.BanCheater(source);
+                return;
+            }
+
+            // Cap the relayed message length (it is forwarded to the target and to the staff log).
+            if (string.IsNullOrEmpty(message) || message.Length > 512)
+            {
+                source.TriggerEvent("vMenu:Notify", "Your message could not be sent because it was empty or too long.");
                 return;
             }
 
@@ -1058,6 +1089,17 @@ namespace vMenuServer
                 return;
             }
 
+            // Validate the deserialized location before persisting it to config/locations.json.
+            // (float.IsFinite is unavailable on .NET Framework, so check NaN/Infinity explicitly.)
+            static bool NotFinite(float f) => float.IsNaN(f) || float.IsInfinity(f);
+            if (string.IsNullOrEmpty(teleportLocation.name) || teleportLocation.name.Length > 64
+                || NotFinite(teleportLocation.coordinates.X) || NotFinite(teleportLocation.coordinates.Y)
+                || NotFinite(teleportLocation.coordinates.Z) || NotFinite(teleportLocation.heading))
+            {
+                Log("Teleport location failed validation (name length or non-finite coordinates), location was not saved.", LogLevel.error);
+                return;
+            }
+
             if (GetTeleportLocationsData().Exists(loc => loc.name == teleportLocation.name))
             {
                 Log("A teleport location with this name already exists, location was not saved.", LogLevel.error);
@@ -1107,6 +1149,33 @@ namespace vMenuServer
 
             source.TriggerEvent("vMenu:GetPlayerCoords:reply", rpcId, coords);
         }
+
+        [EventHandler("vMenu:GetPlayerIdentifiers")]
+        internal void GetPlayerIdentifiers([FromSource] Player source, int TargetPlayer, NetworkCallbackDelegate CallbackFunction)
+        {
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPIdentifiers, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
+            {
+                BanManager.BanCheater(source);
+                return;
+            }
+
+            if (TargetPlayer <= 0 || !DoesPlayerExist(TargetPlayer.ToString()))
+            {
+                CallbackFunction("[]");
+                return;
+            }
+
+            var data = new List<string>();
+            foreach (var identifier in Players[TargetPlayer].Identifiers)
+            {
+                if (!identifier.Contains("ip:"))
+                {
+                    data.Add(identifier);
+                }
+            }
+
+            CallbackFunction(JsonConvert.SerializeObject(data));
+        }
         #endregion
 
         #region Player join/quit
@@ -1116,7 +1185,8 @@ namespace vMenuServer
         {
             List<Player> players = [];
 
-            foreach (string playerHandle in joinedPlayers)
+            // Iterate a snapshot: other handlers (playerJoining/playerDropped) mutate joinedPlayers.
+            foreach (string playerHandle in joinedPlayers.ToList())
             {
                 if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.MSJoinQuitNotifs, playerHandle) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.MSAll, playerHandle))
                 {
@@ -1217,7 +1287,19 @@ namespace vMenuServer
                 return;
             }
 
+            // Reject empty/oversized values and anything that isn't a plain engine-sound name
+            // (engine sound names are model-style identifiers: letters, digits and underscores).
+            if (string.IsNullOrEmpty(engineSound) || engineSound.Length > 64 || !engineSound.All(c => char.IsLetterOrDigit(c) || c == '_'))
+            {
+                return;
+            }
+
             Vehicle veh = new Vehicle(NetworkGetEntityFromNetworkId(vehicle));
+            if (veh == null || !DoesEntityExist(veh.Handle))
+            {
+                return;
+            }
+
             EnsureEntityStateBag(veh.Handle);
 
             veh.State.Set("vMenu:engineSound", engineSound, true);
