@@ -20,6 +20,9 @@ Config = {
             { spawn = 'weapon_militaryrifle', label = 'Military Rifle' },
         },
         eup = {
+            -- NOTE: EUP slider gating only takes effect once vMenu/data/EupBaseCounts.cs is
+            -- populated with this server's base-game drawable counts (capture via the /eupdump
+            -- procedure in the plan). Until then it fails OPEN (full ranges shown to everyone).
             enabled    = true,                 -- false => no EUP slider gating at all
             permission = 'vMenu.Addons.eup',   -- single group ACE for the extended clothing ranges
         },

@@ -562,6 +562,7 @@ namespace vMenuClient.menus
 
             #region clothing options menu
             var clothingCategoryNames = new string[12] { "Unused (head)", "Masks", "Unused (hair)", "Upper Body", "Lower Body", "Bags & Parachutes", "Shoes", "Scarfs & Chains", "Shirt & Accessory", "Body Armor & Accessory 2", "Badges & Logos", "Shirt Overlay & Jackets" };
+            var eupPedModel = (uint)GetEntityModel(Game.PlayerPed.Handle);
             for (var i = 0; i < 12; i++)
             {
                 if (i is not 0 and not 2)
@@ -574,7 +575,7 @@ namespace vMenuClient.menus
                     // EUP gate: players without the EUP permission only see base-game drawables.
                     if (!data.AddonsManager.Eup.allowed)
                     {
-                        var eupBase = data.EupBaseCounts.For((uint)GetEntityModel(Game.PlayerPed.Handle), i);
+                        var eupBase = data.EupBaseCounts.For(eupPedModel, i);
                         if (eupBase >= 0 && maxDrawables > eupBase)
                         {
                             maxDrawables = eupBase;

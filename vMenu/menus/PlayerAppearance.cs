@@ -750,6 +750,7 @@ namespace vMenuClient.menus
             pedCustomizationMenu.ClearMenuItems();
 
             #region Ped Drawables
+            var eupPedModel = (uint)GetEntityModel(Game.PlayerPed.Handle);
             for (var drawable = 0; drawable < 12; drawable++)
             {
                 var currentDrawable = GetPedDrawableVariation(Game.PlayerPed.Handle, drawable);
@@ -759,7 +760,7 @@ namespace vMenuClient.menus
                 // EUP gate: players without the EUP permission only see base-game drawables.
                 if (!data.AddonsManager.Eup.allowed)
                 {
-                    var eupBase = data.EupBaseCounts.For((uint)GetEntityModel(Game.PlayerPed.Handle), drawable);
+                    var eupBase = data.EupBaseCounts.For(eupPedModel, drawable);
                     if (eupBase >= 0 && maxVariations > eupBase)
                     {
                         maxVariations = eupBase;

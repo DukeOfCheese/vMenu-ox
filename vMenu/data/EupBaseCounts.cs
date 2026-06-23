@@ -42,7 +42,7 @@ namespace vMenuClient.data
             }
             if (_warned.Add(model))
             {
-                Debug.WriteLine($"[vMenu] [Addons] No EUP base-count entry for ped model {model} / component {component}; leaving its sliders uncapped (fail-open).");
+                Debug.WriteLine($"[vMenu] [Addons] No EUP base-count entry for ped model {model} / component {component}; sliders left uncapped (fail-open). Populate EupBaseCounts (see /eupdump) to enable EUP gating.");
             }
             return -1;
         }

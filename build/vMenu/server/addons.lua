@@ -6,7 +6,7 @@ local function deriveAce(kind, entry)
     if type(entry.permission) == 'string' and entry.permission ~= '' then
         return entry.permission
     end
-    return ('vMenu.Addons.%s.%s'):format(kind, tostring(entry.spawn):lower())
+    return ('vMenu.Addons.%s.%s'):format(kind, entry.spawn:lower())
 end
 
 local function isValid(entry, isWeapon)
@@ -20,13 +20,13 @@ local function collectAllowed(src, kind, list)
     local out = {}
     if type(list) ~= 'table' then return out end
     local isWeapon = (kind == 'weapons')
-    for _, entry in ipairs(list) do
+    for idx, entry in ipairs(list) do
         if isValid(entry, isWeapon) then
             if IsPlayerAceAllowed(src, deriveAce(kind, entry)) then
                 out[#out + 1] = { spawn = entry.spawn, label = entry.label or entry.spawn }
             end
         else
-            print(('^3[vMenu] [Addons] Skipping malformed %s entry in Config.Addons^7'):format(kind))
+            print(('^3[vMenu] [Addons] Skipping malformed %s entry #%d (spawn=%s) in Config.Addons^7'):format(kind, idx, tostring(entry and entry.spawn)))
         end
     end
     return out
