@@ -905,7 +905,23 @@ namespace vMenuServer
         /// <param name="source"></param>
         /// <param name="target"></param>
         [EventHandler("vMenu:SummonPlayer")]
-        internal async Task SummonPlayer([FromSource] Player source, int target, int numberOfSeats)
+        internal async void SummonPlayer([FromSource] Player source, int target, int numberOfSeats)
+        {
+            // CitizenFX's [EventHandler] attribute binds the method to a void-returning delegate,
+            // so the registered entry point must be `async void` (a Task-returning method fails to
+            // bind: "Couldn't bind to method 'SummonPlayer'"). Wrap the awaitable logic so an
+            // exception raised after the first await can't go unobserved and crash the script.
+            try
+            {
+                await SummonPlayerInternal(source, target, numberOfSeats);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"^1[vMenu] [ERROR]^7 SummonPlayer failed: {ex.Message}");
+            }
+        }
+
+        private async Task SummonPlayerInternal(Player source, int target, int numberOfSeats)
         {
             if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSummon, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
