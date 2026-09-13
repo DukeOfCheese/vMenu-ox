@@ -577,9 +577,9 @@ namespace vMenuShared
             // Send the permissions to the client.
             player.TriggerEvent("vMenu:SetPermissions", Newtonsoft.Json.JsonConvert.SerializeObject(perms));
 
-            // Also tell the client to do the extras setup.
+            // Also tell the client to do the config setup. That makes the client request its
+            // addon payload, which carries the teleport locations and blips with it.
             player.TriggerEvent("vMenu:SetConfigOptions");
-            player.TriggerEvent("vMenu:UpdateTeleportLocations", Newtonsoft.Json.JsonConvert.SerializeObject(ConfigManager.GetTeleportLocationsData()));
         }
 #endif
 #if CLIENT

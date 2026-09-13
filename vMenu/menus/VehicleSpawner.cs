@@ -27,9 +27,16 @@ namespace vMenuClient.menus
         private string SearchTerm = "";
         public static List<bool> allowedCategories;
 
+        /// <summary>
+        /// Addon vehicles the server sent us, lower cased. They are gated by their own ACE
+        /// (vMenu.VehicleSpawner.&lt;spawn&gt;), so they stay visible even when the vehicle class
+        /// they fall into is locked -- but they do not unlock the rest of that class.
+        /// </summary>
+        private static readonly HashSet<string> addonVehicleNames = new();
+
         // Tracks whether addon vehicles have already been loaded & inserted into the vehicle class lists.
         // Loading is a one-time operation (the lists are static and persist), so guard against re-reading
-        // addons.json and re-inserting the same vehicles on every search refresh.
+        // re-inserting the same vehicles on every search refresh.
         private static bool addonsLoaded = false;
 
         // These are the max speed, acceleration, braking and traction values per vehicle class.
@@ -171,26 +178,21 @@ namespace vMenuClient.menus
             #endregion
 
             // Load addon vehicles exactly once. The vehicle class lists are static and persist across
-            // refreshes, so re-reading addons.json and re-inserting on every search would duplicate
-            // vehicles and waste a file read + JSON parse each time.
+            // refreshes, so re-inserting on every search would duplicate vehicles.
+            // The server has already applied this player's ACE permissions to the list.
             if (!addonsLoaded)
             {
-                var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-                var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-
-                if (addons != null && addons.ContainsKey("vehicles"))
-                    {
-                        var vehiclesList = JArray.FromObject(addons["vehicles"])
-                                .ToObject<List<string>>();
-
-                        VehicleData.Vehicles.ProcessAddonVehicles(vehiclesList);
-
-                        Debug.WriteLine($"[VMENU] Loaded {vehiclesList.Count} addon vehicles");
-                    }
-                else
+                foreach (var vehicle in data.AddonsManager.Vehicles)
                 {
-                    Debug.WriteLine("[VMENU] No addon vehicles in addons.json");
+                    var spawnName = vehicle.spawn?.Trim();
+                    if (!string.IsNullOrWhiteSpace(spawnName))
+                    {
+                        addonVehicleNames.Add(spawnName.ToLowerInvariant());
+                    }
                 }
+
+                VehicleData.Vehicles.ProcessAddonVehicles(addonVehicleNames.ToList());
+                Debug.WriteLine($"[VMENU] Loaded {addonVehicleNames.Count} addon vehicles.");
 
                 addonsLoaded = true;
             }
@@ -211,7 +213,12 @@ namespace vMenuClient.menus
                 MenuController.AddSubmenu(menu, vehicleClassMenu);
                 menu.AddMenuItem(btn);
 
-                if (allowedCategories[vehClass])
+                // A locked class still opens if this player has an addon vehicle that lands in it;
+                // the per-vehicle filter below keeps the rest of the class hidden.
+                var classHasAllowedAddon = VehicleData.Vehicles.VehicleClasses[className]
+                    .Any(v => addonVehicleNames.Contains(v.ToLowerInvariant()));
+
+                if (allowedCategories[vehClass] || classHasAllowedAddon)
                 {
                     MenuController.BindMenuItem(menu, vehicleClassMenu, btn);
                 }
@@ -233,6 +240,13 @@ namespace vMenuClient.menus
                 // Loop through all the vehicles in the vehicle class.
                 foreach (var veh in VehicleData.Vehicles.VehicleClasses[className])
                 {
+                    // When the class itself is not permitted, only the addon vehicles this player has
+                    // been granted individually are shown.
+                    if (!allowedCategories[vehClass] && !addonVehicleNames.Contains(veh.ToLowerInvariant()))
+                    {
+                        continue;
+                    }
+
                     // Convert the model name to start with a Capital letter, converting the other characters to lowercase. 
                     var properCasedModelName = veh[0].ToString().ToUpper() + veh.ToLower().Substring(1);
 

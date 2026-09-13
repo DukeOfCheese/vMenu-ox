@@ -1,0 +1,8 @@
+<Project>
+  <!-- Supplies the net452/net462 reference assemblies via NuGet so the solution builds
+       without the Visual Studio .NET Framework targeting packs installed. Build-time only;
+       PrivateAssets="all" keeps it out of the produced DLLs. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

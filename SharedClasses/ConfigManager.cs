@@ -159,61 +159,10 @@ namespace vMenuShared
             return GetResourceMetadata("vMenu", "client_debug_mode", 0).ToLower() == "true";
         }
 
-        #region Get saved locations from the locations.json
-        /// <summary>
-        /// Gets the locations.json data.
-        /// </summary>
-        /// <returns></returns>
-        public static Locations GetLocations()
-        {
-            var data = new Locations();
-
-            var jsonFile = LoadResourceFile(GetCurrentResourceName(), "config/locations.json");
-            try
-            {
-                if (string.IsNullOrEmpty(jsonFile))
-                {
-#if CLIENT
-                    vMenuClient.Notify.Error("The locations.json file is empty or does not exist, please tell the server owner to fix this.");
-#endif
-#if SERVER
-                    vMenuServer.DebugLog.Log("The locations.json file is empty or does not exist, please fix this.", vMenuServer.DebugLog.LogLevel.error);
-#endif
-                }
-                else
-                {
-                    data = JsonConvert.DeserializeObject<Locations>(jsonFile);
-                }
-            }
-            catch (Exception e)
-            {
-#if CLIENT
-                vMenuClient.Notify.Error("An error occurred while processing the locations.json file. Teleport Locations and Location Blips will be unavailable. Please correct any errors in the locations.json file.");
-#endif
-                Debug.WriteLine($"[vMenu] json exception details: {e.Message}\nStackTrace:\n{e.StackTrace}");
-            }
-
-            return data;
-        }
-
-        /// <summary>
-        /// Gets just the teleport locations data from the locations.json.
-        /// </summary>
-        /// <returns></returns>
-        public static List<TeleportLocation> GetTeleportLocationsData()
-        {
-            return GetLocations().teleports;
-        }
-
-        /// <summary>
-        /// Gets just the blips data from the locations.json.
-        /// </summary>
-        /// <returns></returns>
-        public static List<LocationBlip> GetLocationBlipsData()
-        {
-            return GetLocations().blips;
-        }
-
+        #region Location data structures
+        // Teleport locations and map blips are authored in config/locations.lua and pushed to
+        // clients by the server (see vMenuServer/AddonsConfig.cs); these structs are just the
+        // shared wire format. The client copies live in MiscSettings.TpLocations / AddonsManager.
         /// <summary>
         /// Struct used for deserializing json only.
         /// </summary>

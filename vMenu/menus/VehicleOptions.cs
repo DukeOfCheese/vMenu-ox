@@ -2069,29 +2069,23 @@ namespace vMenuClient.menus
             #endregion
             
             #region Vehicle Engine Sound Submenu Stuff
-            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-            var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-            
+            // Engine sounds come from the server, which has already applied this player's ACE
+            // permissions (see vMenuServer/AddonsConfig.cs). Anything present here is allowed.
             List<string> soundNameList = new List<string>();
             List<string> soundList = new List<string>();
 
-            if (addons != null && addons.ContainsKey("engine_sounds"))
+            foreach (var sound in data.AddonsManager.EngineSounds)
             {
-                var soundDict = JObject.FromObject(addons["engine_sounds"])
-                        .ToObject<Dictionary<string, string>>();
-
-                foreach (var soundEntry in soundDict)
+                var spawnName = sound.spawn?.Trim();
+                if (string.IsNullOrWhiteSpace(spawnName))
                 {
-                    soundNameList.Add(soundEntry.Key);
-                    soundList.Add(soundEntry.Value);
+                    continue;
                 }
+                soundNameList.Add(string.IsNullOrWhiteSpace(sound.label) ? spawnName : sound.label);
+                soundList.Add(spawnName);
+            }
 
-                Debug.WriteLine($"[VMENU] Loaded {soundDict.Count} engine sounds");
-            }
-            else
-            {
-                Debug.WriteLine("[VMENU] No engine sounds in addons.json");
-            }
+            Debug.WriteLine($"[VMENU] Loaded {soundList.Count} engine sounds.");
 
             var resetEngineSoundBtn = new MenuItem("Reset Engine Sound", "Resets vehicle engine sound to default");
             var soundMenuList = new MenuListItem("Set Engine Sound", soundNameList, 0, "Select the vehicle engine sound here");

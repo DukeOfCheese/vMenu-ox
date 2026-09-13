@@ -268,4 +268,5 @@ external/
 
 # VS Build Output
 build/vMenu/vMenuClient.net.dll
-build/vMenu/vMenuServer.net.dllbash.exe.stackdump
+build/vMenu/vMenuServer.net.dll
+bash.exe.stackdump

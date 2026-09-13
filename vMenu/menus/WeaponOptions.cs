@@ -340,7 +340,9 @@ namespace vMenuClient.menus
                     cat = (uint)GetWeapontypeGroup(weapon.Hash);
                     weaponCategoryCache[weapon.Hash] = cat;
                 }
-                if (!string.IsNullOrEmpty(weapon.Name) && IsAllowed(weapon.Perm))
+                // Addon weapons carry their own ACE, already checked server-side, so they are not
+                // subject to the base-game weapon permissions on top of it.
+                if (!string.IsNullOrEmpty(weapon.Name) && (weapon.IsAddon || IsAllowed(weapon.Perm)))
                 {
                     //Log($"[DEBUG LOG] [WEAPON-BUG] {weapon.Name} - {weapon.Perm} = {IsAllowed(weapon.Perm)} & All = {IsAllowed(Permission.WPGetAll)}");
                     #region Create menu for this weapon and add buttons

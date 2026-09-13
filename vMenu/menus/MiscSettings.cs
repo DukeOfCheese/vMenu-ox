@@ -952,7 +952,7 @@ namespace vMenuClient.menus
             {
                 try
                 {
-                    foreach (var bl in vMenuShared.ConfigManager.GetLocationBlipsData())
+                    foreach (var bl in data.AddonsManager.Blips)
                     {
                         var blipID = AddBlipForCoord(bl.coordinates.X, bl.coordinates.Y, bl.coordinates.Z);
                         SetBlipSprite(blipID, bl.spriteID);
@@ -966,9 +966,11 @@ namespace vMenuClient.menus
                         blips.Add(b);
                     }
                 }
-                catch (JsonReaderException ex)
+                catch (Exception ex)
                 {
-                    Debug.Write($"\n\n[vMenu] An error occurred while loading the locations.json file. Please contact the server owner to resolve this.\nWhen contacting the owner, provide the following error details:\n{ex.Message}.\n\n\n");
+                    // The blips are already parsed by the time they get here, so this only catches
+                    // a failure to actually create one.
+                    Debug.WriteLine($"[vMenu] An error occurred while creating the location blips. Error details: {ex.Message}");
                 }
             }
             else

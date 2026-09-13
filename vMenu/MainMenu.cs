@@ -51,7 +51,6 @@ namespace vMenuClient
         public static Recording RecordingMenu { get; private set; }
         public static MiscSettings MiscSettingsMenu { get; private set; }
         public static About AboutMenu { get; private set; }
-        public static Addons AddonsMenu { get; private set; }
         public static bool NoClipEnabled { get { return NoClip.IsNoclipActive(); } set { NoClip.SetNoclipActive(value); } }
         public static IPlayerList PlayersList;
 
@@ -694,18 +693,6 @@ namespace vMenuClient
                         menu.RefreshIndex();
                     }
                 };
-            }
-
-            // Add the Addons menu (runtime addon vehicles/weapons this player is permitted to use).
-            if (data.AddonsManager.HasAny)
-            {
-                AddonsMenu = new Addons();
-                var menu = AddonsMenu.GetMenu();
-                var button = new MenuItem("Addons", "Spawn addon vehicles and weapons you have access to.")
-                {
-                    Label = "→→→"
-                };
-                AddMenu(Menu, menu, button);
             }
 
             var playerSubmenuBtn = new MenuItem("Player Related Options", "Open this submenu for player related subcategories.") { Label = "→→→" };

@@ -24,7 +24,6 @@ experimental_features_enabled '0'
 files {
     'Newtonsoft.Json.dll',
     'MenuAPI.dll',
-    'config/*.json',
     'storage.html'
 }
 
@@ -35,7 +34,9 @@ client_scripts {
 }
 server_scripts {
     'vMenuServer.net.dll',
+    -- config_server.lua defines Config; locations.lua extends it, so order matters here.
     'config/config_server.lua',
+    'config/locations.lua',
     'server/*.lua'
 }
 

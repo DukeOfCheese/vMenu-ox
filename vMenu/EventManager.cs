@@ -128,10 +128,9 @@ namespace vMenuClient
         /// </summary>
         private void SetConfigOptions()
         {
-            SetExtras();
-
             // Ask the server for this player's permitted addons. Tied to the config-ready
             // signal so it also re-fires when vMenu restarts with players connected.
+            // The reply carries the vehicle extras and map locations too.
             TriggerServerEvent("vMenu:RequestAddons");
 
             MainMenu.ConfigOptionsSetupComplete = true;
@@ -143,54 +142,36 @@ namespace vMenuClient
         private void SetAddons(string json)
         {
             AddonsManager.Load(json);
+            SetExtras();
+            MiscSettings.TpLocations = AddonsManager.Teleports;
             MainMenu.AddonsSetupComplete = true;
         }
 
 
         /// <summary>
-        /// Sets the extras labels from the extras.json file.
+        /// Sets the named vehicle extras from Config.Extras in the server's Lua config.
+        /// Two models that hash to the same key would be a config mistake, so the first wins and
+        /// the clash is reported rather than silently merged.
         /// </summary>
         private void SetExtras()
         {
-            // reset extras
             VehicleOptions.VehicleExtras = new Dictionary<uint, Dictionary<int, string>>();
 
-            string jsonData = LoadResourceFile(GetCurrentResourceName(), "config/extras.json") ?? "{}";
-
-            try
+            foreach (var model in AddonsManager.Extras)
             {
-                // load new extras.
-                var extras = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, string>>>(jsonData);
-
-                if (extras == null)
+                if (model.Value == null || model.Value.Count == 0)
                 {
-                    return;
+                    continue;
                 }
 
-                foreach (string model in extras.Keys)
+                var modelHash = (uint)GetHashKey(model.Key);
+                if (VehicleOptions.VehicleExtras.ContainsKey(modelHash))
                 {
-                    uint modelHash = (uint)GetHashKey(model);
-
-                    if (extras[model] != null && extras[model].Count > 0)
-                    {
-                        if (!VehicleOptions.VehicleExtras.ContainsKey(modelHash) || VehicleOptions.VehicleExtras[modelHash] == null)
-                            VehicleOptions.VehicleExtras.Add(modelHash, extras[model]);
-                        else
-                        {
-                            foreach(int extra in extras[model].Keys)
-                            {
-                                if(!VehicleOptions.VehicleExtras[modelHash].ContainsKey(extra))
-                                    VehicleOptions.VehicleExtras[modelHash].Add(extra, extras[model][extra]);
-                                else
-                                    Debug.WriteLine($"[vMenu] [Warning] Your extras.json file contains 2 or more entries with the same extra index! ({model}, Extra {extra}) Please remove duplicate!");
-                            }
-                        }
-                    }
+                    Debug.WriteLine($"[vMenu] [Warning] Config.Extras has more than one entry for model '{model.Key}'; only the first is used.");
+                    continue;
                 }
-            }
-            catch (JsonReaderException ex)
-            {
-                Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your extras.json file contains a problem! Error details: {ex.Message}\n\n");
+
+                VehicleOptions.VehicleExtras.Add(modelHash, model.Value);
             }
         }
 
@@ -364,7 +345,7 @@ namespace vMenuClient
         }
 
         /// <summary>
-        /// Updates the teleports locations data from the server side locations.json, because that doesn't update client side on change.
+        /// Updates the teleport locations after someone saves a new one, so every client stays in sync.
         /// </summary>
         /// <param name="jsonData"></param>
         private void UpdateTeleportLocations(string jsonData)

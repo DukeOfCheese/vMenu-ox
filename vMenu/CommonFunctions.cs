@@ -3728,7 +3728,7 @@ namespace vMenuClient
         //}
         #endregion
 
-        #region save player location to the server locations.json file
+        #region save player location on the server
         /// <summary>
         /// Saves the player's location as a new teleport location in the teleport options menu.
         /// </summary>
@@ -3742,7 +3742,7 @@ namespace vMenuClient
                 Notify.Error(CommonErrors.InvalidInput);
                 return;
             }
-            if (vMenuShared.ConfigManager.GetTeleportLocationsData().Any(loc => loc.name == locationName))
+            if (MiscSettings.TpLocations.Any(loc => loc.name == locationName))
             {
                 Notify.Error("This location name is already used, please use a different name.");
                 return;

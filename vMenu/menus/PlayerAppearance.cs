@@ -327,63 +327,46 @@ namespace vMenuClient.menus
                 MenuController.BindMenuItem(spawnPedsMenu, femalePedsMenu, femalePedsBtn);
                 MenuController.BindMenuItem(spawnPedsMenu, otherPedsMenu, otherPedsBtn);
 
-                var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-                var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-
-                if (addons != null && addons.ContainsKey("peds"))
+                // Addon peds come from the server, which has already applied this player's ACE
+                // permissions (see vMenuServer/AddonsConfig.cs). Anything present here is allowed.
+                var pedCount = 0;
+                foreach (var ped in data.AddonsManager.Peds)
                 {
-                    var pedsData = JObject.FromObject(addons["peds"])
-                        .ToObject<Dictionary<string, Dictionary<string, string>>>();
-
-                    int pedCount = 0;
-                    
-                    foreach (var category in pedsData)
+                    var spawnName = ped.spawn?.Trim();
+                    if (string.IsNullOrWhiteSpace(spawnName))
                     {
-                        string categoryName = category.Key;
-                        var pedList = category.Value;
-
-                        foreach (var pedEntry in pedList)
-                        {
-                            string pedName = pedEntry.Key;
-                            string spawnName = pedEntry.Value;
-
-                            AddTextEntry(spawnName, pedName);
-                            pedCount += 1;
-
-                            switch (categoryName.ToLower())
-                            {
-                                case "main":
-                                    mainModels.Add(spawnName, pedName);
-                                    break;
-                                
-                                case "animal":
-                                    animalModels.Add(spawnName, pedName);
-                                    break;
-                                
-                                case "male":
-                                    maleModels.Add(spawnName, pedName);
-                                    break;
-                                
-                                case "female":
-                                    femaleModels.Add(spawnName, pedName);
-                                    break;
-
-                                case "other":
-                                    otherPeds.Add(spawnName, pedName);
-                                    break;
-
-                                default:
-                                    break;
-                            }
-                        }
+                        continue;
                     }
+                    var pedName = string.IsNullOrWhiteSpace(ped.label) ? spawnName : ped.label;
 
-                    Debug.WriteLine($"[VMENU] Loaded {pedCount} addon peds");
+                    AddTextEntry(spawnName, pedName);
+                    pedCount += 1;
+
+                    switch (ped.category)
+                    {
+                        case "main":
+                            mainModels.Add(spawnName, pedName);
+                            break;
+
+                        case "animal":
+                            animalModels.Add(spawnName, pedName);
+                            break;
+
+                        case "male":
+                            maleModels.Add(spawnName, pedName);
+                            break;
+
+                        case "female":
+                            femaleModels.Add(spawnName, pedName);
+                            break;
+
+                        default:
+                            otherPeds.Add(spawnName, pedName);
+                            break;
+                    }
                 }
-                else
-                {
-                    Debug.WriteLine("[VMENU] No addon peds in addons.json");
-                }
+
+                Debug.WriteLine($"[VMENU] Loaded {pedCount} addon peds.");
 
                 foreach (var animal in animalModels)
                 {

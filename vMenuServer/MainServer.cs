@@ -213,18 +213,6 @@ namespace vMenuServer
             }
             else
             {
-                // check extras file for errors
-                string extras = LoadResourceFile(GetCurrentResourceName(), "config/extras.json") ?? "{}";
-                try
-                {
-                    JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, string>>>(extras);
-                    // If the above crashes, then the json is invalid and it'll throw warnings in the console.
-                }
-                catch (JsonReaderException ex)
-                {
-                    Debug.WriteLine($"\n\n^1[vMenu] [ERROR] ^7Your extras.json file contains a problem! Error details: {ex.Message}\n\n");
-                }
-
                 // check if permissions are setup (correctly)
                 if (!GetSettingsBool(Setting.vmenu_use_permissions))
                 {
@@ -1081,54 +1069,6 @@ namespace vMenuServer
             }
         }
 
-        #endregion
-
-        #region Add teleport location
-        [EventHandler("vMenu:SaveTeleportLocation")]
-        internal void AddTeleportLocation([FromSource] Player source, string locationJson)
-        {
-            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.MSTeleportSaveLocation, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.MSAll, source))
-            {
-                BanManager.BanCheater(source);
-                return;
-            }
-
-            TeleportLocation teleportLocation;
-
-            try
-            {
-                teleportLocation = JsonConvert.DeserializeObject<TeleportLocation>(locationJson);
-            }
-            catch
-            {
-                Log("Teleport location could not be deserialized, location was not saved.", LogLevel.error);
-                return;
-            }
-
-            // Validate the deserialized location before persisting it to config/locations.json.
-            // (float.IsFinite is unavailable on .NET Framework, so check NaN/Infinity explicitly.)
-            static bool NotFinite(float f) => float.IsNaN(f) || float.IsInfinity(f);
-            if (string.IsNullOrEmpty(teleportLocation.name) || teleportLocation.name.Length > 64
-                || NotFinite(teleportLocation.coordinates.X) || NotFinite(teleportLocation.coordinates.Y)
-                || NotFinite(teleportLocation.coordinates.Z) || NotFinite(teleportLocation.heading))
-            {
-                Log("Teleport location failed validation (name length or non-finite coordinates), location was not saved.", LogLevel.error);
-                return;
-            }
-
-            if (GetTeleportLocationsData().Exists(loc => loc.name == teleportLocation.name))
-            {
-                Log("A teleport location with this name already exists, location was not saved.", LogLevel.error);
-                return;
-            }
-            var locs = GetLocations();
-            locs.teleports.Add(teleportLocation);
-            if (!SaveResourceFile(GetCurrentResourceName(), "config/locations.json", JsonConvert.SerializeObject(locs, Formatting.Indented), -1))
-            {
-                Log("Could not save locations.json file, reason unknown.", LogLevel.error);
-            }
-            TriggerClientEvent("vMenu:UpdateTeleportLocations", JsonConvert.SerializeObject(locs.teleports));
-        }
         #endregion
 
         #region Infinity bits

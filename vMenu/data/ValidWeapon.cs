@@ -19,6 +19,8 @@ namespace vMenuClient.data
         public Dictionary<string, uint> Components;
         public Permission Perm;
         public string SpawnName;
+        /// <summary>Sent by the server after an ACE check, so it bypasses the base-game weapon permissions.</summary>
+        public bool IsAddon;
         public readonly int GetMaxAmmo
         {
             get
@@ -113,70 +115,68 @@ namespace vMenuClient.data
 
         public static Dictionary<string, string> DynamicWeaponPermissions = new Dictionary<string, string>();
 
+        /// <summary>
+        /// Spawn names of the addon weapons the server sent us. They are gated by their own ACE
+        /// (vMenu.WeaponOptions.&lt;spawn&gt;), which the server has already checked, so they must not
+        /// be filtered again by the base-game weapon permissions.
+        /// </summary>
+        private static readonly HashSet<string> addonSpawnNames = new();
+
 
         private static void CreateWeaponsList()
         {
             _weaponsList.Clear();
             DynamicWeaponPermissions.Clear();
+            addonSpawnNames.Clear();
 
-            var jsonData = LoadResourceFile(GetCurrentResourceName(), "config/addons.json") ?? "{}";
-            var addons = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-
-            if (addons != null && addons.ContainsKey("weapons"))
+            // Addon weapons come from the server, which has already applied this player's ACE
+            // permissions (see vMenuServer/AddonsConfig.cs). Anything present here is allowed.
+            var loaded = 0;
+            var skipped = 0;
+            foreach (var weapon in AddonsManager.Weapons)
             {
-                var weaponDict = JObject.FromObject(addons["weapons"])
-                        .ToObject<Dictionary<string, string>>();
-                foreach (var weaponEntry in weaponDict)
+                var spawnName = weapon.spawn?.Trim().ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(spawnName))
                 {
-                    var spawnName = weaponEntry.Value;
-                    if (string.IsNullOrWhiteSpace(spawnName) || !spawnName.StartsWith("weapon_") || spawnName.Length > 64)
-                    {
-                        Debug.WriteLine($"[VMENU] Skipping addon weapon with malformed spawn name: '{spawnName}'");
-                        continue;
-                    }
-                    var addonHash = (uint)GetHashKey(spawnName);
-                    if (!IsWeaponValid(addonHash))
-                    {
-                        Debug.WriteLine($"[VMENU] Skipping invalid addon weapon: '{spawnName}'");
-                        continue;
-                    }
-                    if (!weaponNames.ContainsKey(spawnName))
-                    {
-                        var label = weaponEntry.Key ?? "";
-                        if (label.Length > 64)
-                        {
-                            label = label.Substring(0, 64);
-                        }
-                        weaponNames[spawnName] = label;
-                        AddTextEntry(spawnName, label);
-                    }
+                    skipped++;
+                    continue;
                 }
 
-                Debug.WriteLine($"[VMENU] Loaded {weaponDict.Count} addon weapons");
-            }
-            else
-            {
-                Debug.WriteLine("[VMENU] No addon weapons found in addons.json");
-            }
-            
-            if (addons != null && addons.ContainsKey("weapon_components"))
-            {
-                var componentDict = JObject.FromObject(addons["weapon_components"])
-                        .ToObject<Dictionary<string, string>>();
-                foreach (var componentEntry in componentDict)
+                // The server cannot tell whether the weapon's assets are actually streamed to this
+                // client, so that check stays here.
+                if (!IsWeaponValid((uint)GetHashKey(spawnName)))
                 {
-                    if (!weaponComponentNames.ContainsKey(componentEntry.Value))
-                    {
-                        weaponComponentNames[componentEntry.Value] = componentEntry.Key;
-                    }
+                    Debug.WriteLine($"[VMENU] Addon weapon '{spawnName}' is not valid on this client (is the weapon resource started before vMenu?); skipping.");
+                    skipped++;
+                    continue;
                 }
 
-                Debug.WriteLine($"[VMENU] Loaded {componentDict.Count} addon weapon components");
+                if (!weaponNames.ContainsKey(spawnName))
+                {
+                    var label = string.IsNullOrWhiteSpace(weapon.label) ? spawnName : weapon.label;
+                    weaponNames[spawnName] = label;
+                    AddTextEntry(spawnName, label);
+                }
+                addonSpawnNames.Add(spawnName);
+
+                foreach (var component in weapon.components ?? new List<AddonsManager.AddonItem>())
+                {
+                    var componentName = component.spawn?.Trim();
+                    if (string.IsNullOrWhiteSpace(componentName) || weaponComponentNames.ContainsKey(componentName))
+                    {
+                        continue;
+                    }
+                    // Components inherit the weapon's permission; the game is still asked below
+                    // whether the weapon actually takes each one.
+                    weaponComponentNames[componentName] = string.IsNullOrWhiteSpace(component.label) ? componentName : component.label;
+                }
+
+                loaded++;
             }
-            else
-            {
-                Debug.WriteLine("[VMENU] No addon weapon components in addons.json");
-            }
+
+            Debug.WriteLine(skipped > 0
+                ? $"[VMENU] Loaded {loaded} addon weapons ({skipped} skipped)."
+                : $"[VMENU] Loaded {loaded} addon weapons.");
 
             // Pre-compute the hash for every component name once, so the per-weapon
             // loop below only does dictionary lookups instead of native GetHashKey calls.
@@ -213,7 +213,8 @@ namespace vMenuClient.data
                     Components = componentHashes,
                     Perm = weaponPermissions.ContainsKey(realName) 
                         ? weaponPermissions[realName]
-                            : Permission.WPAll
+                            : Permission.WPAll,
+                    IsAddon = addonSpawnNames.Contains(realName)
                 };
                 if (!_weaponsList.Contains(vw))
                 {

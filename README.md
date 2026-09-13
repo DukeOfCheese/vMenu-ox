@@ -50,11 +50,27 @@ _Say goodbye to huge spreadsheets with different numbers and say hello to simple
 
 ### Addons
 
-Previously, addons.json would load into a separate section of the menu for vehicles, weapons and peds. This has since been changed so that the addons load directly into existing lists and show up in the menu like a base game asset. 
+All configuration is authored in Lua. `config/config_server.lua` holds addon vehicles, weapons (with their components), peds, engine sounds and named vehicle extras; `config/locations.lua` holds teleport locations and map blips. The old `addons.json`, `extras.json` and `locations.json` files are gone.
 
-Custom weapons also support component menus
-  - Currently custom weapons are UNABLE to be assigned custom permissions without a recompile as the Permission enum is compiled not generated at runtime
-  - Custom weapons can only be accessed through the `WP.All` permission or can be assigned a permission in the Permission file (you can get support for this [here](https://discord.atlasdevops.com))
+Addons load directly into the existing lists and show up in the menu like a base game asset -- an allowed weapon under Weapons > Rifles, an allowed vehicle under its vehicle class, an allowed ped under its category. There is no separate "Addons" section.
+
+**Every addon derives its own ACE permission**, evaluated server-side before the item is sent, so a player who is not permitted never learns it exists:
+
+| Kind | ACE |
+| --- | --- |
+| Weapons | `vMenu.WeaponOptions.<spawn>` |
+| Vehicles | `vMenu.VehicleSpawner.<spawn>` |
+| Peds | `vMenu.PlayerAppearance.<spawn>` |
+| Engine sounds | `vMenu.VehicleOptions.<spawn>` |
+| EUP | `vMenu.PlayerAppearance.EUP` |
+
+Set `permission = '...'` on an entry to override its ACE. ACEs are hierarchical, so `add_ace group.admin "vMenu.WeaponOptions" allow` grants every weapon at once instead of one line per item.
+
+Note that addon items are gated **only** by their own ACE -- the blanket `...All` permissions cover base game content only, since the default permissions.cfg grants those to everyone and per-item control would otherwise be meaningless.
+
+Custom weapons also support component menus; components inherit the permission of the weapon they belong to.
+
+Teleport locations players save in-game are stored in server KVP and merged with the authored list in `config/locations.lua`, so saving in-game still works and never rewrites your config.
 
 ### Vehicle
 
