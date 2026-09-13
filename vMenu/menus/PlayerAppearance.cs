@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -304,7 +305,21 @@ namespace vMenuClient.menus
 
             if (IsAllowed(Permission.PASpawnNew))
             {
+                // Filters every ped category in place. Covers all five menus -- previously only
+                // male/female/other had any filter at all.
+                var pedCategories = new List<MenuSearch.Category>
+                {
+                    new MenuSearch.Category { Button = mainPedsBtn, Menu = mainPedsMenu, Name = "Main Characters" },
+                    new MenuSearch.Category { Button = animalPedsBtn, Menu = animalsPedsMenu, Name = "Animals" },
+                    new MenuSearch.Category { Button = malePedsBtn, Menu = malePedsMenu, Name = "Male" },
+                    new MenuSearch.Category { Button = femalePedsBtn, Menu = femalePedsMenu, Name = "Female" },
+                    new MenuSearch.Category { Button = otherPedsBtn, Menu = otherPedsMenu, Name = "Other" }
+                };
+
                 spawnPedsMenu.AddMenuItem(spawnByNameBtn);
+
+                // Sits directly under "Spawn By Name", above the category buttons.
+                MenuSearch.AddCategorySearch(spawnPedsMenu, "Peds", () => pedCategories);
                 spawnPedsMenu.AddMenuItem(mainPedsBtn);
                 spawnPedsMenu.AddMenuItem(animalPedsBtn);
                 spawnPedsMenu.AddMenuItem(malePedsBtn);
@@ -368,77 +383,30 @@ namespace vMenuClient.menus
 
                 Debug.WriteLine($"[VMENU] Loaded {pedCount} addon peds.");
 
-                foreach (var animal in animalModels)
+                void AddPeds(Menu categoryMenu, Dictionary<string, string> models, string description)
                 {
-                    var animalBtn = new MenuItem(animal.Key, "Click to spawn this animal.") { Label = $"({animal.Value})" };
-                    animalsPedsMenu.AddMenuItem(animalBtn);
-                }
-
-                foreach (var ped in mainModels)
-                {
-                    var pedBtn = new MenuItem(ped.Key, "Click to spawn this ped.") { Label = $"({ped.Value})" };
-                    mainPedsMenu.AddMenuItem(pedBtn);
-                }
-
-                foreach (var ped in maleModels)
-                {
-                    var pedBtn = new MenuItem(ped.Key, "Click to spawn this ped.") { Label = $"({ped.Value})" };
-                    malePedsMenu.AddMenuItem(pedBtn);
-                }
-
-                foreach (var ped in femaleModels)
-                {
-                    var pedBtn = new MenuItem(ped.Key, "Click to spawn this ped.") { Label = $"({ped.Value})" };
-                    femalePedsMenu.AddMenuItem(pedBtn);
-                }
-
-                foreach (var ped in otherPeds)
-                {
-                    var pedBtn = new MenuItem(ped.Key, "Click to spawn this ped.") { Label = $"({ped.Value})" };
-                    otherPedsMenu.AddMenuItem(pedBtn);
-                }
-
-                async void FilterMenu(Menu m, Control c)
-                {
-                    var input = await GetUserInput("Filter by ped model name, leave this empty to reset the filter");
-                    if (!string.IsNullOrEmpty(input))
+                    foreach (var ped in models)
                     {
-                        m.FilterMenuItems((mb) => mb.Label.ToLower().Contains(input.ToLower()) || mb.Text.ToLower().Contains(input.ToLower()));
-                        Subtitle.Custom("Filter applied.");
-                    }
-                    else
-                    {
-                        m.ResetFilter();
-                        Subtitle.Custom("Filter cleared.");
+                        var pedBtn = new MenuItem(ped.Key, description) { Label = $"({ped.Value})" };
+                        categoryMenu.AddMenuItem(pedBtn);
                     }
                 }
 
-                void ResetMenuFilter(Menu m)
+                AddPeds(animalsPedsMenu, animalModels, "Click to spawn this animal.");
+                AddPeds(mainPedsMenu, mainModels, "Click to spawn this ped.");
+                AddPeds(malePedsMenu, maleModels, "Click to spawn this ped.");
+                AddPeds(femalePedsMenu, femaleModels, "Click to spawn this ped.");
+                AddPeds(otherPedsMenu, otherPeds, "Click to spawn this ped.");
+
+                // Spawns a ped by model name. Shared by the category menus and the global search, so
+                // both go through the same water-only-animal and model-availability guards.
+                async Task SpawnPedModel(string spawnName, bool isAnimal)
                 {
-                    m.ResetFilter();
-                }
+                    var model = (uint)GetHashKey(spawnName);
 
-                otherPedsMenu.OnMenuClose += ResetMenuFilter;
-                malePedsMenu.OnMenuClose += ResetMenuFilter;
-                femalePedsMenu.OnMenuClose += ResetMenuFilter;
-
-                otherPedsMenu.InstructionalButtons.Add(Control.Jump, "Filter List");
-                otherPedsMenu.ButtonPressHandlers.Add(new Menu.ButtonPressHandler(Control.Jump, Menu.ControlPressCheckType.JUST_RELEASED, new Action<Menu, Control>(FilterMenu), true));
-
-                malePedsMenu.InstructionalButtons.Add(Control.Jump, "Filter List");
-                malePedsMenu.ButtonPressHandlers.Add(new Menu.ButtonPressHandler(Control.Jump, Menu.ControlPressCheckType.JUST_RELEASED, new Action<Menu, Control>(FilterMenu), true));
-
-                femalePedsMenu.InstructionalButtons.Add(Control.Jump, "Filter List");
-                femalePedsMenu.ButtonPressHandlers.Add(new Menu.ButtonPressHandler(Control.Jump, Menu.ControlPressCheckType.JUST_RELEASED, new Action<Menu, Control>(FilterMenu), true));
-
-
-                async void SpawnPed(Menu m, MenuItem item, int index)
-                {
-
-                    var model = (uint)GetHashKey(item.Text);
-                    if (m == animalsPedsMenu && !Game.PlayerPed.IsInWater)
+                    if (isAnimal && !Game.PlayerPed.IsInWater)
                     {
-                        switch (item.Text)
+                        switch (spawnName)
                         {
                             case "a_c_dolphin":
                             case "a_c_fish":
@@ -452,30 +420,34 @@ namespace vMenuClient.menus
                         }
                     }
 
-                    if (IsModelInCdimage(model))
+                    if (!IsModelInCdimage(model))
                     {
-                        // for animals we need to remove all weapons, this is because animals have their own weapons which you can't normally get and/or select in the weapon wheel.
-                        // so we clear the weapons to force that specific weapon to be equipped.
-                        if (m == animalsPedsMenu)
-                        {
-                            Game.PlayerPed.Weapons.RemoveAll();
-                            await SetPlayerSkin(model, new PedInfo() { version = -1 }, false);
-                            await Delay(1000);
-                            SetPedComponentVariation(Game.PlayerPed.Handle, 0, 0, 0, 0);
-                            await Delay(1000);
-                            SetPedComponentVariation(Game.PlayerPed.Handle, 0, 0, 1, 0);
-                            await Delay(1000);
-                            SetPedDefaultComponentVariation(Game.PlayerPed.Handle);
-                        }
-                        else
-                        {
-                            await SetPlayerSkin(model, new PedInfo() { version = -1 }, true);
-                        }
+                        Notify.Error(CommonErrors.InvalidModel);
+                        return;
+                    }
+
+                    // for animals we need to remove all weapons, this is because animals have their own weapons which you can't normally get and/or select in the weapon wheel.
+                    // so we clear the weapons to force that specific weapon to be equipped.
+                    if (isAnimal)
+                    {
+                        Game.PlayerPed.Weapons.RemoveAll();
+                        await SetPlayerSkin(model, new PedInfo() { version = -1 }, false);
+                        await Delay(1000);
+                        SetPedComponentVariation(Game.PlayerPed.Handle, 0, 0, 0, 0);
+                        await Delay(1000);
+                        SetPedComponentVariation(Game.PlayerPed.Handle, 0, 0, 1, 0);
+                        await Delay(1000);
+                        SetPedDefaultComponentVariation(Game.PlayerPed.Handle);
                     }
                     else
                     {
-                        Notify.Error(CommonErrors.InvalidModel);
+                        await SetPlayerSkin(model, new PedInfo() { version = -1 }, true);
                     }
+                }
+
+                async void SpawnPed(Menu m, MenuItem item, int index)
+                {
+                    await SpawnPedModel(item.Text, m == animalsPedsMenu);
                 }
 
                 mainPedsMenu.OnItemSelect += SpawnPed;

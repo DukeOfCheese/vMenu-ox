@@ -181,12 +181,12 @@ Build after this batch.
 - [ ] **MEDIUM-4 `[REPORTED]` — `usingCustomNotifications` static read at type-init (config may not be loaded).** `:81`. Read the setting lazily inside the notify methods, or add a `Reload()` called after convar sync.
 
 ### menus/WeaponOptions.cs
-- [ ] **HIGH-2 `[REPORTED]` — search rebuilds the whole menu tree + handlers.** `:40-836` (`RefreshSpawnableWeapons`, called from `:781`). Separate data-init (weapon structs/component dicts) from menu-item creation; on search, show/hide items rather than destroy+recreate.
+- [x] **HIGH-2 — search rebuilds the whole menu tree + handlers.** FIXED: menu is now built once and search uses a results submenu. `:40-836` (`RefreshSpawnableWeapons`, called from `:781`). Separate data-init (weapon structs/component dicts) from menu-item creation; on search, show/hide items rather than destroy+recreate.
 - [ ] **LOW-2 `[REPORTED]` — component-update block copy-pasted 4×.** `:462-506,553-599`. Extract `void RefreshComponentStates(uint weaponHash)` scoped to the current weapon's components (not the global dict).
 - [ ] **LOW-3 `[REPORTED]` — magic uint category hashes, no fallback for unknown categories.** `:624-671`. Name the constants; add an `else` that logs so uncategorized addon weapons don't vanish.
 
 ### menus/VehicleSpawner.cs
-- [ ] **CRITICAL-5 `[REPORTED]` — `RefreshSpawnableVehicles` re-reads/parses `addons.json` on every search.** `:166-181` (also called from `:364`). Move addon loading to `CreateMenu`/one-time init; guard against double-insert.
+- [x] **CRITICAL-5 — `RefreshSpawnableVehicles` re-reads/parses `addons.json` on every search.** FIXED: build-once, plus the index-based spawn dispatch it masked. `:166-181` (also called from `:364`). Move addon loading to `CreateMenu`/one-time init; guard against double-insert.
 - [ ] **HIGH-3 `[REPORTED]` — O(n²) duplicate-name scan + `.Keys.Contains`.** `:234-284`. Use `ContainsKey` and a `HashSet<string>` of added names.
 - [ ] **MEDIUM-3 `[REPORTED]` — 4× constant 23-elem float arrays allocated per call.** `:44-148`. Hoist to `private static readonly float[]`.
 

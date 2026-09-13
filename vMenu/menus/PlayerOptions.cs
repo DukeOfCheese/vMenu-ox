@@ -341,6 +341,8 @@ namespace vMenuClient.menus
             if (IsAllowed(Permission.POScenarios))
             {
                 menu.AddMenuItem(playerScenarios);
+
+                MenuSearch.AddListItemSearch(menu, playerScenarios, "Scenario");
                 menu.AddMenuItem(stopScenario);
             }
             #endregion

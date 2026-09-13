@@ -77,6 +77,9 @@ namespace vMenuShared
             vmenu_sync_to_machine_time,
             // Key Mapping
             vmenu_keymapping_id,
+
+            // Menu search
+            vmenu_enable_menu_search,
         }
 
         /// <summary>

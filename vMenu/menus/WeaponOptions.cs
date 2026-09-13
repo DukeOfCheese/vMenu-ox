@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 using CitizenFX.Core;
 
@@ -23,13 +25,17 @@ namespace vMenuClient.menus
         public bool AutoEquipChute { get; private set; } = UserDefaults.AutoEquipChute;
         public bool UnlimitedParachutes { get; private set; } = UserDefaults.WeaponsUnlimitedParachutes;
 
-        private string SearchTerm = "";
+        /// <summary>
+        /// The eight weapon category submenus and the buttons that open them, for the search to
+        /// filter in place.
+        /// </summary>
+        private readonly List<MenuSearch.Category> weaponCategories = new();
 
         private Dictionary<Menu, ValidWeapon> weaponInfo;
         private Dictionary<MenuItem, string> weaponComponents;
 
         // Weapon category group hashes (from GetWeapontypeGroup). Named so the
-        // category switch in RefreshSpawnableWeapons no longer relies on inline magic numbers.
+        // category switch in BuildSpawnableWeapons no longer relies on inline magic numbers.
         private const uint CategoryRifles = 970310034;
         private const uint CategoryHandguns = 416676503;
         private const uint CategoryStunGun = 690389602;
@@ -45,8 +51,7 @@ namespace vMenuClient.menus
         private const uint CategorySniperRifles = 3082541095;
 
         // Cache of weapon hash -> category group hash. GetWeapontypeGroup is a native call
-        // and the category for a given weapon hash never changes, so we compute it once per
-        // weapon and reuse the result across repeated RefreshSpawnableWeapons calls (searches).
+        // and the category for a given weapon hash never changes, so we compute it once per weapon.
         private readonly Dictionary<uint, uint> weaponCategoryCache = new Dictionary<uint, uint>();
 
         #region Create Menu
@@ -56,9 +61,9 @@ namespace vMenuClient.menus
         private void CreateMenu()
         {
             menu = new Menu(Game.Player.Name, "Weapon Options");
-            RefreshSpawnableWeapons(menu);
+            BuildSpawnableWeapons(menu);
         }
-        private void RefreshSpawnableWeapons(Menu menu)
+        private void BuildSpawnableWeapons(Menu menu)
         {
             // Setup weapon dictionaries.
             weaponInfo = new Dictionary<Menu, ValidWeapon>();
@@ -73,7 +78,6 @@ namespace vMenuClient.menus
             var setAmmo = new MenuItem("Set All Ammo Count", "Set the amount of ammo in all your weapons.");
             var refillMaxAmmo = new MenuItem("Refill All Ammo", "Give all your weapons max ammo.");
             var spawnByName = new MenuItem("Spawn Weapon By Name", "Enter a weapon mode name to spawn.");
-            var searchButton = new MenuItem("Search for Weapon", "This will allow you to search through the available weapons.");
 
             // Add items based on permissions
             if (IsAllowed(Permission.WPGetAll))
@@ -97,11 +101,14 @@ namespace vMenuClient.menus
                 menu.AddMenuItem(setAmmo);
                 menu.AddMenuItem(refillMaxAmmo);
             }
-            menu.AddMenuItem(searchButton);
             if (IsAllowed(Permission.WPSpawnByName))
             {
                 menu.AddMenuItem(spawnByName);
             }
+
+            // Sits directly under "Spawn Weapon By Name", above the category buttons. Added
+            // unconditionally: the spawn-by-name item above it is permission gated, search is not.
+            MenuSearch.AddCategorySearch(menu, "Weapons", () => weaponCategories);
             #endregion
 
             #region parachute options menu
@@ -592,53 +599,47 @@ namespace vMenuClient.menus
                     #endregion
                     #region refresh and add to menu.
                     weaponMenu.RefreshIndex();
+
+                    // Attaches the weapon to its category submenu and registers it for the global
+                    // search, so the two can never drift apart.
+                    void AddToCategory(Menu categoryMenu)
+                    {
+                        MenuController.AddSubmenu(categoryMenu, weaponMenu);
+                        MenuController.BindMenuItem(categoryMenu, weaponMenu, weaponItem);
+                        categoryMenu.AddMenuItem(weaponItem);
+                    }
+
                     if (cat == CategoryRifles)
                     {
-                        MenuController.AddSubmenu(rifles, weaponMenu);
-                        MenuController.BindMenuItem(rifles, weaponMenu, weaponItem);
-                        rifles.AddMenuItem(weaponItem);
+                        AddToCategory(rifles);
                     }
                     else if (cat is CategoryHandguns or CategoryStunGun)
                     {
-                        MenuController.AddSubmenu(handGuns, weaponMenu);
-                        MenuController.BindMenuItem(handGuns, weaponMenu, weaponItem);
-                        handGuns.AddMenuItem(weaponItem);
+                        AddToCategory(handGuns);
                     }
                     else if (cat == CategoryShotguns)
                     {
-                        MenuController.AddSubmenu(shotguns, weaponMenu);
-                        MenuController.BindMenuItem(shotguns, weaponMenu, weaponItem);
-                        shotguns.AddMenuItem(weaponItem);
+                        AddToCategory(shotguns);
                     }
                     else if (cat is CategorySubMachineGuns or CategoryLightMachineGuns)
                     {
-                        MenuController.AddSubmenu(smgs, weaponMenu);
-                        MenuController.BindMenuItem(smgs, weaponMenu, weaponItem);
-                        smgs.AddMenuItem(weaponItem);
+                        AddToCategory(smgs);
                     }
                     else if (cat is CategoryThrowables or CategoryFireExtinguisher or CategoryJerryCan)
                     {
-                        MenuController.AddSubmenu(throwables, weaponMenu);
-                        MenuController.BindMenuItem(throwables, weaponMenu, weaponItem);
-                        throwables.AddMenuItem(weaponItem);
+                        AddToCategory(throwables);
                     }
                     else if (cat is CategoryMelee or CategoryKnuckleDuster)
                     {
-                        MenuController.AddSubmenu(melee, weaponMenu);
-                        MenuController.BindMenuItem(melee, weaponMenu, weaponItem);
-                        melee.AddMenuItem(weaponItem);
+                        AddToCategory(melee);
                     }
                     else if (cat == CategoryHeavyWeapons)
                     {
-                        MenuController.AddSubmenu(heavy, weaponMenu);
-                        MenuController.BindMenuItem(heavy, weaponMenu, weaponItem);
-                        heavy.AddMenuItem(weaponItem);
+                        AddToCategory(heavy);
                     }
                     else if (cat == CategorySniperRifles)
                     {
-                        MenuController.AddSubmenu(snipers, weaponMenu);
-                        MenuController.BindMenuItem(snipers, weaponMenu, weaponItem);
-                        snipers.AddMenuItem(weaponItem);
+                        AddToCategory(snipers);
                     }
                     else
                     {
@@ -700,8 +701,20 @@ namespace vMenuClient.menus
             }
             #endregion
 
+            #region search
+            // Populated after the per-weapon loop; the search button above reads this list lazily.
+            weaponCategories.Add(new MenuSearch.Category { Button = handGunsBtn, Menu = handGuns, Name = "Handguns" });
+            weaponCategories.Add(new MenuSearch.Category { Button = riflesBtn, Menu = rifles, Name = "Rifles" });
+            weaponCategories.Add(new MenuSearch.Category { Button = shotgunsBtn, Menu = shotguns, Name = "Shotguns" });
+            weaponCategories.Add(new MenuSearch.Category { Button = smgsBtn, Menu = smgs, Name = "Submachine Guns" });
+            weaponCategories.Add(new MenuSearch.Category { Button = throwablesBtn, Menu = throwables, Name = "Throwables" });
+            weaponCategories.Add(new MenuSearch.Category { Button = meleeBtn, Menu = melee, Name = "Melee" });
+            weaponCategories.Add(new MenuSearch.Category { Button = heavyBtn, Menu = heavy, Name = "Heavy Weapons" });
+            weaponCategories.Add(new MenuSearch.Category { Button = snipersBtn, Menu = snipers, Name = "Sniper Rifles" });
+            #endregion
+
             #region Handle button presses
-            menu.OnItemSelect += async (sender, item, index) =>
+            menu.OnItemSelect += (sender, item, index) =>
             {
                 var ped = Game.PlayerPed;
                 if (item == getAllWeapons)
@@ -749,12 +762,6 @@ namespace vMenuClient.menus
                             SetPedAmmo(Game.PlayerPed.Handle, vw.Hash, ammo);
                         }
                     }
-                }
-                else if (item == searchButton)
-                {
-                    SearchTerm = await GetUserInput(windowTitle: "Enter Search Term (Leave BLANK to reset)", maxInputLength: 100);
-                    RefreshSpawnableWeapons(menu);
-                    SearchTerm = "";
                 }
                 else if (item == spawnByName)
                 {

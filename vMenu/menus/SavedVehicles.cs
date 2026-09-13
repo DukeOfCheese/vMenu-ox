@@ -74,6 +74,8 @@ namespace vMenuClient.menus
                 {
                     UpdateSelectedVehicleMenu(item, sender);
                 };
+
+                MenuSearch.AddFilterHotkey(categoryMenu);
             }
 
             var unavailableModels = new MenuItem("Unavailable Saved Vehicles", "These vehicles are currently unavailable because the models are not present in the game. These vehicles are most likely not being streamed from the server.")
@@ -84,6 +86,8 @@ namespace vMenuClient.menus
             classMenu.AddMenuItem(unavailableModels);
             MenuController.BindMenuItem(classMenu, unavailableVehiclesMenu, unavailableModels);
             MenuController.AddSubmenu(classMenu, unavailableVehiclesMenu);
+
+            MenuSearch.AddFilterHotkey(unavailableVehiclesMenu);
 
 
             MenuController.AddMenu(savedVehicleTypeMenu);
@@ -837,12 +841,17 @@ namespace vMenuClient.menus
 
             foreach (var m in subMenus)
             {
+                // ClearMenuItems does not clear MenuAPI's filterActive flag, and SortMenuItems below
+                // silently drops an active filter, so reset it explicitly before rebuilding.
+                m.ResetFilter();
+
                 // Clear items but don't reset the index because we can guarantee that the index won't be out of bounds.
                 // this is the case because of the loop above where we reset the index if the items count changes.
                 m.ClearMenuItems(true);
             }
 
             // Always clear this index because it's useless anyway and it's safer.
+            unavailableVehiclesMenu.ResetFilter();
             unavailableVehiclesMenu.ClearMenuItems();
 
             foreach (var sv in savedVehicles)

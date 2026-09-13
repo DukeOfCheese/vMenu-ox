@@ -372,12 +372,16 @@ namespace vMenuClient.menus
                 {
                     teleportOptionsMenu.AddMenuItem(teleportMenuBtn);
 
+                    MenuSearch.AddFilterHotkey(teleportMenu);
+
                     MenuController.AddSubmenu(teleportOptionsMenu, teleportMenu);
                     MenuController.BindMenuItem(teleportOptionsMenu, teleportMenu, teleportMenuBtn);
                     teleportMenuBtn.Label = "→→→";
 
                     teleportMenu.OnMenuOpen += (sender) =>
                     {
+                        teleportMenu.ResetFilter();
+
                         if (teleportMenu.Size != TpLocations.Count())
                         {
                             teleportMenu.ClearMenuItems();
@@ -445,6 +449,7 @@ namespace vMenuClient.menus
 
             // timecycle modifiers
             developerToolsMenu.AddMenuItem(timeCycles);
+            MenuSearch.AddListItemSearch(developerToolsMenu, timeCycles, "Timecycle");
             developerToolsMenu.AddMenuItem(enableTimeCycle);
             developerToolsMenu.AddMenuItem(timeCycleIntensity);
 

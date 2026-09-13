@@ -132,6 +132,8 @@ namespace vMenuClient.menus
 
             void RefreshSavedWeaponsMenu()
             {
+                SavedLoadoutsMenu.ResetFilter();
+
                 var oldCount = SavedLoadoutsMenu.Size;
                 SavedLoadoutsMenu.ClearMenuItems(true);
 
@@ -316,6 +318,8 @@ namespace vMenuClient.menus
             };
 
             // Set the current saved loadout whenever a loadout is selected.
+            MenuSearch.AddFilterHotkey(SavedLoadoutsMenu);
+
             SavedLoadoutsMenu.OnItemSelect += (sender, item, index) =>
             {
                 if (item.ItemData is string key && SavedWeapons.ContainsKey(key))

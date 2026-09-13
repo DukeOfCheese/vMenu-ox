@@ -28,6 +28,17 @@ namespace vMenuClient
         public static bool ConfigOptionsSetupComplete = false;
         public static bool AddonsSetupComplete = false;
 
+        /// <summary>
+        /// Guards the one-time construction of the menu tree.
+        ///
+        /// The server sends vMenu:SetPermissions from two independent paths (PlayersFirstTick for
+        /// already-connected players when the server resource starts, and playerJoining), so a
+        /// client can receive it more than once. Without this guard each event builds a whole
+        /// second menu tree -- a second main menu registered in MenuController plus fresh instances
+        /// of every submenu -- which shows up as menu options multiplying.
+        /// </summary>
+        private static bool menuTreeCreated = false;
+
         public static string MenuToggleKey { get; private set; } = "M"; // M by default
         public static string NoClipKey { get; private set; } = "F2"; // F2 by default 
         public static Menu Menu { get; private set; }
@@ -458,6 +469,14 @@ namespace vMenuClient
         /// </summary>
         private static void PostPermissionsSetup()
         {
+            // Permissions themselves are refreshed by the caller before this point; only the menu
+            // construction below is one-time.
+            if (menuTreeCreated)
+            {
+                return;
+            }
+            menuTreeCreated = true;
+
             switch (GetSettingsInt(Setting.vmenu_pvp_mode))
             {
                 case 1:
@@ -511,6 +530,10 @@ namespace vMenuClient
 
             // Create all (sub)menus.
             CreateSubmenus();
+
+            // Logged so server owners can confirm from the client console (F8) whether menu search
+            // is active, and that the loaded client build is the one they expect.
+            Debug.WriteLine($"[vMenu] Menu search enabled: {MenuSearch.Enabled}.");
 
             if (!GetSettingsBool(Setting.vmenu_disable_player_stats_setup))
             {
