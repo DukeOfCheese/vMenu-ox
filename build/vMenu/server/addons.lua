@@ -30,13 +30,25 @@ local function pruneEmpty(value)
     return out
 end
 
+local resourceName = GetCurrentResourceName()
+
 local function sendConfig()
     local cfg = Config or {}
-    TriggerEvent('vMenu:Internal:LoadConfig', json.encode({
+    local payload = json.encode({
         addons    = pruneEmpty(cfg.Addons) or {},
         extras    = pruneEmpty(stringifyKeys(cfg.Extras)) or {},
         locations = pruneEmpty(cfg.Locations) or {},
-    }))
+    })
+    -- An export rather than an event: C# event handlers also accept events sent by clients, and
+    -- this payload decides which ACE each addon is gated behind.
+    local ok, err = pcall(function()
+        exports[resourceName]:LoadConfig(payload)
+    end)
+    if not ok then
+        -- The C# script registers the export when it loads, which is before this file runs, so
+        -- this only happens if the DLL failed to load. It will ask again via RequestConfig.
+        lib.print.warn(('Could not hand the config to the C# script yet: %s'):format(err))
+    end
 end
 
 -- The C# side asks for the config once it has initialised. Also sent unprompted on resource start

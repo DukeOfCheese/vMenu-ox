@@ -51,11 +51,61 @@ namespace vMenuServer
         /// </summary>
         public BanManager()
         {
-            EventHandlers.Add("vMenu:Internal:TempBanPlayer", new Action<int, int, double, string>(BanPlayer));
-            EventHandlers.Add("vMenu:Internal:PermBanPlayer", new Action<int, int, string>(BanPlayer));
-            EventHandlers.Add("vMenu:Internal:playerConnecting", new Action<int, string>(CheckForBans));
-            EventHandlers.Add("vMenu:Internal:RequestedPlayerUnban", new Action<int, string>(RemoveBanRecord));
-            EventHandlers.Add("vMenu:Internal:RequestBanList", new Action<int>(SendBanList));
+            // These are reached from server/integrations.lua, which relays the client's request together with
+            // the real network source. They are exports rather than event handlers on purpose: on this runtime
+            // every C# event handler also accepts events sent by clients, so an event taking the acting player's
+            // id as a plain argument would let any client ban or unban while posing as an admin. Clients cannot
+            // call exports. Arguments come in untyped from Lua, hence the conversions.
+            Exports.Add("TempBanPlayer", new Action<object, object, object, object>((playerId, targetPlayer, banDurationHours, banReason) =>
+                BanPlayer(ToInt(playerId), ToInt(targetPlayer), ToDouble(banDurationHours), banReason as string, permanent: false)));
+            Exports.Add("PermBanPlayer", new Action<object, object, object>((playerId, targetPlayer, banReason) =>
+                BanPlayer(ToInt(playerId), ToInt(targetPlayer), 0, banReason as string, permanent: true)));
+            Exports.Add("CheckBan", new Func<object, string>((playerId) => CheckForBans(ToInt(playerId))));
+            Exports.Add("UnbanPlayer", new Action<object, object>((playerId, uuid) => RemoveBanRecord(ToInt(playerId), uuid as string)));
+            Exports.Add("SendBanList", new Action<object>((playerId) => SendBanList(ToInt(playerId))));
+        }
+
+        private static int ToInt(object value)
+        {
+            try
+            {
+                return value == null ? 0 : Convert.ToInt32(value);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static double ToDouble(object value)
+        {
+            try
+            {
+                return value == null ? double.NaN : Convert.ToDouble(value);
+            }
+            catch
+            {
+                return double.NaN;
+            }
+        }
+
+        /// <summary>
+        /// Caps a client-supplied reason and strips line breaks so it can't forge extra lines in the ban log.
+        /// </summary>
+        internal static string SanitizeReason(string reason, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return fallback;
+            }
+            reason = reason.Replace("\r", " ").Replace("\n", " ").Trim();
+            return reason.Length > 256 ? reason.Substring(0, 256) : reason;
+        }
+
+        private static bool HasAnyPermission(Player source, params PermissionsManager.Permission[] permissions)
+        {
+            return permissions.Any(p => PermissionsManager.IsAllowed(p, source))
+                || PermissionsManager.IsAllowed(PermissionsManager.Permission.Everything, source);
         }
 
         /// <summary>
@@ -64,28 +114,30 @@ namespace vMenuServer
         /// <param name="source"></param>
         private void SendBanList(int playerId)
         {
-            Player source = null;
-
-            if (playerId != 0)
-            {
-                source = Players[playerId];
-            }
+            var source = playerId > 0 && DoesPlayerExist(playerId.ToString()) ? Players[playerId] : null;
 
             // Gate the ban list (contains all identifiers + reasons) behind a permission check.
             if (source == null)
             {
                 return;
             }
-            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPViewBannedPlayers, source)
-                && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source)
-                && !PermissionsManager.IsAllowed(PermissionsManager.Permission.Everything, source))
+            if (!HasAnyPermission(source, PermissionsManager.Permission.OPViewBannedPlayers, PermissionsManager.Permission.OPAll))
             {
                 BanCheater(source);
                 return;
             }
 
             Log("Updating player with new banlist.\n");
-            var data = JsonConvert.SerializeObject(GetBanList()).ToString();
+            // IP addresses are only for staff who can actually lift a ban; viewers get everything else.
+            var canSeeIps = HasAnyPermission(source, PermissionsManager.Permission.OPUnban, PermissionsManager.Permission.OPAll);
+            var bans = canSeeIps ? GetBanList() : GetBanList().Select(b => new BanRecord(
+                b.playerName,
+                b.identifiers?.Where(id => !id.StartsWith("ip:")).ToList() ?? new List<string>(),
+                b.bannedUntil,
+                b.banReason,
+                b.bannedBy,
+                b.uuid)).ToList();
+            var data = JsonConvert.SerializeObject(bans).ToString();
 
             source?.TriggerEvent("vMenu:SetBanList", data);
         }
@@ -145,10 +197,9 @@ namespace vMenuServer
         /// If the ban expired in the past, then the ban will be removed and the player will be allowed to join again.
         /// If the ban is not expired yet, then the player will be kicked with a message  displaying how long their ban will remain active.
         /// </summary>
-        /// <param name="source"></param>
-        /// <param name="playerName"></param>
-        /// <param name="kickCallback"></param>
-        private void CheckForBans(int playerId, string playerName)
+        /// <param name="playerId">The (temporary) server id of the connecting player.</param>
+        /// <returns>The rejection message if the player is banned, otherwise an empty string.</returns>
+        private string CheckForBans(int playerId)
         {
             Player player = null;
             
@@ -194,7 +245,7 @@ namespace vMenuServer
             // If no record is found, stop.
             if (record == null)
             {
-                return;
+                return string.Empty;
             }
 
             // Build ban message
@@ -207,46 +258,21 @@ namespace vMenuServer
             {
                 banMessage = $"You are banned from this server. Ban time remaining: {GetRemainingTimeMessage(record.bannedUntil.Subtract(DateTime.Now))}. Additional information: {vMenuShared.ConfigManager.GetSettingsString(vMenuShared.ConfigManager.Setting.vmenu_default_ban_message_information)}.";
             }
-            
-            // Trigger Lua event to handle deferrals rejection
-            TriggerEvent("vMenu:Internal:RejectConnection", playerId, banMessage);
-            CancelEvent();
+
+            return banMessage;
         }
 
         /// <summary>
-        /// Bans the specified player from the server.
-        /// </summary>
-        /// <param name="playerId">The ID of the player who triggered the event.</param>
-        /// <param name="targetPlayer">The player that needs to be banned.</param>
-        /// <param name="banReason">The reason why the player is getting banned.</param>
-        private void BanPlayer(int playerId, int targetPlayer, string banReason)
-        {
-            Player source = null;
-
-            if (playerId != 0)
-            {
-                source = Players[playerId];
-            }
-
-            BanPlayer(playerId, targetPlayer, -1.0, banReason);
-        }
-
-        /// <summary>
-        /// Bans the specified player for a the specified amount of hours.
+        /// Bans the specified player, either permanently or for the specified amount of hours.
         /// </summary>
         /// <param name="playerId">The ID of the player who triggered the event.</param>
         /// <param name="targetPlayer">Player who needs to be banned.</param>
-        /// <param name="banDurationHours">Ban duration in hours.</param>
+        /// <param name="banDurationHours">Ban duration in hours. Ignored for permanent bans.</param>
         /// <param name="banReason">Reason for the ban.</param>
-        
-        private void BanPlayer(int playerId, int targetPlayer, double banDurationHours, string banReason)
+        /// <param name="permanent">Whether this is a permanent ban.</param>
+        private void BanPlayer(int playerId, int targetPlayer, double banDurationHours, string banReason, bool permanent)
         {
-            Player source = null;
-
-            if (playerId != 0)
-            {
-                source = Players[playerId];
-            }
+            var source = playerId > 0 && DoesPlayerExist(playerId.ToString()) ? Players[playerId] : null;
 
             if (source == null)
             {
@@ -254,25 +280,33 @@ namespace vMenuServer
                 return;
             }
 
-            if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.TempBan") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything") || IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All"))
+            var requiredPermission = permanent ? PermissionsManager.Permission.OPPermBan : PermissionsManager.Permission.OPTempBan;
+            if (HasAnyPermission(source, requiredPermission, PermissionsManager.Permission.OPAll))
             {
+                // A temporary ban needs a real duration; anything else would silently become permanent.
+                if (!permanent && (double.IsNaN(banDurationHours) || double.IsInfinity(banDurationHours) || banDurationHours <= 0))
+                {
+                    source.TriggerEvent("vMenu:Notify", "~r~Invalid ban duration, nobody was banned.");
+                    return;
+                }
+
                 Log("Source player is allowed to ban others.", LogLevel.info);
-                var target = Players[targetPlayer];
+                var target = targetPlayer > 0 && DoesPlayerExist(targetPlayer.ToString()) ? Players[targetPlayer] : null;
                 if (target != null)
                 {
                     Log("Target player is not null so moving on.", LogLevel.info);
                     if (!IsPlayerAceAllowed(target.Handle, "vMenu.DontBanMe"))
                     {
                         Log("Target player (Player) does not have the 'dont ban me' permission, so we can continue to ban them.", LogLevel.info);
-                        var banduration = banDurationHours > 0 ?
-                                                /* ban temporarily */ DateTime.Now.AddHours(banDurationHours <= 720.0 ? banDurationHours : 720.0) :
-                                                /* ban forever */ new DateTime(3000, 1, 1);
+                        var banduration = permanent ?
+                                                /* ban forever */ new DateTime(3000, 1, 1) :
+                                                /* ban temporarily */ DateTime.Now.AddHours(Math.Min(banDurationHours, 720.0));
 
                         var ban = new BanRecord(
                             GetSafePlayerName(target.Name),
                             target.Identifiers.ToList(),
                             banduration,
-                            banReason,
+                            SanitizeReason(banReason, "No reason specified."),
                             GetSafePlayerName(source.Name),
                             Guid.NewGuid()
                         );
@@ -370,16 +404,11 @@ namespace vMenuServer
         /// <param name="banRecordJsonString"></param>
         private void RemoveBanRecord(int playerId, string uuid)
         {
-            Player source = null;
-
-            if (playerId != 0)
-            {
-                source = Players[playerId];
-            }
+            var source = playerId > 0 && DoesPlayerExist(playerId.ToString()) ? Players[playerId] : null;
 
             if (source != null && !string.IsNullOrEmpty(source.Name) && source.Name.ToLower() != "**invalid**" && source.Name.ToLower() != "** invalid **")
             {
-                if (IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.Unban") || IsPlayerAceAllowed(source.Handle, "vMenu.OnlinePlayers.All") || IsPlayerAceAllowed(source.Handle, "vMenu.Everything"))
+                if (HasAnyPermission(source, PermissionsManager.Permission.OPUnban, PermissionsManager.Permission.OPAll))
                 {
                     var banRecord = GetBanList().Find((ban) =>
                     {

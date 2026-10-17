@@ -2943,6 +2943,24 @@ namespace vMenuClient
         /// </summary>
         /// <param name="saveName"></param>
         /// <param name="appendWeapons"></param>
+        /// <summary>
+        /// Whether a weapon from a saved (or shared) loadout may be given to the player. The saved Perm is an
+        /// enum number that shifts whenever a weapon permission is added, and a loadout may not have been
+        /// written by this player at all, so the permission is looked up fresh from the current weapon list by
+        /// hash. Addon weapons are only in that list when the server has already allowed them for this player.
+        /// </summary>
+        private static bool IsLoadoutWeaponAllowed(ValidWeapon weapon)
+        {
+            foreach (var known in ValidWeapons.WeaponList)
+            {
+                if (known.Hash == weapon.Hash && !string.IsNullOrEmpty(known.SpawnName))
+                {
+                    return known.IsAddon || IsAllowed(known.Perm);
+                }
+            }
+            return false;
+        }
+
         public static async Task SpawnWeaponLoadoutAsync(string saveName, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify)
         {
 
@@ -2994,14 +3012,20 @@ namespace vMenuClient
                     Game.PlayerPed.Weapons.RemoveAll();
                 }
 
-                if (!ignoreSettingsAndPerms && loadout.Any((wp) => !IsAllowed(wp.Perm)))
+                if (!ignoreSettingsAndPerms && loadout.Any((wp) => !IsLoadoutWeaponAllowed(wp)))
                 {
                     Notify.Alert("One or more weapon(s) in this saved loadout are not allowed on this server. Those weapons will not be loaded.");
                 }
 
                 foreach (var w in loadout)
                 {
-                    if (ignoreSettingsAndPerms || IsAllowed(w.Perm))
+                    if (!IsWeaponValid(w.Hash))
+                    {
+                        // Addon weapon whose resource isn't running (any more), or a hash that was never a weapon.
+                        continue;
+                    }
+
+                    if (ignoreSettingsAndPerms || IsLoadoutWeaponAllowed(w))
                     {
                         GiveWeaponToPed(Game.PlayerPed.Handle, w.Hash, w.CurrentAmmo > -1 ? w.CurrentAmmo : w.GetMaxAmmo, false, false);
 
@@ -3091,6 +3115,7 @@ namespace vMenuClient
                         Name = vw.Name,
                         Perm = vw.Perm,
                         SpawnName = vw.SpawnName,
+                        IsAddon = vw.IsAddon,
                         Components = new Dictionary<string, uint>(),
                         CurrentAmmo = GetAmmoInPedWeapon(Game.PlayerPed.Handle, vw.Hash)
                     };

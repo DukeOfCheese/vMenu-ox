@@ -423,7 +423,7 @@ namespace vMenuServer
                                     new DateTime(3000, 1, 1),
                                     reason,
                                     "Server Console",
-                                    new Guid()
+                                    Guid.NewGuid()
                                 );
 
                                 BanManager.AddBan(ban);

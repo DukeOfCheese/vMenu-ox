@@ -140,6 +140,11 @@ namespace vMenuServer
 
         public AddonsConfig()
         {
+            // The Lua side hands the config over through this export. It must not be an event handler:
+            // on this runtime C# event handlers also accept events sent by clients, which would let any
+            // player replace the addon config (and the ACE each addon is gated behind).
+            Exports.Add("LoadConfig", new Action<object>(json => LoadConfig(json as string)));
+
             // server/addons.lua also sends this unprompted on resource start, so whichever runtime
             // comes up second still gets the config across.
             TriggerEvent("vMenu:Internal:RequestConfig");
@@ -165,9 +170,16 @@ namespace vMenuServer
         }
 
         #region Config intake
-        [EventHandler("vMenu:Internal:LoadConfig")]
+        private const int MaxConfigLength = 4 * 1024 * 1024;
+
         internal void LoadConfig(string json)
         {
+            if (json == null || json.Length > MaxConfigLength)
+            {
+                DebugLog.Log($"[Addons] Ignoring a Lua config hand-over that was empty or larger than {MaxConfigLength} characters.", DebugLog.LogLevel.error);
+                return;
+            }
+
             try
             {
                 config = JsonConvert.DeserializeObject<LuaConfig>(json) ?? new LuaConfig();

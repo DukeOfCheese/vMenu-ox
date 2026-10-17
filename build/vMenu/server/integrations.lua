@@ -5,8 +5,12 @@ CreateThread(function()
     end
 end)
 
--- WARNING: The internal vMenu events used here also use IsPlayerAceAllowed server sided to ensure the source player is not event
--- exploiting. If you write a custom event, ensure you also include those checks to prevent abuse.
+-- The ban handlers live in the C# script (vMenuServer/BanManager.cs) and are reached through exports,
+-- never through events: on the C# runtime every event handler also accepts events sent by clients, so a
+-- handler taking the acting player's id as an argument could be called with an admin's id by anyone.
+-- Always pass the real network `source` as the first argument. The C# side checks that player's ACE
+-- permissions before doing anything.
+local vMenu = exports[GetCurrentResourceName()]
 
 ---@class TempBanPlayer
 ---@field source integer
@@ -14,7 +18,7 @@ end)
 ---@field banDurationHours number
 ---@field banReason string
 RegisterNetEvent("vMenu:TempBanPlayer", function(targetPlayer, banDurationHours, banReason)
-    TriggerEvent("vMenu:Internal:TempBanPlayer", source, targetPlayer, banDurationHours, banReason)
+    vMenu:TempBanPlayer(source, targetPlayer, banDurationHours, banReason)
 end)
 
 ---@class PermBanPlayer
@@ -22,31 +26,28 @@ end)
 ---@field targetPlayer integer
 ---@field banReason string
 RegisterNetEvent("vMenu:PermBanPlayer", function(targetPlayer, banReason)
-    TriggerEvent("vMenu:Internal:PermBanPlayer", source, targetPlayer, banReason)
+    vMenu:PermBanPlayer(source, targetPlayer, banReason)
 end)
 
--- Store deferrals for each connecting player
-local connectingDeferrals = {}
-
-RegisterNetEvent("playerConnecting", function(playerName, setKickReason, deferrals)
+-- A server-only event: AddEventHandler, so clients cannot trigger it themselves.
+AddEventHandler("playerConnecting", function(_, _, deferrals)
     local playerId = source
-    connectingDeferrals[playerId] = deferrals
-    
-    -- Trigger C# ban check
-    TriggerEvent("vMenu:Internal:playerConnecting", playerId, playerName)
-    
-    -- Clean up deferrals after a timeout (in case player connects successfully)
-    SetTimeout(30000, function()
-        connectingDeferrals[playerId] = nil
-    end)
-end)
+    deferrals.defer()
+    -- FiveM requires a tick between defer() and the next deferral call.
+    Wait(0)
+    deferrals.update("Checking ban status...")
 
--- Handle ban rejection from C#
-AddEventHandler("vMenu:Internal:RejectConnection", function(playerId, banMessage)
-    local deferrals = connectingDeferrals[playerId]
-    if deferrals then
+    local ok, banMessage = pcall(function()
+        return vMenu:CheckBan(playerId)
+    end)
+
+    if ok and type(banMessage) == "string" and banMessage ~= "" then
         deferrals.done(banMessage)
-        connectingDeferrals[playerId] = nil
+    else
+        if not ok then
+            lib.print.error(("Ban check failed for connecting player %s: %s"):format(playerId, banMessage))
+        end
+        deferrals.done()
     end
 end)
 
@@ -54,13 +55,14 @@ end)
 ---@field source integer
 ---@field uuid string
 RegisterNetEvent("vMenu:RequestPlayerUnban", function(uuid)
-    TriggerEvent("vMenu:Internal:RequestedPlayerUnban", source, uuid)
+    if type(uuid) ~= "string" then return end
+    vMenu:UnbanPlayer(source, uuid)
 end)
 
 ---@class RequestBanList
 ---@field source integer
 RegisterNetEvent("vMenu:RequestBanList", function()
-    TriggerEvent("vMenu:Internal:RequestBanList", source)
+    vMenu:SendBanList(source)
 end)
 
 -- Refreshes Show Player Names
