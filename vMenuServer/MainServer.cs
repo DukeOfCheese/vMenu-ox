@@ -1163,7 +1163,6 @@ namespace vMenuServer
             //if (GetConvar("vMenuLogKickActions", "true") == "true")
             if (GetSettingsBool(Setting.vmenu_log_kick_actions))
             {
-                var file = LoadResourceFile(GetCurrentResourceName(), "vmenu.log") ?? "";
                 var date = DateTime.Now;
                 var formattedDate = (date.Day < 10 ? "0" : "") + date.Day + "-" +
                     (date.Month < 10 ? "0" : "") + date.Month + "-" +
@@ -1171,8 +1170,7 @@ namespace vMenuServer
                     (date.Hour < 10 ? "0" : "") + date.Hour + ":" +
                     (date.Minute < 10 ? "0" : "") + date.Minute + ":" +
                     (date.Second < 10 ? "0" : "") + date.Second;
-                var outputFile = file + $"[\t{formattedDate}\t] [KICK ACTION] {kickLogMesage}\n";
-                SaveResourceFile(GetCurrentResourceName(), "vmenu.log", outputFile, -1);
+                BanManager.AppendToLogFile($"[\t{formattedDate}\t] [KICK ACTION] {kickLogMesage}\n");
                 Debug.WriteLine("^3[vMenu] [KICK]^7 " + kickLogMesage + "\n");
             }
         }

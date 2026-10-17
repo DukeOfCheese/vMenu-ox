@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -498,7 +499,6 @@ namespace vMenuServer
         {
             if (vMenuShared.ConfigManager.GetSettingsBool(vMenuShared.ConfigManager.Setting.vmenu_log_ban_actions))
             {
-                var file = LoadResourceFile(GetCurrentResourceName(), "vmenu.log") ?? "";
                 var date = DateTime.Now;
                 var formattedDate = (date.Day < 10 ? "0" : "") + date.Day + "-" +
                     (date.Month < 10 ? "0" : "") + date.Month + "-" +
@@ -506,9 +506,25 @@ namespace vMenuServer
                     (date.Hour < 10 ? "0" : "") + date.Hour + ":" +
                     (date.Minute < 10 ? "0" : "") + date.Minute + ":" +
                     (date.Second < 10 ? "0" : "") + date.Second;
-                var outputFile = file + $"[\t{formattedDate}\t] [BAN ACTION] {banActionMessage}\n";
-                SaveResourceFile(GetCurrentResourceName(), "vmenu.log", outputFile, -1);
+                AppendToLogFile($"[\t{formattedDate}\t] [BAN ACTION] {banActionMessage}\n");
                 Debug.WriteLine("^2[vMenu] [SUCCESS] [BAN]^7 " + banActionMessage);
+            }
+        }
+
+        /// <summary>
+        /// Appends a line to vmenu.log in the resource folder. SaveResourceFile can only replace the
+        /// whole file, which meant reading and rewriting the entire (ever growing) log for every action.
+        /// </summary>
+        /// <param name="line"></param>
+        internal static void AppendToLogFile(string line)
+        {
+            try
+            {
+                File.AppendAllText(Path.Combine(GetResourcePath(GetCurrentResourceName()), "vmenu.log"), line);
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"^1[vMenu] [ERROR]^7 Could not write to vmenu.log: {e.Message}");
             }
         }
 

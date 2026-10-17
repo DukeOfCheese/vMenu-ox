@@ -603,12 +603,40 @@ namespace vMenuShared
             {
                 // Send the raw ACE result for each permission; the client applies the parent permissions
                 // and the staff-only convar itself (see IsAllowedClient).
-                foreach (var p in Enum.GetValues(typeof(Permission)))
+                // Since the client resolves parents, a permission whose parent (vMenu.Everything or the
+                // menu's .All, per GetPermissionAndParentPermissions) is already granted needs no ACE
+                // lookup of its own and is left out. vMenu.Everything alone therefore grants everything.
+                if (IsAceAllowedExact(player.Handle, Permission.Everything))
                 {
-                    var permission = (Permission)p;
-                    if (!perms.ContainsKey(permission))
+                    perms.Add(Permission.Everything, true);
+                }
+                else
+                {
+                    perms.Add(Permission.Everything, false);
+                    // .All permissions come before their menu's other permissions in the enum, so they are
+                    // already known when the children are reached. Out of order would only cost lookups.
+                    foreach (var p in Enum.GetValues(typeof(Permission)))
                     {
-                        perms.Add(permission, IsAceAllowedExact(player.Handle, permission));
+                        var permission = (Permission)p;
+                        if (perms.ContainsKey(permission))
+                        {
+                            continue;
+                        }
+
+                        var grantedByParent = false;
+                        foreach (var parent in GetPermissionAndParentPermissions(permission))
+                        {
+                            if (parent != permission && perms.TryGetValue(parent, out var parentAllowed) && parentAllowed)
+                            {
+                                grantedByParent = true;
+                                break;
+                            }
+                        }
+
+                        if (!grantedByParent)
+                        {
+                            perms.Add(permission, IsAceAllowedExact(player.Handle, permission));
+                        }
                     }
                 }
             }
