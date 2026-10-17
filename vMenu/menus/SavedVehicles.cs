@@ -98,7 +98,7 @@ namespace vMenuClient.menus
             vehicleCategoryMenu.OnItemSelect += async (sender, item, index) =>
             {
                 // Create new category
-                if (item.ItemData is not SavedVehicleCategory)
+                if (item.ItemData is not SavedVehicleCategory savedVehicleCategory)
                 {
                     var name = await GetUserInput(windowTitle: "Enter a category name.", maxInputLength: 30);
                     if (string.IsNullOrEmpty(name) || name.ToLower() == "uncategorized" || name.ToLower() == "create new")
@@ -135,7 +135,7 @@ namespace vMenuClient.menus
                 // Select an old category
                 else
                 {
-                    currentCategory = item.ItemData;
+                    currentCategory = savedVehicleCategory;
                 }
 
                 bool isUncategorized = currentCategory.Name == "Uncategorized";
@@ -594,7 +594,13 @@ namespace vMenuClient.menus
             };
 
             // Update category preview icon
-            selectedVehicleMenu.OnListIndexChange += (_, listItem, _, newSelectionIndex, _) => listItem.RightIcon = listItem.ItemData[newSelectionIndex];
+            selectedVehicleMenu.OnListIndexChange += (_, listItem, _, newSelectionIndex, _) =>
+            {
+                if (listItem.ItemData is List<MenuItem.Icon> icons)
+                {
+                    listItem.RightIcon = icons[newSelectionIndex];
+                }
+            };
 
             // Update vehicle's category
             selectedVehicleMenu.OnListItemSelect += async (_, listItem, listIndex, _) =>
@@ -780,7 +786,11 @@ namespace vMenuClient.menus
         /// <returns>A bool, true if successfull, false if unsuccessfull</returns>
         private bool UpdateSelectedVehicleMenu(MenuItem selectedItem, Menu parentMenu = null)
         {
-            var vehInfo = selectedItem.ItemData;
+            if (selectedItem.ItemData is not KeyValuePair<string, VehicleInfo> vehInfo)
+            {
+                return false;
+            }
+
             List<string> categoryNames = GetAllCategoryNames();
             List<MenuItem.Icon> categoryIcons = GetCategoryIcons(categoryNames);
             setCategoryBtn.ItemData = categoryIcons;
