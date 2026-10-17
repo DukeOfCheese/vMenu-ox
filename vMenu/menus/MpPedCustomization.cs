@@ -26,6 +26,15 @@ namespace vMenuClient.menus
         public Menu createCharacterMenu = new("Create Character", "Create A New Character");
         public Menu savedCharactersMenu = new("vMenu", "Manage Saved Characters");
         public Menu savedCharactersCategoryMenu = new("Category", "I get updated at runtime!");
+
+        // Rebuilt every time a category is opened; kept so the select handler can match items by reference
+        // instead of by position.
+        private MenuItem categoryRenameBtn;
+        private MenuItem categoryDescriptionBtn;
+        private MenuItem categoryDeleteBtn;
+        private MenuCheckboxItem categoryDeleteCharsBtn;
+
+        private MenuListItem faceExpressionList;
         public Menu inheritanceMenu = new("vMenu", "Character Inheritance Options");
         public Menu appearanceMenu = new("vMenu", "Character Appearance Options");
         public Menu faceShapeMenu = new("vMenu", "Character Face Shape Options");
@@ -202,7 +211,7 @@ namespace vMenuClient.menus
             SetFacialIdleAnimOverride(Game.PlayerPed.Handle, currentCharacter.FacialExpression ?? facial_expressions[0], null);
 
             // Set the facial expression item list to the correct saved index.
-            if (createCharacterMenu.GetMenuItems().ElementAt(6) is MenuListItem li)
+            if (faceExpressionList is MenuListItem li)
             {
                 var index = facial_expressions.IndexOf(currentCharacter.FacialExpression ?? facial_expressions[0]);
                 if (index < 0)
@@ -1026,7 +1035,7 @@ namespace vMenuClient.menus
 
             var saveButton = new MenuItem("Save Character", "Save your character.");
             var exitNoSave = new MenuItem("Exit Without Saving", "Are you sure? All unsaved work will be lost.");
-            var faceExpressionList = new MenuListItem("Facial Expression", new List<string> { "Normal", "Happy", "Angry", "Aiming", "Injured", "Stressed", "Smug", "Sulk" }, 0, "Set a facial expression that will be used whenever your ped is idling.");
+            faceExpressionList = new MenuListItem("Facial Expression", new List<string> { "Normal", "Happy", "Angry", "Aiming", "Injured", "Stressed", "Smug", "Sulk" }, 0, "Set a facial expression that will be used whenever your ped is idling.");
 
             inheritanceButton.Label = "→→→";
             appearanceButton.Label = "→→→";
@@ -1988,7 +1997,7 @@ namespace vMenuClient.menus
 
                     currentCharacter.FacialExpression = facial_expressions[_facialExpressionSelection];
 
-                    ((MenuListItem)createCharacterMenu.GetMenuItems()[9]).ListIndex = _facialExpressionSelection;
+                    faceExpressionList.ListIndex = _facialExpressionSelection;
 
                     SetPlayerClothing();
                 }
@@ -2668,6 +2677,11 @@ namespace vMenuClient.menus
                 savedCharactersCategoryMenu.AddMenuItem(deleteBtn);
                 savedCharactersCategoryMenu.AddMenuItem(deleteCharsBtn);
 
+                categoryRenameBtn = renameBtn;
+                categoryDescriptionBtn = descriptionBtn;
+                categoryDeleteBtn = deleteBtn;
+                categoryDeleteCharsBtn = deleteCharsBtn;
+
                 var spacer = GetSpacerMenuItem("↓ Characters ↓");
                 savedCharactersCategoryMenu.AddMenuItem(spacer);
 
@@ -2788,7 +2802,12 @@ namespace vMenuClient.menus
 
             savedCharactersCategoryMenu.OnItemSelect += async (sender, item, index) =>
             {
-                switch (index)
+                // Matched by reference: positions shift if the menu is ever filtered or reordered.
+                var action = item == categoryRenameBtn ? 0
+                    : item == categoryDescriptionBtn ? 1
+                    : item == categoryDeleteBtn ? 3
+                    : -1;
+                switch (action)
                 {
                     // Rename Category
                     case 0:
@@ -2883,7 +2902,7 @@ namespace vMenuClient.menus
                     case 3:
                         if (item.Label == "Are you sure?")
                         {
-                            bool deletePeds = (sender.GetMenuItems().ElementAt(4) as MenuCheckboxItem).Checked;
+                            bool deletePeds = categoryDeleteCharsBtn?.Checked ?? false;
 
                             item.Label = "";
                             DeleteResourceKvp("mp_character_category_" + currentCategory.Name);
@@ -2915,7 +2934,8 @@ namespace vMenuClient.menus
                                     {
                                         updatedCount++;
 
-                                        DeleteResourceKvp("mp_ped_" + tmpData.SaveName);
+                                        // SaveName already carries the "mp_ped_" prefix.
+                                        DeleteResourceKvp(tmpData.SaveName);
                                     }
                                     else
                                     {
@@ -2953,7 +2973,7 @@ namespace vMenuClient.menus
 
                         setCategoryBtn.ItemData = categoryIcons;
                         setCategoryBtn.ListItems = categoryNames;
-                        setCategoryBtn.ListIndex = nameIndex == 1 ? 0 : nameIndex;
+                        setCategoryBtn.ListIndex = nameIndex < 0 ? 0 : nameIndex;
                         setCategoryBtn.RightIcon = categoryIcons[setCategoryBtn.ListIndex];
                         selectedSavedCharacterManageName = item.Text;
                         manageSavedCharacterMenu.MenuSubtitle = item.Text;

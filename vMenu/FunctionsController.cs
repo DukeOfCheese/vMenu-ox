@@ -100,9 +100,18 @@ namespace vMenuClient
         /// <summary>
         /// Setup the required tick functions
         /// </summary>
+        private bool tickFunctionsSetUp = false;
+
         [EventHandler("vMenu:SetupTickFunctions")]
         public void SetupTickFunctions()
         {
+            // A second trigger would register every tick handler twice.
+            if (tickFunctionsSetUp)
+            {
+                return;
+            }
+            tickFunctionsSetUp = true;
+
             // Always needed
             Tick += AnimationsAndInteractions;
             Tick += PlayerClothingAnimationsController;
@@ -2264,6 +2273,14 @@ namespace vMenuClient
                 }
                 else
                 {
+                    // Drop tags of players who have left (or gone out of scope).
+                    var presentIds = new HashSet<int>(Players.Select(pl => pl.ServerId));
+                    foreach (var staleId in gamerTags.Keys.Where(k => !presentIds.Contains(k)).ToList())
+                    {
+                        RemoveMpGamerTag(gamerTags[staleId]);
+                        gamerTags.Remove(staleId);
+                    }
+
                     foreach (var p in Players)
                     {
                         int id = p.ServerId;
@@ -2278,7 +2295,8 @@ namespace vMenuClient
                                 : 0;
                             
                             var dist = p.Character.Position.DistanceToSquared(Game.PlayerPed.Position);
-                            var closeEnough = dist < playerNamesDistance;
+                            // dist is squared, so compare against the squared range.
+                            var closeEnough = dist < playerNamesDistance * playerNamesDistance;
                             if (gamerTags.ContainsKey(id))
                             {
                                 if (!closeEnough)
@@ -2346,7 +2364,8 @@ namespace vMenuClient
             await Delay(500);
             if (MainMenu.OnlinePlayersMenu.PlayersWaypointList.Count > 0)
             {
-                foreach (var serverId in MainMenu.OnlinePlayersMenu.PlayersWaypointList)
+                // Iterate a copy: the online players menu can change the list during the awaits below.
+                foreach (var serverId in MainMenu.OnlinePlayersMenu.PlayersWaypointList.ToList())
                 {
                     var player = MainMenu.PlayersList.FirstOrDefault(a => a.ServerId == serverId);
 

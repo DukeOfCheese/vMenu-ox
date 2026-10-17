@@ -1,6 +1,8 @@
 -- You should not be editing this file unless you know what you are doing. This shouldn't need to be changed.
 -- For integrations, check client/integrations.lua
 
+local format = string.format
+
 exports(
 	"inputDialog",
 	---@param windowTitle string
@@ -39,7 +41,7 @@ exports(
 	end
 )
 
-function RgbToHex(r, g, b)
+local function RgbToHex(r, g, b)
 	r = math.max(0, math.min(255, r))
 	g = math.max(0, math.min(255, g))
 	b = math.max(0, math.min(255, b))
@@ -85,7 +87,7 @@ CreateThread(function()
 	-- setr keep_player_head_props false (this is configured in your permissions.cfg)
 
 	-- this is just to replace needing to run a constant thread loop on the client
-	if GetConvar("keep_player_head_props", "false") == "false" then
+	if GetConvar("keep_player_head_props", "false") == "true" then
 		lib.onCache("ped", function(value)
 			SetPedCanLosePropsOnDamage(value, false, 0)
 			SetPedConfigFlag(value, 427, true)

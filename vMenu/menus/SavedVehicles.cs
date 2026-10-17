@@ -424,7 +424,7 @@ namespace vMenuClient.menus
 
                     setCategoryBtn.ItemData = categoryIcons;
                     setCategoryBtn.ListItems = categoryNames;
-                    setCategoryBtn.ListIndex = nameIndex == 1 ? 0 : nameIndex;
+                    setCategoryBtn.ListIndex = nameIndex < 0 ? 0 : nameIndex;
                     setCategoryBtn.RightIcon = categoryIcons[setCategoryBtn.ListIndex];
 
                     selectedVehicleMenu.MenuSubtitle = $"{vehInfo.Key.Substring(4)} ({vehInfo.Value.name})";

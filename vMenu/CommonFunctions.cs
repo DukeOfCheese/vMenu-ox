@@ -3570,17 +3570,30 @@ namespace vMenuClient
                     message = message.Substring(0, 128);
                 }
 
-                MainMenu.PlayersList.RequestPlayerList();
-                await MainMenu.PlayersList.WaitRequested();
-
-                var name = MainMenu.PlayersList.FirstOrDefault(plr => plr.ServerId == sourceServerId)?.Name ?? "**Invalid**";
-
                 if (MainMenu.MiscSettingsMenu == null || MainMenu.MiscSettingsMenu.MiscDisablePrivateMessages)
                 {
                     return;
                 }
 
-                var sourcePlayer = new Player(GetPlayerFromServerId(sourceServerId));
+                // Only ask the server for the player list when the sender isn't in the one we already have.
+                var name = MainMenu.PlayersList.FirstOrDefault(plr => plr.ServerId == sourceServerId)?.Name;
+                if (name == null)
+                {
+                    MainMenu.PlayersList.RequestPlayerList();
+                    await MainMenu.PlayersList.WaitRequested();
+                    name = MainMenu.PlayersList.FirstOrDefault(plr => plr.ServerId == sourceServerId)?.Name ?? "**Invalid**";
+                }
+
+                // A sender outside this client's scope has no local player (or ped) to take a headshot of;
+                // new Player(-1) would resolve to our own ped.
+                var localPlayerId = GetPlayerFromServerId(sourceServerId);
+                if (localPlayerId == -1)
+                {
+                    Notify.Custom($"{(sent ? "PM To" : "PM From")}: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
+                    return;
+                }
+
+                var sourcePlayer = new Player(localPlayerId);
                 if (sourcePlayer != null)
                 {
                     if (sourcePlayer.Character == null) { return; }
@@ -3613,11 +3626,11 @@ namespace vMenuClient
                     {
                         if (sent)
                         {
-                            Notify.Custom($"PM From: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
+                            Notify.Custom($"PM To: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
                         }
                         else
                         {
-                            Notify.Custom($"PM To: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
+                            Notify.Custom($"PM From: <C>{GetSafePlayerName(name)}</C>. Message: {message}");
                         }
                     }
                     UnregisterPedheadshot(headshotHandle);

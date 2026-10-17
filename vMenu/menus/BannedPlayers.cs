@@ -154,11 +154,11 @@ namespace vMenuClient.menus
                     // gave builtin.everyone access to view the banlist.
                     if (id.StartsWith("ip:") && !IsAllowed(Permission.OPUnban))
                     {
-                        playerIdentifiersItem.Description += $"{colors[i]}ip: (hidden) ";
+                        playerIdentifiersItem.Description += $"{colors[i % colors.Count]}ip: (hidden) ";
                     }
                     else
                     {
-                        playerIdentifiersItem.Description += $"{colors[i]}{id.Replace(":", ": ")} ";
+                        playerIdentifiersItem.Description += $"{colors[i % colors.Count]}{id.Replace(":", ": ")} ";
                     }
                     i++;
                 }
@@ -207,7 +207,15 @@ namespace vMenuClient.menus
         public void UpdateBanList(string banJsonString)
         {
             banlist.Clear();
-            banlist = JsonConvert.DeserializeObject<List<BanRecord>>(banJsonString);
+            try
+            {
+                banlist = JsonConvert.DeserializeObject<List<BanRecord>>(banJsonString) ?? new List<BanRecord>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Could not read the ban list: {ex.Message}");
+                banlist = new List<BanRecord>();
+            }
             UpdateBans();
         }
 

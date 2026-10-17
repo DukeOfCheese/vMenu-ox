@@ -196,8 +196,15 @@ namespace vMenuClient
 
         public async Task WaitRequested()
         {
+            // A reply that never arrives must not hang every player list (and private messages) forever.
+            var started = GetGameTimer();
             while (updatingPlayerList > 0)
             {
+                if (GetGameTimer() - started > 5000)
+                {
+                    updatingPlayerList = 0;
+                    break;
+                }
                 await BaseScript.Delay(0);
             }
         }
