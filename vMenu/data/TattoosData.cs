@@ -47,6 +47,7 @@ namespace vMenuClient.data
 
     internal static class MaleTattoosCollection
     {
+        internal static List<Tattoo> HAIR = new();
         internal static List<Tattoo> TORSO = new();
         internal static List<Tattoo> HEAD = new();
         internal static List<Tattoo> LEFT_ARM = new();
@@ -54,10 +55,12 @@ namespace vMenuClient.data
         internal static List<Tattoo> LEFT_LEG = new();
         internal static List<Tattoo> RIGHT_LEG = new();
         internal static List<Tattoo> BADGES = new();
+        internal static List<Tattoo> ADDONS = new();
     }
 
     internal struct FemaleTattoosCollection
     {
+        internal static List<Tattoo> HAIR = new();
         internal static List<Tattoo> TORSO = new();
         internal static List<Tattoo> HEAD = new();
         internal static List<Tattoo> LEFT_ARM = new();
@@ -65,6 +68,7 @@ namespace vMenuClient.data
         internal static List<Tattoo> LEFT_LEG = new();
         internal static List<Tattoo> RIGHT_LEG = new();
         internal static List<Tattoo> BADGES = new();
+        internal static List<Tattoo> ADDONS = new();
     }
 
     internal static class TattoosData
@@ -81,101 +85,120 @@ namespace vMenuClient.data
 
             foreach (var tattoo in Newtonsoft.Json.JsonConvert.DeserializeObject<List<Tattoo>>(Properties.Resources.overlays))
             {
-                if (!string.IsNullOrEmpty(tattoo.name))
+                if (string.IsNullOrEmpty(tattoo.name))
                 {
-                    if (tattoo.type == "TYPE_TATTOO" && !tattoo.name.ToLower().Contains("hair_"))
-                    {
-                        switch (tattoo.zoneId)
-                        {
-                            case TattooZone.ZONE_TORSO:
-                                if (tattoo.gender is 0 or 2)
-                                {
-                                    MaleTattoosCollection.TORSO.Add(tattoo);
-                                }
-                                if (tattoo.gender is 1 or 2)
-                                {
-                                    FemaleTattoosCollection.TORSO.Add(tattoo);
-                                }
-                                break;
-                            case TattooZone.ZONE_HEAD:
-                                if (tattoo.gender is 0 or 2)
-                                {
-                                    MaleTattoosCollection.HEAD.Add(tattoo);
-                                }
-                                if (tattoo.gender is 1 or 2)
-                                {
-                                    FemaleTattoosCollection.HEAD.Add(tattoo);
-                                }
-                                break;
-                            case TattooZone.ZONE_LEFT_ARM:
-                                if (tattoo.gender is 0 or 2)
-                                {
-                                    MaleTattoosCollection.LEFT_ARM.Add(tattoo);
-                                }
-                                if (tattoo.gender is 1 or 2)
-                                {
-                                    FemaleTattoosCollection.LEFT_ARM.Add(tattoo);
-                                }
-                                break;
-                            case TattooZone.ZONE_RIGHT_ARM:
-                                if (tattoo.gender is 0 or 2)
-                                {
-                                    MaleTattoosCollection.RIGHT_ARM.Add(tattoo);
-                                }
-                                if (tattoo.gender is 1 or 2)
-                                {
-                                    FemaleTattoosCollection.RIGHT_ARM.Add(tattoo);
-                                }
-                                break;
-                            case TattooZone.ZONE_LEFT_LEG:
-                                if (tattoo.gender is 0 or 2)
-                                {
-                                    MaleTattoosCollection.LEFT_LEG.Add(tattoo);
-                                }
-                                if (tattoo.gender is 1 or 2)
-                                {
-                                    FemaleTattoosCollection.LEFT_LEG.Add(tattoo);
-                                }
-                                break;
-                            case TattooZone.ZONE_RIGHT_LEG:
-                                if (tattoo.gender is 0 or 2)
-                                {
-                                    MaleTattoosCollection.RIGHT_LEG.Add(tattoo);
-                                }
-                                if (tattoo.gender is 1 or 2)
-                                {
-                                    FemaleTattoosCollection.RIGHT_LEG.Add(tattoo);
-                                }
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    else if (tattoo.type == "TYPE_BADGE" && !tattoo.name.ToLower().Contains("hair_"))
-                    {
-                        if (tattoo.gender is 0 or 2)
-                        {
-                            MaleTattoosCollection.BADGES.Add(tattoo);
-                        }
-                        if (tattoo.gender is 1 or 2)
-                        {
-                            FemaleTattoosCollection.BADGES.Add(tattoo);
-                        }
-                    }
-                    else if (tattoo.name.ToLower().Contains("hair_"))
-                    {
-                        if (tattoo.gender is 0 or 2)
-                        {
+                    continue;
+                }
 
-                        }
-                        if (tattoo.gender is 1 or 2)
-                        {
-
-                        }
+                if (tattoo.name.ToLower().Contains("hair_"))
+                {
+                    if (tattoo.gender is 0 or 2)
+                    {
+                        MaleTattoosCollection.HAIR.Add(tattoo);
+                    }
+                    if (tattoo.gender is 1 or 2)
+                    {
+                        FemaleTattoosCollection.HAIR.Add(tattoo);
+                    }
+                }
+                else if (tattoo.type == "TYPE_TATTOO")
+                {
+                    switch (tattoo.zoneId)
+                    {
+                        case TattooZone.ZONE_TORSO:
+                            if (tattoo.gender is 0 or 2)
+                            {
+                                MaleTattoosCollection.TORSO.Add(tattoo);
+                            }
+                            if (tattoo.gender is 1 or 2)
+                            {
+                                FemaleTattoosCollection.TORSO.Add(tattoo);
+                            }
+                            break;
+                        case TattooZone.ZONE_HEAD:
+                            if (tattoo.gender is 0 or 2)
+                            {
+                                MaleTattoosCollection.HEAD.Add(tattoo);
+                            }
+                            if (tattoo.gender is 1 or 2)
+                            {
+                                FemaleTattoosCollection.HEAD.Add(tattoo);
+                            }
+                            break;
+                        case TattooZone.ZONE_LEFT_ARM:
+                            if (tattoo.gender is 0 or 2)
+                            {
+                                MaleTattoosCollection.LEFT_ARM.Add(tattoo);
+                            }
+                            if (tattoo.gender is 1 or 2)
+                            {
+                                FemaleTattoosCollection.LEFT_ARM.Add(tattoo);
+                            }
+                            break;
+                        case TattooZone.ZONE_RIGHT_ARM:
+                            if (tattoo.gender is 0 or 2)
+                            {
+                                MaleTattoosCollection.RIGHT_ARM.Add(tattoo);
+                            }
+                            if (tattoo.gender is 1 or 2)
+                            {
+                                FemaleTattoosCollection.RIGHT_ARM.Add(tattoo);
+                            }
+                            break;
+                        case TattooZone.ZONE_LEFT_LEG:
+                            if (tattoo.gender is 0 or 2)
+                            {
+                                MaleTattoosCollection.LEFT_LEG.Add(tattoo);
+                            }
+                            if (tattoo.gender is 1 or 2)
+                            {
+                                FemaleTattoosCollection.LEFT_LEG.Add(tattoo);
+                            }
+                            break;
+                        case TattooZone.ZONE_RIGHT_LEG:
+                            if (tattoo.gender is 0 or 2)
+                            {
+                                MaleTattoosCollection.RIGHT_LEG.Add(tattoo);
+                            }
+                            if (tattoo.gender is 1 or 2)
+                            {
+                                FemaleTattoosCollection.RIGHT_LEG.Add(tattoo);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else if (tattoo.type == "TYPE_BADGE")
+                {
+                    if (tattoo.gender is 0 or 2)
+                    {
+                        MaleTattoosCollection.BADGES.Add(tattoo);
+                    }
+                    if (tattoo.gender is 1 or 2)
+                    {
+                        FemaleTattoosCollection.BADGES.Add(tattoo);
                     }
                 }
             }
 
+            // Custom tattoos authored in the server's Lua config (Config.Addons.tattoos). The addons
+            // payload always lands before any menu is built, so this is complete by the time the
+            // tattoo menu calls in here.
+            if (AddonsManager.Tattoos.Count > 0)
+            {
+                foreach (Tattoo tattoo in AddonsManager.Tattoos)
+                {
+                    if (tattoo.gender is 0 or 2)
+                    {
+                        MaleTattoosCollection.ADDONS.Add(tattoo);
+                    }
+                    if (tattoo.gender is 1 or 2)
+                    {
+                        FemaleTattoosCollection.ADDONS.Add(tattoo);
+                    }
+                }
+            }
         }
     }
 }

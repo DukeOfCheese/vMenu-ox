@@ -2,7 +2,8 @@ Config = {
     EnableServerList = GetConvarBool("vmenu_disable_server_info_convars", false) == false, -- If you want to show the framework version in your server list info convars.
     DisableAI = GetConvarBool("vmenu_disable_ai", false), -- This will disable NPC spawning in bucket 0 (if you don't touch buckets, you don't need to worry about this). This is useful for people who want a quick and easy way to disable AI.
 
-    -- Addon content. Every entry is gated by a FiveM ACE permission that is evaluated server-side
+    -- Addon content. Every entry (except `tattoos`, see below) is gated by
+    -- a FiveM ACE permission that is evaluated server-side
     -- before the item is ever sent to a client, so a player who is not permitted never learns the
     -- item exists. Permitted items are merged into the normal menus: an allowed weapon shows under
     -- Weapons > Rifles, an allowed vehicle under its vehicle class, an allowed ped under its category.
@@ -57,6 +58,16 @@ Config = {
             { spawn = 'adder',             label = 'Adder' },
             { spawn = 'baller',            label = 'Baller' },
             { spawn = 'dodgehemihellcat',  label = 'Dodge Hemi Hellcat' },
+        },
+
+        -- NOT ACE gated (everyone with access to MP Ped Customization sees them).
+        -- Custom tattoos from a streamed overlay pack, listed under MP Ped Customization > Tattoos >
+        -- Addon Tattoos. `collection` is the overlay collection (the .xml name without extension) and
+        -- `name` is the tattoo's name inside it; both are what the game's tattoo natives take.
+        -- gender is one of: male, female, both (defaults to both).
+        tattoos = {
+            -- { collection = 'mytattoos_overlays', name = 'MY_Tattoo_000_M', gender = 'male' },
+            -- { collection = 'mytattoos_overlays', name = 'MY_Tattoo_000_F', gender = 'female' },
         },
 
         eup = {

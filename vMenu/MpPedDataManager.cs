@@ -23,6 +23,9 @@ namespace vMenuClient
 
         public struct PedTattoos
         {
+            // HairTattoos and AddonTattoos were added later: characters saved before then deserialize
+            // them as null, so every reader null-coalesces them to an empty list.
+            public List<KeyValuePair<string, string>> HairTattoos;
             public List<KeyValuePair<string, string>> TorsoTattoos;
             public List<KeyValuePair<string, string>> HeadTattoos;
             public List<KeyValuePair<string, string>> LeftArmTattoos;
@@ -30,6 +33,7 @@ namespace vMenuClient
             public List<KeyValuePair<string, string>> LeftLegTattoos;
             public List<KeyValuePair<string, string>> RightLegTattoos;
             public List<KeyValuePair<string, string>> BadgeTattoos;
+            public List<KeyValuePair<string, string>> AddonTattoos;
         }
 
         // probably won't be needed, since there's already makeup and tattoos now.
@@ -107,6 +111,7 @@ namespace vMenuClient
             public PropVariations PropVariations;
             public FaceShapeFeatures FaceShapeFeatures;
             public PedAppearance PedAppearance;
+            // DO NOT RENAME - this is the saved JSON key; every existing saved character stops loading its tattoos otherwise
             public PedTattoos PedTatttoos;
             public PedFacePaints PedFacePaints;
             public bool IsMale;

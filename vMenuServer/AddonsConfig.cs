@@ -45,6 +45,15 @@ namespace vMenuServer
             public string category { get; set; }
         }
 
+        /// <summary>A custom tattoo from a streamed overlay pack. Not ACE gated.</summary>
+        public class TattooEntry
+        {
+            public string collection { get; set; }
+            public string name { get; set; }
+            /// <summary>male, female or both (the default).</summary>
+            public string gender { get; set; }
+        }
+
         public class EupEntry
         {
             public bool enabled { get; set; }
@@ -57,6 +66,7 @@ namespace vMenuServer
             public List<AddonWeaponEntry> weapons { get; set; }
             public List<AddonPedEntry> peds { get; set; }
             public List<AddonEntry> engineSounds { get; set; }
+            public List<TattooEntry> tattoos { get; set; }
             public EupEntry eup { get; set; }
         }
 
@@ -120,12 +130,21 @@ namespace vMenuServer
             public string category;
         }
 
+        /// <summary>Matches the client's Tattoo struct: gender is 0 male, 1 female, 2 both.</summary>
+        private class PayloadTattoo
+        {
+            public string collectionName;
+            public string name;
+            public int gender;
+        }
+
         private class Payload
         {
             public List<PayloadItem> vehicles = new List<PayloadItem>();
             public List<PayloadWeapon> weapons = new List<PayloadWeapon>();
             public List<PayloadPed> peds = new List<PayloadPed>();
             public List<PayloadItem> engineSounds = new List<PayloadItem>();
+            public List<PayloadTattoo> tattoos = new List<PayloadTattoo>();
             public Dictionary<string, Dictionary<int, string>> extras = new Dictionary<string, Dictionary<int, string>>();
             public Locations locations = new Locations();
             public EupState eup = new EupState();
@@ -207,6 +226,7 @@ namespace vMenuServer
                 section.weapons = Sanitize(section.weapons, "weapon");
                 section.peds = Sanitize(section.peds, "ped");
                 section.engineSounds = Sanitize(section.engineSounds, "engine sound");
+                section.tattoos = SanitizeTattoos(section.tattoos);
                 config.addons = section;
 
                 var whitelist = config.modelWhitelist ?? new ModelWhitelistSection();
@@ -221,7 +241,8 @@ namespace vMenuServer
                 var addons = config.addons;
                 DebugLog.Log($"[Addons] Config loaded: {Count(addons?.vehicles)} vehicles, " +
                     $"{Count(addons?.weapons)} weapons, {Count(addons?.peds)} peds, " +
-                    $"{Count(addons?.engineSounds)} engine sounds, {Count(config.locations?.teleports)} teleports, " +
+                    $"{Count(addons?.engineSounds)} engine sounds, {Count(addons?.tattoos)} tattoos, " +
+                    $"{Count(config.locations?.teleports)} teleports, " +
                     $"{Count(config.locations?.blips)} blips.");
             }
             catch (Exception ex)
@@ -338,6 +359,49 @@ namespace vMenuServer
             }).ToList();
         }
 
+        /// <summary>
+        /// Drops tattoos with a missing or over-long collection/name and duplicate entries, and
+        /// normalises gender to male/female/both. Runs once at config load, like Sanitize.
+        /// </summary>
+        private static List<TattooEntry> SanitizeTattoos(List<TattooEntry> entries)
+        {
+            var kept = new List<TattooEntry>();
+            if (entries == null)
+            {
+                return kept;
+            }
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+                if (entry == null || string.IsNullOrWhiteSpace(entry.collection) || string.IsNullOrWhiteSpace(entry.name)
+                    || entry.collection.Trim().Length > 64 || entry.name.Trim().Length > 64)
+                {
+                    DebugLog.Log($"[Addons] Skipping malformed tattoo entry #{i + 1} (missing or over-long collection or name).", DebugLog.LogLevel.warning);
+                    continue;
+                }
+
+                entry.collection = entry.collection.Trim();
+                entry.name = entry.name.Trim();
+                if (!seen.Add(entry.collection + "/" + entry.name))
+                {
+                    DebugLog.Log($"[Addons] Skipping duplicate tattoo entry #{i + 1} ({entry.collection} / {entry.name}). Please remove duplicate lines!", DebugLog.LogLevel.warning);
+                    continue;
+                }
+
+                var gender = string.IsNullOrWhiteSpace(entry.gender) ? "both" : entry.gender.Trim().ToLowerInvariant();
+                if (gender != "male" && gender != "female" && gender != "both")
+                {
+                    DebugLog.Log($"[Addons] Tattoo entry #{i + 1} ({entry.name}) has unknown gender '{entry.gender}', treating it as both.", DebugLog.LogLevel.warning);
+                    gender = "both";
+                }
+                entry.gender = gender;
+                kept.Add(entry);
+            }
+            return kept;
+        }
+
         private static List<T> Allowed<T>(Player player, string aceNamespace, List<T> entries) where T : AddonEntry
         {
             var allowed = new List<T>();
@@ -384,6 +448,16 @@ namespace vMenuServer
                 vehicles = Allowed(player, "vMenu.VehicleSpawner", addons.vehicles).Select(Project).ToList(),
                 engineSounds = Allowed(player, "vMenu.VehicleOptions", addons.engineSounds).Select(Project).ToList(),
                 extras = config.extras ?? new Dictionary<string, Dictionary<int, string>>(),
+                // Not ACE gated, matching upstream vMenu: tattoos are cosmetic, and anyone who can
+                // open MP Ped Customization can already wear every base-game one.
+                tattoos = (addons.tattoos ?? new List<TattooEntry>())
+                    .Select(t => new PayloadTattoo
+                    {
+                        collectionName = t.collection,
+                        name = t.name,
+                        gender = t.gender == "male" ? 0 : t.gender == "female" ? 1 : 2,
+                    })
+                    .ToList(),
                 locations = GetMergedLocations(),
             };
 
