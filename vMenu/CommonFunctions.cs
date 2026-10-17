@@ -2318,8 +2318,6 @@ namespace vMenuClient
         #endregion
 
         #region ToProperString()
-        private static readonly Regex MultiSpaceRegex = new Regex("  +", RegexOptions.Compiled);
-
         /// <summary>
         /// Converts a PascalCaseString to a Propper Case String.
         /// </summary>
@@ -2349,7 +2347,13 @@ namespace vMenuClient
                     sb.Append(c);
                 }
             }
-            return MultiSpaceRegex.Replace(sb.ToString(), " ");
+            // No Regex here: FiveM's client sandbox rejects RegexRunner (MethodAccessException).
+            var outputString = sb.ToString();
+            while (outputString.IndexOf("  ") != -1)
+            {
+                outputString = outputString.Replace("  ", " ");
+            }
+            return outputString;
         }
         #endregion
 
@@ -3646,8 +3650,37 @@ namespace vMenuClient
             // Menus are drawn in NUI now (MenuAPI 4). It reads ~x~ as a colour code and has no escape for it, so
             // the old \^ / \~ escaping showed up as a literal backslash. Strip FiveM colour codes (^0-^9) and
             // tildes instead; notifications go through ox_lib, which strips ~x~ codes itself.
-            name = System.Text.RegularExpressions.Regex.Replace(name, @"\^[0-9]", "");
-            return name.Replace("^", "").Replace("~", "").Replace("<", "«").Replace(">", "»").Replace("\n", "").Replace("\r", "");
+            // No Regex: FiveM's client sandbox rejects RegexRunner (MethodAccessException), so this is a plain loop.
+            var sb = new StringBuilder(name.Length);
+            for (var i = 0; i < name.Length; i++)
+            {
+                var c = name[i];
+                if (c == '^')
+                {
+                    if (i + 1 < name.Length && char.IsDigit(name[i + 1]))
+                    {
+                        i++;
+                    }
+                    continue;
+                }
+                switch (c)
+                {
+                    case '~':
+                    case '\n':
+                    case '\r':
+                        continue;
+                    case '<':
+                        sb.Append('«');
+                        break;
+                    case '>':
+                        sb.Append('»');
+                        break;
+                    default:
+                        sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
         }
         #endregion
 
