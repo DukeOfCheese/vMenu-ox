@@ -194,6 +194,8 @@ namespace vMenuClient.data
                 var hash = (uint)GetHashKey(realName);
                 // Whitelisted model this player lacks the ACE for: leave it out of every menu and loadout.
                 if (AddonsManager.IsWeaponRestricted(hash)) continue;
+                // Newer DLC weapons (e.g. weapon_newspaper, game build 3717) don't exist on older game builds.
+                if (!IsWeaponValid(hash)) continue;
                 var componentHashes = new Dictionary<string, uint>();
                 foreach (var comp in componentHashCache)
                 {
