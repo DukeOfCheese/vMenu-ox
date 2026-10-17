@@ -196,7 +196,10 @@ namespace vMenuClient.menus
             MenuSearch.AddCategorySearch(menu, "Vehicles", () => vehicleCategories);
 
             menu.AddMenuItem(spawnInVeh);
-            menu.AddMenuItem(replacePrev);
+            if (IsAllowed(Permission.VSDisableReplacePrevious))
+            {
+                menu.AddMenuItem(replacePrev);
+            }
             #endregion
 
             // Load addon vehicles exactly once. The vehicle class lists are static and persist across

@@ -1527,10 +1527,20 @@ namespace vMenuClient
             }
             vehicle.CurrentRPM = rpm;
 
-            await Delay(1); // Mandatory delay - without it radio station will not set properly
+            var vehicleDefaultRadio = UserDefaults.VehicleDefaultRadio;
 
-            // Set the radio station to default set by player in Vehicle Menu
-            vehicle.RadioStation = (RadioStation)UserDefaults.VehicleDefaultRadio;
+            await Delay(1); // Mandatory delay - without it veh radio check will always return `false`
+
+            if (vehicleDefaultRadio >= 0 && DoesPlayerVehHaveRadio())
+            {
+                while (IsRadioRetuning())
+                {
+                    await Delay(10);
+                }
+
+                // Set the radio station to default set by player in Vehicle Menu
+                vehicle.RadioStation = (RadioStation)vehicleDefaultRadio;
+            }
 
             // Discard the model.
             SetModelAsNoLongerNeeded(vehicleHash);
@@ -1572,23 +1582,22 @@ namespace vMenuClient
                 SetVehicleLivery(vehicle.Handle, vehicleInfo.livery);
 
                 bool useCustomRgbPrimary = vehicleInfo.colors.ContainsKey("customPrimaryR") && vehicleInfo.colors.ContainsKey("customPrimaryG") && vehicleInfo.colors.ContainsKey("customPrimaryB");
+
+                // Always set the base paint first, so its paint type is kept under a custom RGB color.
+                vehicle.Mods.PrimaryColor = (VehicleColor)vehicleInfo.colors["primary"];
+
                 if (useCustomRgbPrimary && vehicleInfo.colors["customPrimaryR"] > 0 && vehicleInfo.colors["customPrimaryG"] > 0 && vehicleInfo.colors["customPrimaryB"] > 0)
                 {
                     vehicle.Mods.CustomPrimaryColor = System.Drawing.Color.FromArgb(255, vehicleInfo.colors["customPrimaryR"], vehicleInfo.colors["customPrimaryG"], vehicleInfo.colors["customPrimaryB"]);
                 }
-                else
-                {
-                    vehicle.Mods.PrimaryColor = (VehicleColor)vehicleInfo.colors["primary"];
-                }
 
                 bool useCustomRgbSecondary = vehicleInfo.colors.ContainsKey("customSecondaryR") && vehicleInfo.colors.ContainsKey("customSecondaryG") && vehicleInfo.colors.ContainsKey("customSecondaryB");
+
+                vehicle.Mods.SecondaryColor = (VehicleColor)vehicleInfo.colors["secondary"];
+
                 if (useCustomRgbSecondary && vehicleInfo.colors["customSecondaryR"] > 0 && vehicleInfo.colors["customSecondaryG"] > 0 && vehicleInfo.colors["customSecondaryB"] > 0)
                 {
                     vehicle.Mods.CustomSecondaryColor = System.Drawing.Color.FromArgb(255, vehicleInfo.colors["customSecondaryR"], vehicleInfo.colors["customSecondaryG"], vehicleInfo.colors["customSecondaryB"]);
-                }
-                else
-                {
-                    vehicle.Mods.SecondaryColor = (VehicleColor)vehicleInfo.colors["secondary"];
                 }
 
                 SetVehicleInteriorColour(vehicle.Handle, vehicleInfo.colors["trim"]);
