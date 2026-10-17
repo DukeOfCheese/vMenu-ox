@@ -62,6 +62,7 @@ namespace vMenuClient.data
             [JsonProperty("peds")]         public List<AddonPed>    peds         { get; set; }
             [JsonProperty("engineSounds")] public List<AddonItem>   engineSounds { get; set; }
             [JsonProperty("tattoos")]      public List<Tattoo>      tattoos      { get; set; }
+            [JsonProperty("extraBlendableFaces")] public List<string> extraBlendableFaces { get; set; }
             [JsonProperty("extras")]       public Dictionary<string, Dictionary<int, string>> extras { get; set; }
             [JsonProperty("locations")]    public Locations         locations    { get; set; }
             [JsonProperty("eup")]          public EupState          eup          { get; set; }
@@ -96,6 +97,11 @@ namespace vMenuClient.data
         public static List<AddonItem> EngineSounds { get; private set; } = new List<AddonItem>();
         /// <summary>Custom overlay-pack tattoos (not ACE gated); only collectionName, name and gender are set.</summary>
         public static List<Tattoo> Tattoos { get; private set; } = new List<Tattoo>();
+        /// <summary>
+        /// Labels for addon head-blend faces (not ACE gated). Entry i is head blend index
+        /// (base-game face count + i), so order matters and entries are never dropped server-side.
+        /// </summary>
+        public static List<string> ExtraBlendableFaces { get; private set; } = new List<string>();
         public static Dictionary<string, Dictionary<int, string>> Extras { get; private set; } = new Dictionary<string, Dictionary<int, string>>();
         public static List<TeleportLocation> Teleports { get; private set; } = new List<TeleportLocation>();
         public static List<LocationBlip> Blips { get; private set; } = new List<LocationBlip>();
@@ -111,6 +117,7 @@ namespace vMenuClient.data
                 Peds = payload.peds ?? new List<AddonPed>();
                 EngineSounds = payload.engineSounds ?? new List<AddonItem>();
                 Tattoos = payload.tattoos ?? new List<Tattoo>();
+                ExtraBlendableFaces = payload.extraBlendableFaces ?? new List<string>();
                 Extras = payload.extras ?? new Dictionary<string, Dictionary<int, string>>();
                 Teleports = payload.locations.teleports ?? new List<TeleportLocation>();
                 Blips = payload.locations.blips ?? new List<LocationBlip>();
@@ -133,6 +140,7 @@ namespace vMenuClient.data
             Peds = new List<AddonPed>();
             EngineSounds = new List<AddonItem>();
             Tattoos = new List<Tattoo>();
+            ExtraBlendableFaces = new List<string>();
             Extras = new Dictionary<string, Dictionary<int, string>>();
             Teleports = new List<TeleportLocation>();
             Blips = new List<LocationBlip>();

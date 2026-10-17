@@ -2,8 +2,8 @@ Config = {
     EnableServerList = GetConvarBool("vmenu_disable_server_info_convars", false) == false, -- If you want to show the framework version in your server list info convars.
     DisableAI = GetConvarBool("vmenu_disable_ai", false), -- This will disable NPC spawning in bucket 0 (if you don't touch buckets, you don't need to worry about this). This is useful for people who want a quick and easy way to disable AI.
 
-    -- Addon content. Every entry (except `tattoos`, see below) is gated by
-    -- a FiveM ACE permission that is evaluated server-side
+    -- Addon content. Every entry (except `tattoos` and `extraBlendableFaces`, see below) is gated
+    -- by a FiveM ACE permission that is evaluated server-side
     -- before the item is ever sent to a client, so a player who is not permitted never learns the
     -- item exists. Permitted items are merged into the normal menus: an allowed weapon shows under
     -- Weapons > Rifles, an allowed vehicle under its vehicle class, an allowed ped under its category.
@@ -68,6 +68,16 @@ Config = {
         tattoos = {
             -- { collection = 'mytattoos_overlays', name = 'MY_Tattoo_000_M', gender = 'male' },
             -- { collection = 'mytattoos_overlays', name = 'MY_Tattoo_000_F', gender = 'female' },
+        },
+
+        -- NOT ACE gated. Extra parent faces from an addon head-blend pack, appended after the
+        -- base-game faces in MP Ped Customization > Character Inheritance > Parent #1 / Parent #2.
+        -- List one label per extra face, in the order the pack adds them: the first entry is the
+        -- face right after the last base-game one (head blend index 46 on current game builds), the
+        -- second the one after that, and so on. Order matters: saved characters store the index.
+        extraBlendableFaces = {
+            -- 'Addon Face 1',
+            -- 'Addon Face 2',
         },
 
         eup = {

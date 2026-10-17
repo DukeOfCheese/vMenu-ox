@@ -67,6 +67,7 @@ namespace vMenuServer
             public List<AddonPedEntry> peds { get; set; }
             public List<AddonEntry> engineSounds { get; set; }
             public List<TattooEntry> tattoos { get; set; }
+            public List<string> extraBlendableFaces { get; set; }
             public EupEntry eup { get; set; }
         }
 
@@ -145,6 +146,7 @@ namespace vMenuServer
             public List<PayloadPed> peds = new List<PayloadPed>();
             public List<PayloadItem> engineSounds = new List<PayloadItem>();
             public List<PayloadTattoo> tattoos = new List<PayloadTattoo>();
+            public List<string> extraBlendableFaces = new List<string>();
             public Dictionary<string, Dictionary<int, string>> extras = new Dictionary<string, Dictionary<int, string>>();
             public Locations locations = new Locations();
             public EupState eup = new EupState();
@@ -227,6 +229,7 @@ namespace vMenuServer
                 section.peds = Sanitize(section.peds, "ped");
                 section.engineSounds = Sanitize(section.engineSounds, "engine sound");
                 section.tattoos = SanitizeTattoos(section.tattoos);
+                section.extraBlendableFaces = SanitizeBlendableFaces(section.extraBlendableFaces);
                 config.addons = section;
 
                 var whitelist = config.modelWhitelist ?? new ModelWhitelistSection();
@@ -242,6 +245,7 @@ namespace vMenuServer
                 DebugLog.Log($"[Addons] Config loaded: {Count(addons?.vehicles)} vehicles, " +
                     $"{Count(addons?.weapons)} weapons, {Count(addons?.peds)} peds, " +
                     $"{Count(addons?.engineSounds)} engine sounds, {Count(addons?.tattoos)} tattoos, " +
+                    $"{Count(addons?.extraBlendableFaces)} extra blendable faces, " +
                     $"{Count(config.locations?.teleports)} teleports, " +
                     $"{Count(config.locations?.blips)} blips.");
             }
@@ -402,6 +406,42 @@ namespace vMenuServer
             return kept;
         }
 
+        /// <summary>
+        /// Cleans up the extra blendable face labels. Unlike other entries nothing is ever dropped:
+        /// a face's position in the list is its head blend index, so removing one would shift every
+        /// face after it onto the wrong head. Blank labels get a placeholder instead.
+        /// </summary>
+        private static List<string> SanitizeBlendableFaces(List<string> faces)
+        {
+            var kept = new List<string>();
+            if (faces == null)
+            {
+                return kept;
+            }
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < faces.Count; i++)
+            {
+                var label = faces[i]?.Trim();
+                if (string.IsNullOrEmpty(label))
+                {
+                    DebugLog.Log($"[Addons] Extra blendable face #{i + 1} has no label, showing it as 'Extra Face {i + 1}'.", DebugLog.LogLevel.warning);
+                    label = $"Extra Face {i + 1}";
+                }
+                else if (label.Length > 64)
+                {
+                    label = label.Substring(0, 64);
+                }
+
+                if (!seen.Add(label))
+                {
+                    DebugLog.Log($"[Addons] Extra blendable face #{i + 1} reuses the label '{label}'. It is kept (removing it would shift later faces), but players cannot tell the two apart.", DebugLog.LogLevel.warning);
+                }
+                kept.Add(label);
+            }
+            return kept;
+        }
+
         private static List<T> Allowed<T>(Player player, string aceNamespace, List<T> entries) where T : AddonEntry
         {
             var allowed = new List<T>();
@@ -458,6 +498,8 @@ namespace vMenuServer
                         gender = t.gender == "male" ? 0 : t.gender == "female" ? 1 : 2,
                     })
                     .ToList(),
+                // Not ACE gated either, matching upstream vMenu.
+                extraBlendableFaces = addons.extraBlendableFaces ?? new List<string>(),
                 locations = GetMergedLocations(),
             };
 
