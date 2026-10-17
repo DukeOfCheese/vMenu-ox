@@ -3,7 +3,7 @@
 
 local format = string.format
 
-exports(
+VMenuBridge.export(
 	"inputDialog",
 	---@param windowTitle string
 	---@param defaultText string
@@ -21,7 +21,7 @@ exports(
 	end
 )
 
-exports(
+VMenuBridge.export(
 	"sliderDialog",
 	---@param windowTitle string
 	---@param defaultVal double
@@ -54,7 +54,7 @@ end
 ---@param defaultColour? string "#RRGGBB" to pre-fill the picker with; when omitted the current custom primary/secondary paint is used
 ---@param label? string label shown above the picker
 ---@return string
-exports("colourDialog", function(type, defaultColour, label)
+VMenuBridge.export("colourDialog", function(type, defaultColour, label)
 	if not cache.vehicle then return "" end -- edge case
 	if not (defaultColour and defaultColour:match("^#%x%x%x%x%x%x$")) then
 		if type == 1 then
@@ -71,7 +71,7 @@ exports("colourDialog", function(type, defaultColour, label)
 	return input and input[1] or ""
 end)
 
-exports("getUserConfirmation", function(title, description)
+VMenuBridge.export("getUserConfirmation", function(title, description)
 	local confirmed = lib.alertDialog({
 		header = format("vMenu - %s", title),
 		content = description,
@@ -83,7 +83,7 @@ end)
 
 ---@class copyToClipboard
 ---@param text string
-exports("copyToClipboard", function(text)
+VMenuBridge.export("copyToClipboard", function(text)
 	-- print("Copied to clipboard: " .. text)
 	lib.setClipboard(text)
 	return ""

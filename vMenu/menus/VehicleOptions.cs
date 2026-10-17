@@ -102,16 +102,21 @@ namespace vMenuClient.menus
         {
             if (resName != GetCurrentResourceName()) return;
             AddStateBagChangeHandler("vMenu:engineSound", null,
-                new Action<string, string, dynamic, int, bool>
+                new Action<string, string, object, int, bool>
             (HandleVehicleSoundChange));
         }
 
-        private static void HandleVehicleSoundChange(string bagName, string key, dynamic value, int reserved, bool replicated)
+        // `object`, not `dynamic`: passing a dynamic value to a native needs the C# dynamic binder, which fails
+        // on FiveM's runtime with MenuAPI 4 loaded.
+        private static void HandleVehicleSoundChange(string bagName, string key, object value, int reserved, bool replicated)
         {
             var entity = GetEntityFromStateBagName(bagName);
             if (entity == 0) return;
             if (!IsEntityAVehicle(entity)) return;
-            ForceUseAudioGameObject(entity, value);
+            if (value is string sound)
+            {
+                ForceUseAudioGameObject(entity, sound);
+            }
         }
         #endregion
 

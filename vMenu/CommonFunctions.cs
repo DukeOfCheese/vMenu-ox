@@ -41,42 +41,68 @@ namespace vMenuClient
         //     return new Dictionary<string, string>();
         // }
         
+        /// <summary>
+        /// Calls one of this resource's Lua functions (client/lib/bridge.lua) and completes with its first
+        /// return value, or null if it failed. This replaces calling them as exports: an export call from C#
+        /// goes through the C# `dynamic` binder, which fails on FiveM's runtime once MenuAPI 4 is loaded
+        /// ("TypeLoadException: Could not resolve type with token 0100000e"). Nothing on the client may use
+        /// `dynamic` for that reason.
+        /// </summary>
+        private static Task<object> CallLua(string name, params object[] args)
+        {
+            var result = new TaskCompletionSource<object>();
+            var eventArgs = new object[args.Length + 2];
+            eventArgs[0] = name;
+            eventArgs[1] = new Action<object>(value => result.TrySetResult(value));
+            Array.Copy(args, 0, eventArgs, 2, args.Length);
+            TriggerEvent("vMenu:Bridge:Call", eventArgs);
+            return result.Task;
+        }
+
+        private static string AsString(object value) => value as string ?? "";
+
+        private static bool AsBool(object value) => value is bool b && b;
+
         public async Task<string> GetCustomInput(string windowTitle, string defaultText, int maxInputLength)
         {
-            return await Exports["vMenu"].inputDialog(windowTitle, defaultText, maxInputLength);
+            return AsString(await CallLua("inputDialog", windowTitle, defaultText, maxInputLength));
         }
         public async Task<double> GetCustomSlider(string windowTitle, double defaultVal, double minimum, double maximum, double step)
         {
-            return await Exports["vMenu"].sliderDialog(windowTitle, defaultVal, minimum, maximum, step);
+            // The dialog returns an empty string when it's cancelled; keep the current value then.
+            var value = await CallLua("sliderDialog", windowTitle, defaultVal, minimum, maximum, step);
+            return value is string || value == null ? defaultVal : Convert.ToDouble(value);
         }
         public async Task<string> GetCustomColourInput(int type, string defaultColour = null, string label = null)
         {
-            return await Exports["vMenu"].colourDialog(type, defaultColour, label);
+            return AsString(await CallLua("colourDialog", type, defaultColour, label));
         }
         public void SetPlayerClipboard(string text)
         {
-            Exports["vMenu"].copyToClipboard(text);
+            CallLua("copyToClipboard", text);
         }
         public bool CanDoInteraction(string type)
         {
-            return Exports["vMenu"].canDoInteraction(type);
-
+            // Local events run synchronously, so a handler that doesn't wait has answered by now. One that waits
+            // (yields) can't hold up the caller; the interaction is allowed rather than blocked forever.
+            var answer = CallLua("canDoInteraction", type);
+            return !answer.IsCompleted || answer.Result == null || AsBool(answer.Result);
         }
         public async Task<bool> LoadSharedOutfit()
         {
-            return await Exports["vMenu"].loadSharedOutfit();
+            return AsBool(await CallLua("loadSharedOutfit"));
         }
         public async Task<bool> LoadSharedVehicle()
         {
-            return await Exports["vMenu"].loadSharedVehicle();
+            return AsBool(await CallLua("loadSharedVehicle"));
         }
         public async Task<bool> LoadSharedLoadout()
         {
-            return await Exports["vMenu"].loadSharedLoadout();
+            return AsBool(await CallLua("loadSharedLoadout"));
         }
         public async Task<bool> GetUserConfirmation(string windowTitle, string description)
         {
-            return await Exports["vMenu"].getUserConfirmation(windowTitle, description);
+            return AsBool(await CallLua("getUserConfirmation", windowTitle, description));
         }
     }
 

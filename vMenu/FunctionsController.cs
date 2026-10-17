@@ -72,7 +72,7 @@ namespace vMenuClient
         /// A delta only holds what changed, where an entry of <c>false</c> means that player left.
         /// </summary>
         [EventHandler("vMenu:SyncOverheadNames")]
-        private void SyncOverheadNames(dynamic cacheObj, bool isDelta)
+        private void SyncOverheadNames(object cacheObj, bool isDelta)
         {
             if (!isDelta)
             {

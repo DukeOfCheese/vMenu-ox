@@ -6,7 +6,7 @@ local CONVAR = 'vmenu_loadout_codes'
 local LOADOUT_PREFIX = 'vmenu_string_saved_weapon_loadout_'
 
 ---Asks for a code, saves the loadout under a new name and equips it. Used by the Weapon Loadouts menu.
-exports('loadSharedLoadout', function()
+VMenuBridge.export('loadSharedLoadout', function()
     if not ShareCodes.enabled(CONVAR) then
         ShareCodes.notify('Loadout codes are disabled on this server.')
         return false
@@ -44,7 +44,7 @@ end)
 
 ---Equips the loadout behind a code without saving it. For other resources and the /loadloadoutfromcode command.
 ---@param loadoutCode integer
-exports('loadLoadoutFromCode', function(loadoutCode)
+VMenuBridge.export('loadLoadoutFromCode', function(loadoutCode)
     local id = ShareCodes.toId(loadoutCode)
     if not id then
         lib.print.error('loadLoadoutFromCode: a positive integer code is required.')

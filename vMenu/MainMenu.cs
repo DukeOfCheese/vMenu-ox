@@ -190,7 +190,7 @@ namespace vMenuClient
                     Debug.WriteLine(JsonConvert.SerializeObject(data, Formatting.Indented));
                 }), false);
 
-                RegisterCommand("tattoo", new Action<dynamic, List<dynamic>, string>((dynamic source, List<dynamic> args, string rawCommand) =>
+                RegisterCommand("tattoo", new Action<object, List<object>, string>((object source, List<object> args, string rawCommand) =>
                 {
                     if (args != null && args[0] != null && args[1] != null)
                     {
@@ -211,7 +211,7 @@ namespace vMenuClient
                 }
             }), false);
 
-            RegisterCommand("vmenuclient", new Action<dynamic, List<dynamic>, string>((dynamic source, List<dynamic> args, string rawCommand) =>
+            RegisterCommand("vmenuclient", new Action<object, List<object>, string>((object source, List<object> args, string rawCommand) =>
             {
                 if (args != null)
                 {

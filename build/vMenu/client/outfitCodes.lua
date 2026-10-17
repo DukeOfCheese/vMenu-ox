@@ -7,7 +7,7 @@ local PED_PREFIX = 'mp_ped_'
 
 ---Asks for a code and saves the outfit as a new MP character based on the one currently loaded.
 ---Used by the MP Ped Customization menu.
-exports('loadSharedOutfit', function()
+VMenuBridge.export('loadSharedOutfit', function()
     if not ShareCodes.enabled(CONVAR) then
         ShareCodes.notify('Outfit codes are disabled on this server.')
         return false
@@ -46,7 +46,7 @@ end)
 ---Puts the outfit behind a code on the player's current ped without saving it. For other resources and
 ---the /loadoutfitfromcode command.
 ---@param outfitCode integer
-exports('loadOutfitFromCode', function(outfitCode)
+VMenuBridge.export('loadOutfitFromCode', function(outfitCode)
     local id = ShareCodes.toId(outfitCode)
     if not id then
         lib.print.error('loadOutfitFromCode: a positive integer code is required.')

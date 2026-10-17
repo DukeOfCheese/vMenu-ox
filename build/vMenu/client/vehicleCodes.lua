@@ -6,7 +6,7 @@ local CONVAR = 'vmenu_vehicle_codes'
 local VEHICLE_PREFIX = 'veh_'
 
 ---Asks for a code and saves the vehicle under a new name. Used by the Saved Vehicles menu.
-exports('loadSharedVehicle', function()
+VMenuBridge.export('loadSharedVehicle', function()
     if not ShareCodes.enabled(CONVAR) then
         ShareCodes.notify('Vehicle codes are disabled on this server.')
         return false

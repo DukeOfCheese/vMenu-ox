@@ -145,7 +145,7 @@ end)
 ---@class canDoInteraction
 ---@field action string
 ---@return boolean Returns true if the player can do the interaction, false otherwise
-exports("canDoInteraction", function(action)
+VMenuBridge.export("canDoInteraction", function(action)
     if action == "spawnvehicle" then
 
     elseif action == "refillammo" then

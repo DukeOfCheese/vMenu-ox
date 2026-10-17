@@ -254,10 +254,10 @@ namespace vMenuClient.menus
         /// </summary>
         /// <param name="banRecordJsonObject"></param>
         /// <returns></returns>
-        public static BanRecord JsonToBanRecord(dynamic banRecordJsonObject)
+        public static BanRecord JsonToBanRecord(Newtonsoft.Json.Linq.JObject banRecordJsonObject)
         {
             var newBr = new BanRecord();
-            foreach (Newtonsoft.Json.Linq.JProperty brValue in banRecordJsonObject)
+            foreach (Newtonsoft.Json.Linq.JProperty brValue in banRecordJsonObject.Properties())
             {
                 var key = brValue.Name.ToString();
                 var value = brValue.Value;
