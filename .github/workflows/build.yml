@@ -1,7 +1,8 @@
 name: Build
 
 # Every push and PR builds the resource and uploads the zip as a workflow artifact.
-# Pushes to main also refresh the rolling "dev" prerelease; pushing a version tag
+# Pushes to the dev branch also refresh the rolling "dev-latest" prerelease for beta
+# testers (not tagged "dev", which would clash with the branch); pushing a version tag
 # (e.g. 3.1.0, must match fxmanifest.lua) publishes a stable release.
 # Dev builds stay prereleases: ox_lib's lib.versionCheck ignores prereleases, so
 # servers only get "update available" for stable releases.
@@ -18,7 +19,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   build:
@@ -76,7 +77,7 @@ jobs:
           path: ${{ steps.ver.outputs.zip }}
 
       - name: Update dev prerelease
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         shell: bash
         env:
           ZIP: ${{ steps.ver.outputs.zip }}
@@ -86,15 +87,15 @@ jobs:
           {
             echo "Development build from [\`${GITHUB_SHA:0:7}\`]($COMMIT_URL)."
             echo
-            echo "Built automatically on every push to \`main\`. Not for production servers; use the latest stable release instead."
+            echo "Beta build, updated automatically on every push to the \`dev\` branch. Not for production servers; use the latest stable release instead."
           } > notes.md
 
-          if gh release view dev > /dev/null 2>&1; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/dev" -f sha="$GITHUB_SHA" -F force=true > /dev/null
-            gh release upload dev vMenu-ox-dev.zip --clobber
-            gh release edit dev --notes-file notes.md --prerelease
+          if gh release view dev-latest > /dev/null 2>&1; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/dev-latest" -f sha="$GITHUB_SHA" -F force=true > /dev/null
+            gh release upload dev-latest vMenu-ox-dev.zip --clobber
+            gh release edit dev-latest --notes-file notes.md --prerelease
           else
-            gh release create dev vMenu-ox-dev.zip --prerelease --latest=false --target "$GITHUB_SHA" \
+            gh release create dev-latest vMenu-ox-dev.zip --prerelease --latest=false --target "$GITHUB_SHA" \
               --title "vMenu-ox dev build" --notes-file notes.md
           fi
 

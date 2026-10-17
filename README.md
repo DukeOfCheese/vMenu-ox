@@ -176,6 +176,18 @@ exports("canDoInteraction", function(action)
 end)
 ```
 
+Overhead player names (Misc Settings → Show Player Names) are built by `buildOverheadName` in `server/integrations.lua`. Besides the name and colour it can return a crew tag, handy for ranks or departments. The tag only shows while a player has player names turned on, and changes reach everyone within about 5 seconds.
+
+```lua
+local function buildOverheadName(id)
+    return {
+        name = string.format("%s [%d]", GetPlayerName(id) or "Unknown", tonumber(id)),
+        colour = 18, -- https://docs.fivem.net/docs/game-references/hud-colors/
+        crewTag = IsPlayerAceAllowed(id, "group.admin") and "ADMN" or "", -- "" for no tag
+    }
+end
+```
+
 ### To-Do / Suggested Ideas
 - [x] Alphabetically sort weapons in categories
 - [x] Implement ids into notifications to cleanup / stop duplicate spammy notifications

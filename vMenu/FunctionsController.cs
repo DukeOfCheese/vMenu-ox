@@ -2371,7 +2371,7 @@ namespace vMenuClient
 
         #region player overhead names
         Dictionary<int, int> gamerTags = new();
-        // The crew tag each gamer tag was created with: a crew tag can't be changed afterwards, only recreated.
+        // The crew tag each gamer tag was created with; when it changes the gamer tag is recreated.
         readonly Dictionary<int, string> gamerTagCrewTags = new();
 
         private void RemoveGamerTag(int id)
