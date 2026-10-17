@@ -221,7 +221,22 @@ namespace vMenuServer
 
             try
             {
-                config = JsonConvert.DeserializeObject<LuaConfig>(json) ?? new LuaConfig();
+                // json.encode writes an empty Lua table as [], so a section with nothing in it can arrive as an
+                // empty array where an object is expected. Treat that as "not configured" rather than letting
+                // one empty section take the whole config (addons, extras, locations) down with it.
+                var root = Newtonsoft.Json.Linq.JToken.Parse(json) as Newtonsoft.Json.Linq.JObject ?? new Newtonsoft.Json.Linq.JObject();
+                foreach (var sectionName in new[] { "addons", "modelWhitelist", "extras", "locations" })
+                {
+                    if (root[sectionName] is Newtonsoft.Json.Linq.JArray)
+                    {
+                        root.Remove(sectionName);
+                    }
+                }
+                if (root["addons"] is Newtonsoft.Json.Linq.JObject addonsToken && addonsToken["eup"] is Newtonsoft.Json.Linq.JArray)
+                {
+                    addonsToken.Remove("eup");
+                }
+                config = root.ToObject<LuaConfig>() ?? new LuaConfig();
 
                 var section = config.addons ?? new AddonsSection();
                 section.vehicles = Sanitize(section.vehicles, "vehicle");

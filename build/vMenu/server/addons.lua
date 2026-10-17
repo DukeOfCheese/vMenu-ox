@@ -14,9 +14,9 @@ local function stringifyKeys(t)
 end
 
 local function pruneEmpty(value)
-    -- An empty Lua table encodes as {} rather than [], which C# cannot read as a list and which
-    -- would take the whole config down with it. Dropping empties instead leaves the key absent,
-    -- which the C# side already treats as "none configured".
+    -- json.encode can't tell an empty object from an empty list and writes an empty Lua table as [],
+    -- which C# can't read where it expects an object. Dropping empties instead leaves the key absent,
+    -- which the C# side treats as "none configured".
     if type(value) ~= 'table' then return value end
     local out, count = {}, 0
     for k, v in pairs(value) do
@@ -34,11 +34,14 @@ local resourceName = GetCurrentResourceName()
 
 local function sendConfig()
     local cfg = Config or {}
+    -- Sections with nothing configured are left out rather than sent as {}: json.encode writes an empty
+    -- Lua table as [], which the C# side can't read as an object. `version` keeps the root non-empty.
     local payload = json.encode({
-        addons    = pruneEmpty(cfg.Addons) or {},
-        modelWhitelist = pruneEmpty(cfg.ModelWhitelist) or {},
-        extras    = pruneEmpty(stringifyKeys(cfg.Extras)) or {},
-        locations = pruneEmpty(cfg.Locations) or {},
+        version        = 1,
+        addons         = pruneEmpty(cfg.Addons),
+        modelWhitelist = pruneEmpty(cfg.ModelWhitelist),
+        extras         = pruneEmpty(stringifyKeys(cfg.Extras)),
+        locations      = pruneEmpty(cfg.Locations),
     })
     -- An export rather than an event: C# event handlers also accept events sent by clients, and
     -- this payload decides which ACE each addon is gated behind.
