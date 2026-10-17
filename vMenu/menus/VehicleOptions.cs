@@ -1784,29 +1784,9 @@ namespace vMenuClient.menus
             VehicleWindowsMenu.AddMenuItem(rwd);
             VehicleWindowsMenu.OnItemSelect += (sender, item, index) =>
             {
-                var veh = GetVehicle();
-                if (veh != null && veh.Exists() && !veh.IsDead)
+                if (item == fwu || item == fwd || item == rwu || item == rwd)
                 {
-                    if (item == fwu)
-                    {
-                        RollUpWindow(veh.Handle, 0);
-                        RollUpWindow(veh.Handle, 1);
-                    }
-                    else if (item == fwd)
-                    {
-                        RollDownWindow(veh.Handle, 0);
-                        RollDownWindow(veh.Handle, 1);
-                    }
-                    else if (item == rwu)
-                    {
-                        RollUpWindow(veh.Handle, 2);
-                        RollUpWindow(veh.Handle, 3);
-                    }
-                    else if (item == rwd)
-                    {
-                        RollDownWindow(veh.Handle, 2);
-                        RollDownWindow(veh.Handle, 3);
-                    }
+                    RollWindows(item == fwu || item == fwd, item == fwu || item == rwu, notifyOnFailure: false);
                 }
             };
             #endregion
@@ -2645,6 +2625,37 @@ namespace vMenuClient.menus
 
         }
         #endregion
+
+        /// <summary>
+        /// Rolls the front or rear windows of the player's current vehicle up or down.
+        /// </summary>
+        /// <returns>Whether the player was in a vehicle the windows could be rolled on.</returns>
+        public bool RollWindows(bool front, bool up, bool notifyOnFailure = true)
+        {
+            var veh = GetVehicle();
+            if (veh == null || !veh.Exists() || veh.IsDead)
+            {
+                if (notifyOnFailure)
+                {
+                    Notify.Error(CommonErrors.NoVehicle);
+                }
+                return false;
+            }
+
+            var first = front ? 0 : 2;
+            for (var window = first; window < first + 2; window++)
+            {
+                if (up)
+                {
+                    RollUpWindow(veh.Handle, window);
+                }
+                else
+                {
+                    RollDownWindow(veh.Handle, window);
+                }
+            }
+            return true;
+        }
 
         /// <summary>
         /// Public get method for the menu. Checks if the menu exists, if not create the menu first.

@@ -419,25 +419,26 @@ namespace vMenuClient.menus
         /// <summary>
         /// Sets the vehicle the player is driving as their personal vehicle.
         /// </summary>
-        public void SetCurrentVehicle()
+        /// <returns>The vehicle's display name, or null if it could not be set.</returns>
+        public string SetCurrentVehicle()
         {
             if (!Game.PlayerPed.IsInVehicle())
             {
                 Notify.Error(CommonErrors.NoVehicle);
-                return;
+                return null;
             }
 
             var veh = GetVehicle();
             if (veh == null || !veh.Exists())
             {
                 Notify.Error(CommonErrors.NoVehicle);
-                return;
+                return null;
             }
 
             if (Game.PlayerPed != veh.Driver)
             {
                 Notify.Error(CommonErrors.NeedToBeTheDriver);
-                return;
+                return null;
             }
 
             CurrentPersonalVehicle = veh;
@@ -461,31 +462,39 @@ namespace vMenuClient.menus
             {
                 setVehicleItem.Label = $"Current Vehicle: {name}";
             }
+            return name;
         }
 
         /// <summary>
         /// Turns the personal vehicle's engine on or off.
         /// </summary>
-        public void ToggleEngine()
+        /// <returns>Whether the engine is now on, or null if nothing happened.</returns>
+        public bool? ToggleEngine()
         {
-            if (TryGetControllableVehicle(out var veh))
+            if (!TryGetControllableVehicle(out var veh))
             {
-                PressKeyFob(veh);
-                SetVehicleEngineOn(veh.Handle, !veh.IsEngineRunning, true, true);
+                return null;
             }
+            PressKeyFob(veh);
+            var engineOn = !veh.IsEngineRunning;
+            SetVehicleEngineOn(veh.Handle, engineOn, true, true);
+            return engineOn;
         }
 
         /// <summary>
         /// Locks the personal vehicle's doors if they are unlocked, otherwise unlocks them.
         /// </summary>
-        public void ToggleDoorLock()
+        /// <returns>Whether the doors are now locked, or null if nothing happened.</returns>
+        public bool? ToggleDoorLock()
         {
-            if (TryGetControllableVehicle(out var veh))
+            if (!TryGetControllableVehicle(out var veh))
             {
-                PressKeyFob(veh);
-                var lockDoors = !GetVehicleDoorsLockedForPlayer(veh.Handle, Game.PlayerPed.Handle);
-                LockOrUnlockDoors(veh, lockDoors);
+                return null;
             }
+            PressKeyFob(veh);
+            var lockDoors = !GetVehicleDoorsLockedForPlayer(veh.Handle, Game.PlayerPed.Handle);
+            LockOrUnlockDoors(veh, lockDoors);
+            return lockDoors;
         }
 
         /// <summary>
