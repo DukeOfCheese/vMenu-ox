@@ -65,6 +65,7 @@ namespace vMenuClient
         private List<Ped> peds = new();
         private readonly Dictionary<int, string> overheadNamesCache = new();
         private readonly Dictionary<int, int> overheadColourCache = new();
+        private readonly Dictionary<int, string> overheadCrewTagCache = new();
 
         /// <summary>
         /// Receives overhead names from the server (build/vMenu/server/integrations.lua).
@@ -78,6 +79,7 @@ namespace vMenuClient
             {
                 overheadNamesCache.Clear();
                 overheadColourCache.Clear();
+                overheadCrewTagCache.Clear();
             }
 
             var dict = cacheObj as IDictionary<string, object>;
@@ -93,6 +95,7 @@ namespace vMenuClient
                 {
                     overheadNamesCache.Remove(playerId);
                     overheadColourCache.Remove(playerId);
+                    overheadCrewTagCache.Remove(playerId);
                     continue;
                 }
 
@@ -109,6 +112,11 @@ namespace vMenuClient
                 {
                     overheadColourCache[playerId] = 0; // default colour
                 }
+
+                // An older customised integrations.lua does not send a crew tag.
+                overheadCrewTagCache[playerId] = entry.TryGetValue("crewTag", out var crewTagObj)
+                    ? crewTagObj?.ToString() ?? ""
+                    : "";
             }
         }
 
@@ -2363,6 +2371,15 @@ namespace vMenuClient
 
         #region player overhead names
         Dictionary<int, int> gamerTags = new();
+        // The crew tag each gamer tag was created with; when it changes the gamer tag is recreated.
+        readonly Dictionary<int, string> gamerTagCrewTags = new();
+
+        private void RemoveGamerTag(int id)
+        {
+            RemoveMpGamerTag(gamerTags[id]);
+            gamerTags.Remove(id);
+            gamerTagCrewTags.Remove(id);
+        }
 
         private readonly float playerNamesDistance = GetSettingsFloat(Setting.vmenu_player_names_distance) > 10f ? GetSettingsFloat(Setting.vmenu_player_names_distance) : 500f;
 
@@ -2385,6 +2402,7 @@ namespace vMenuClient
                         RemoveMpGamerTag(tag);
                     }
                     gamerTags.Clear();
+                    gamerTagCrewTags.Clear();
                     return;
                 }
                 else
@@ -2393,8 +2411,7 @@ namespace vMenuClient
                     var presentIds = new HashSet<int>(Players.Select(pl => pl.ServerId));
                     foreach (var staleId in gamerTags.Keys.Where(k => !presentIds.Contains(k)).ToList())
                     {
-                        RemoveMpGamerTag(gamerTags[staleId]);
-                        gamerTags.Remove(staleId);
+                        RemoveGamerTag(staleId);
                     }
 
                     foreach (var p in Players)
@@ -2409,7 +2426,11 @@ namespace vMenuClient
                             int overheadColour = overheadColourCache.ContainsKey(id)
                                 ? overheadColourCache[id]
                                 : 0;
-                            
+
+                            string crewTag = overheadCrewTagCache.ContainsKey(id)
+                                ? overheadCrewTagCache[id]
+                                : "";
+
                             var dist = p.Character.Position.DistanceToSquared(Game.PlayerPed.Position);
                             // dist is squared, so compare against the squared range.
                             var closeEnough = dist < playerNamesDistance * playerNamesDistance;
@@ -2417,9 +2438,12 @@ namespace vMenuClient
                             {
                                 if (!closeEnough)
                                 {
-                                    RemoveMpGamerTag(gamerTags[id]);
-                                    gamerTags.Remove(id);
+                                    RemoveGamerTag(id);
                                     continue;
+                                }
+                                else if (gamerTagCrewTags[id] != crewTag)
+                                {
+                                    RemoveGamerTag(id); // recreated below with the new crew tag
                                 }
                                 else
                                 {
@@ -2436,12 +2460,14 @@ namespace vMenuClient
                                     };
                                 }
                             }
-                            else if (closeEnough)
+                            if (closeEnough && !gamerTags.ContainsKey(id))
                             {
-                                gamerTags.Add(id, CreateMpGamerTag(p.Character.Handle, overheadName, false, false, "", 0));
+                                gamerTags.Add(id, CreateMpGamerTag(p.Character.Handle, overheadName, false, false, crewTag, 0));
+                                gamerTagCrewTags[id] = crewTag;
                             }
                             if (closeEnough && gamerTags.ContainsKey(id))
                             {
+                                SetMpGamerTagVisibility(gamerTags[id], 1, crewTag != ""); // crewTag
                                 SetMpGamerTagVisibility(gamerTags[id], 2, true); // healthArmor
                                 SetMpGamerTagColour(gamerTags[id], 0, overheadColour);
                                 SetMpGamerTagVisibility(gamerTags[id], 2, true);
