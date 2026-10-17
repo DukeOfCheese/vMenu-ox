@@ -145,12 +145,190 @@ namespace vMenuClient.menus
         public MpPedCustomization()
         {
             Exports.Add("GetMpCharacterData", new Func<string>(GetMpCharacterData));
+            // Used by client/outfitCodes.lua. Both return an empty string on success or the message to show.
+            Exports.Add("ImportSharedOutfit", new Func<object, object, string>((saveName, json) => ImportSharedOutfit(saveName as string, json as string)));
+            Exports.Add("ApplySharedOutfit", new Func<object, string>(json => ApplySharedOutfit(json as string)));
         }
         
         private string GetMpCharacterData()
         {
             return JsonConvert.SerializeObject(currentCharacter);
         }
+
+        #region Shared outfit codes
+        private sealed class SharedOutfitItem
+        {
+            public int Item;
+            public int Texture;
+        }
+
+        private sealed class SharedOutfit
+        {
+            public Dictionary<string, SharedOutfitItem> Clothes;
+            public Dictionary<string, SharedOutfitItem> Props;
+        }
+
+        /// <summary>
+        /// Reads a shared outfit and keeps only what fits the given ped: drawables and textures that exist, and
+        /// for players without the EUP permission only base-game clothing (the same cap as the clothing menus).
+        /// </summary>
+        private static bool TryReadSharedOutfit(string json, int ped, out Dictionary<int, KeyValuePair<int, int>> clothes, out Dictionary<int, KeyValuePair<int, int>> props, out string error)
+        {
+            clothes = new Dictionary<int, KeyValuePair<int, int>>();
+            props = new Dictionary<int, KeyValuePair<int, int>>();
+            error = null;
+
+            SharedOutfit outfit;
+            try
+            {
+                outfit = SharedCodes.ParseCode<SharedOutfit>(json, "Clothes", "Props");
+            }
+            catch
+            {
+                outfit = null;
+            }
+            if (outfit == null)
+            {
+                error = "That outfit code doesn't contain a valid outfit.";
+                return false;
+            }
+
+            var model = (uint)GetEntityModel(ped);
+            foreach (var entry in outfit.Clothes ?? new Dictionary<string, SharedOutfitItem>())
+            {
+                if (!int.TryParse(entry.Key, out var component) || component < 0 || component > 11 || entry.Value == null)
+                {
+                    continue;
+                }
+                var maxDrawables = GetNumberOfPedDrawableVariations(ped, component);
+                if (!data.AddonsManager.Eup.allowed)
+                {
+                    var eupBase = data.EupBaseCounts.For(model, component);
+                    if (eupBase >= 0 && maxDrawables > eupBase)
+                    {
+                        maxDrawables = eupBase;
+                    }
+                }
+                var drawable = entry.Value.Item;
+                var texture = entry.Value.Texture;
+                if (drawable < 0 || drawable >= maxDrawables || texture < 0 || texture >= GetNumberOfPedTextureVariations(ped, component, drawable))
+                {
+                    continue;
+                }
+                clothes[component] = new KeyValuePair<int, int>(drawable, texture);
+            }
+
+            foreach (var entry in outfit.Props ?? new Dictionary<string, SharedOutfitItem>())
+            {
+                if (!int.TryParse(entry.Key, out var anchor) || anchor < 0 || anchor > 12 || entry.Value == null)
+                {
+                    continue;
+                }
+                var drawable = entry.Value.Item;
+                var texture = entry.Value.Texture;
+                if (drawable == -1)
+                {
+                    props[anchor] = new KeyValuePair<int, int>(-1, -1);
+                    continue;
+                }
+                if (drawable < 0 || drawable >= GetNumberOfPedPropDrawableVariations(ped, anchor) || texture < 0 || texture >= GetNumberOfPedPropTextureVariations(ped, anchor, drawable))
+                {
+                    continue;
+                }
+                props[anchor] = new KeyValuePair<int, int>(drawable, texture);
+            }
+
+            if (clothes.Count == 0 && props.Count == 0)
+            {
+                error = "Nothing in that outfit code fits your current character.";
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Saves a shared outfit as a new MP character, based on the character that is currently loaded.
+        /// </summary>
+        private string ImportSharedOutfit(string saveName, string json)
+        {
+            if (string.IsNullOrWhiteSpace(saveName) || saveName.Length > 30)
+            {
+                return "Invalid save name.";
+            }
+            var key = "mp_ped_" + saveName;
+            if (!string.IsNullOrEmpty(GetResourceKvpString(key)))
+            {
+                return "You have an outfit saved with that name already!";
+            }
+
+            var ped = Game.PlayerPed.Handle;
+            if (currentCharacter.Version < 1 || currentCharacter.ModelHash != (uint)GetEntityModel(ped))
+            {
+                return "Spawn the MP character you want this outfit on first, then load the code.";
+            }
+
+            if (!TryReadSharedOutfit(json, ped, out var clothes, out var props, out var error))
+            {
+                return error;
+            }
+
+            // A copy of the loaded character with the shared clothing on top. The dictionaries are copied too,
+            // so the loaded character itself is left untouched.
+            var character = currentCharacter;
+            character.SaveName = key;
+            character.Category = "Uncategorized";
+            character.DrawableVariations.clothes = new Dictionary<int, KeyValuePair<int, int>>(currentCharacter.DrawableVariations.clothes ?? new Dictionary<int, KeyValuePair<int, int>>());
+            character.PropVariations.props = new Dictionary<int, KeyValuePair<int, int>>(currentCharacter.PropVariations.props ?? new Dictionary<int, KeyValuePair<int, int>>());
+            foreach (var item in clothes)
+            {
+                character.DrawableVariations.clothes[item.Key] = item.Value;
+            }
+            foreach (var item in props)
+            {
+                character.PropVariations.props[item.Key] = item.Value;
+            }
+
+            if (!StorageManager.SaveJsonData(key, JsonConvert.SerializeObject(character), false))
+            {
+                return "The outfit could not be saved.";
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Puts a shared outfit on the player's current ped without saving anything.
+        /// </summary>
+        private static string ApplySharedOutfit(string json)
+        {
+            if (!CanDoInteraction("loadoutfit"))
+            {
+                return "You can't change your outfit right now.";
+            }
+
+            var ped = Game.PlayerPed.Handle;
+            if (!TryReadSharedOutfit(json, ped, out var clothes, out var props, out var error))
+            {
+                return error;
+            }
+
+            foreach (var item in clothes)
+            {
+                SetPedComponentVariation(ped, item.Key, item.Value.Key, item.Value.Value, 0);
+            }
+            foreach (var item in props)
+            {
+                if (item.Value.Key == -1)
+                {
+                    ClearPedProp(ped, item.Key);
+                }
+                else
+                {
+                    SetPedPropIndex(ped, item.Key, item.Value.Key, item.Value.Value, true);
+                }
+            }
+            return string.Empty;
+        }
+        #endregion
 
         public static bool OutfitCodesEnabled = GetSettingsBool(Setting.vmenu_outfit_codes);
         private Ped _clone;

@@ -1,179 +1,145 @@
-local Cooldown = false
-local GenerateCooldown = false
-format = string.format
+-- Weapon loadout share codes. Shared helpers: client/lib/codes.lua. The loadout is rebuilt and equipped by
+-- the C# side (SharedCodes.cs), which applies this player's weapon permissions and the "spawnloadout"
+-- interaction check, so a code can never hand out a weapon the player couldn't spawn themselves.
 
----@class loadSharedLoadout
+local CONVAR = 'vmenu_loadout_codes'
+local LOADOUT_PREFIX = 'vmenu_string_saved_weapon_loadout_'
+
+---Asks for a code, saves the loadout under a new name and equips it. Used by the Weapon Loadouts menu.
 exports('loadSharedLoadout', function()
-    if Cooldown then
-        Config.Notify('vMenu', 'You must wait before loading another loadout!', 'error', 6500)
+    if not ShareCodes.enabled(CONVAR) then
+        ShareCodes.notify('Loadout codes are disabled on this server.')
+        return false
+    end
+    if not ShareCodes.claim('loadout:load', 5000) then
+        ShareCodes.notify('You must wait before loading another loadout!')
         return false
     end
 
-    local input = lib.inputDialog('Enter Loadout Code', {
-        { type = 'number', label = 'Loadout Code', description = 'Shared code you were given', icon = 'hashtag', required = true },
-        { type = 'input', label = 'Save Name', description = 'What should we save this loadout as?', icon = 'tag', max = 30, min = 3, required = true },
-    })
-
-    if not input then
-        Config.Notify('vMenu', 'You must enter a valid loadout code!', 'error', 6500)
+    local id, name = ShareCodes.prompt('Loadout')
+    if not id then
+        ShareCodes.notify('You must enter a valid loadout code and a save name!')
+        return false
+    end
+    if GetResourceKvpString(LOADOUT_PREFIX .. name) then
+        ShareCodes.notify('You have a weapon loadout with that name already!')
         return false
     end
 
-    local code = input[1]
-    local newName = input[2]
-
-    local nameExists = GetResourceKvpString(format('vmenu_string_saved_weapon_loadout_%s', newName))
-    if nameExists then
-        Config.Notify('vMenu', 'You have a weapon loadout with that name already!', 'error', 6500)
+    local data, reason = ShareCodes.fetch('Loadouts', id)
+    if not data then
+        ShareCodes.notify(reason)
         return false
     end
 
-    local Valid = lib.callback.await('vMenu:Loadouts:Request', false, code)
-    Cooldown = true
-    SetTimeout(5000, function()
-        Cooldown = false
-        lib.print.debug('Loadout load cooldown expired.')
-    end)
-
-    if not Valid then
-        Config.Notify('vMenu', 'The loadout code you entered is invalid!', 'error', 6500)
+    local ok, message = ShareCodes.apply('ImportSharedLoadout', name, data)
+    if not ok then
+        ShareCodes.notify(message)
         return false
     end
 
-    local validData = json.decode(Valid)
-    if type(validData) ~= 'table' then
-        Config.Notify('vMenu', 'The loadout code you entered is invalid!', 'error', 6500)
-        return false
-    end
-
-    for _, weapon in ipairs(validData) do
-        if weapon.Hash and IsWeaponValid(weapon.Hash) then
-            local ammo = math.max(0, math.min(tonumber(weapon.GetMaxAmmo) or 0, 9999))
-            GiveWeaponToPed(cache.ped, weapon.Hash, ammo, true, false)
-
-            if weapon.Components and next(weapon.Components) ~= nil then
-                for compName, compHash in pairs(weapon.Components) do
-                    GiveWeaponComponentToPed(cache.ped, weapon.Hash, compHash)
-                end
-            end
-        end
-    end
-
-    if json.encode(validData.Components) == '[]' then
-        validData.Components = json.decode('{}')
-        Valid = json.encode(validData)
-    end
-
-    SetResourceKvp(string.format('vmenu_string_saved_weapon_loadout_%s', newName), Valid)
-
-    Config.Notify("vMenu", "Weapon loadout has been successfully loaded!", "success", 6500)
-
+    ShareCodes.notify('Weapon loadout has been successfully loaded!', 'success')
     return true
 end)
 
-RegisterCommand("clearlayouts", function()
-    local prefix = "vmenu_string_saved_weapon_loadout_"
+---Equips the loadout behind a code without saving it. For other resources and the /loadloadoutfromcode command.
+---@param loadoutCode integer
+exports('loadLoadoutFromCode', function(loadoutCode)
+    local id = ShareCodes.toId(loadoutCode)
+    if not id then
+        lib.print.error('loadLoadoutFromCode: a positive integer code is required.')
+        return false
+    end
+    if not ShareCodes.enabled(CONVAR) then
+        return false
+    end
+    if not ShareCodes.claim('loadout:load', 5000) then
+        ShareCodes.notify('You must wait before loading another loadout!')
+        return false
+    end
 
-    local handle = StartFindKvp(prefix)
-    local key = nil
-    local count = 0
+    local data, reason = ShareCodes.fetch('Loadouts', id)
+    if not data then
+        lib.print.debug(('loadLoadoutFromCode: could not load code %s: %s'):format(id, reason))
+        return false
+    end
 
+    local ok, message = ShareCodes.apply('EquipSharedLoadout', data)
+    if not ok then
+        ShareCodes.notify(message)
+        return false
+    end
+    return true
+end)
+
+---Deletes every saved weapon loadout, after asking.
+local function clearLoadouts()
+    local confirmed = lib.alertDialog({
+        header = 'vMenu - Delete all weapon loadouts',
+        content = 'This deletes every weapon loadout you have saved. It cannot be undone.',
+        centered = true,
+        cancel = true,
+    })
+    if confirmed ~= 'confirm' then
+        return
+    end
+
+    -- Collect first: deleting while a KVP search is open skips entries.
+    local keys = {}
+    local handle = StartFindKvp(LOADOUT_PREFIX)
     repeat
-        key = FindKvp(handle)
+        local key = FindKvp(handle)
         if key then
-            DeleteResourceKvpNoSync(key)
-            count = count + 1
+            keys[#keys + 1] = key
         end
     until not key
-
     EndFindKvp(handle)
 
-    print(("Deleted %d saved weapon loadouts."):format(count))
-end, false)
-
-
-exports('loadLoadoutFromCode', function(loadoutCode)
-    if not loadoutCode then
-        return lib.print.error('export: Attempt to load loadout failed, no loadout code provided.')
+    for _, key in ipairs(keys) do
+        DeleteResourceKvpNoSync(key)
     end
+    FlushResourceKvp()
 
-    if type(loadoutCode) ~= 'number' then
-        return lib.print.error('export: Attempt to load loadout failed, invalid code provided. (NaN)')
-    end
-
-    local Valid = lib.callback.await('vMenu:Loadouts:Request', false, loadoutCode)
-    if not Valid then
-        lib.print.debug(format('export: Failed to load outfit with code: %s', loadoutCode))
-        return false
-    end
-
-    local validData = json.decode(Valid)
-    if type(validData) ~= 'table' then
-        return false
-    end
-
-    for _, weapon in ipairs(validData) do
-        if weapon.Hash and IsWeaponValid(weapon.Hash) then
-            local ammo = math.max(0, math.min(tonumber(weapon.GetMaxAmmo) or 0, 9999))
-            GiveWeaponToPed(cache.ped, weapon.Hash, ammo, true, false)
-
-            if weapon.Components and next(weapon.Components) ~= nil then
-                for compName, compHash in pairs(weapon.Components) do
-                    GiveWeaponComponentToPed(cache.ped, weapon.Hash, compHash)
-                end
-            end
-        end
-    end
-
-    Config.Notify("vMenu", "Weapon loadout has been successfully loaded!", "success", 6500)
-
-    return true
-end)
+    ShareCodes.notify(('Deleted %d saved weapon loadouts.'):format(#keys), 'success')
+end
+RegisterCommand('clearloadouts', clearLoadouts, false)
+-- The original (misspelt) command name, kept so existing habits and binds still work.
+RegisterCommand('clearlayouts', clearLoadouts, false)
 
 if Config.LoadoutSharing.CommandEnabled then
-    TriggerEvent("chat:addSuggestion", Config.LoadoutSharing.CommandName, "Load an outfit from a code", {
-        { name = "code", help = "The outfit code you were given." }
+    TriggerEvent('chat:addSuggestion', '/' .. Config.LoadoutSharing.CommandName, 'Equip a weapon loadout from a code', {
+        { name = 'code', help = 'The loadout code you were given.' }
     })
-    RegisterCommand(Config.LoadoutSharing.CommandName, function(source, args)
-        if #args ~= 1 then
-            Config.Notify("vMenu", "Invalid Usage! \n\n /" .. Config.LoadoutSharing.CommandName .. " <code>", "error", 6500)
+    RegisterCommand(Config.LoadoutSharing.CommandName, function(_, args)
+        local id = ShareCodes.toId(args[1])
+        if #args ~= 1 or not id then
+            ShareCodes.notify(('Invalid usage!\n\n/%s <code>'):format(Config.LoadoutSharing.CommandName))
             return
         end
-        if not tonumber(args[1]) then
-            Config.Notify("vMenu", "You must provide a valid loadout code!", "error", 6500)
-            return
-        end
-        exports[GetCurrentResourceName()]:loadLoadoutFromCode(tonumber(args[1]))
+        exports[GetCurrentResourceName()]:loadLoadoutFromCode(id)
     end, false)
 end
 
+-- Fired by the Weapon Loadouts menu (WeaponLoadouts.cs) with the loadout's name, without the KVP prefix.
 AddEventHandler('vMenu:Loadout:GenerateCode', function(name)
-    if GenerateCooldown then
-        Config.Notify('vMenu', 'You must wait before generating another loadout code!', 'error', 6500)
+    if type(name) ~= 'string' or not ShareCodes.enabled(CONVAR) then
+        return
+    end
+    if not ShareCodes.claim('loadout:generate', 15000) then
+        ShareCodes.notify('You must wait before generating another loadout code!')
         return
     end
 
-    local Existing = GetResourceKvpString(format('vmenu_string_saved_weapon_loadout_%s', name))
-    if not Existing then
-        Config.Notify('vMenu', 'You do not have a weapon loadout saved with this name!', 'error', 6500)
+    local saved = GetResourceKvpString(LOADOUT_PREFIX .. name)
+    if not saved then
+        ShareCodes.notify('You do not have a weapon loadout saved with this name!')
         return
     end
 
-    local Data = json.decode(Existing)
-
-    local Generated, errorMessage = lib.callback.await('vMenu:Loadouts:Generate', false, Data)
-    GenerateCooldown = true
-    SetTimeout(15000, function()
-        GenerateCooldown = false
-        lib.print.debug('Loadout load cooldown expired.')
-    end)
-
-    if not Generated then
-        Config.Notify('vMenu', errorMessage or 'Failed to generate loadout code!', 'error', 6500)
+    local id, reason = ShareCodes.create('Loadouts', saved)
+    if not id then
+        ShareCodes.notify(reason or 'Failed to generate loadout code!')
         return
     end
-
-    print(format('Loadout code created: %s', Generated))
-    Config.Notify('vMenu', 'Loadout code has been generated #' .. Generated, 'success', 10000)
-    lib.setClipboard(Generated)
+    ShareCodes.announce('Loadout', id)
 end)

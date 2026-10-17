@@ -1901,7 +1901,15 @@ namespace vMenuClient
             // and add it to the dictionary above, with the vehicle save name as the key.
             foreach (var saveName in savedVehicleNames)
             {
-                vehiclesList.Add(saveName, StorageManager.GetSavedVehicleInfo(saveName));
+                // One unreadable save must not take the whole saved vehicles menu down with it.
+                try
+                {
+                    vehiclesList.Add(saveName, StorageManager.GetSavedVehicleInfo(saveName));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[vMenu] Skipping saved vehicle '{saveName}', its data could not be read: {ex.Message}");
+                }
             }
             // Return the vehicle dictionary containing all vehicle save names (keys) linked to the correct vehicle
             // including all vehicle mods/customization parts.
@@ -3005,6 +3013,15 @@ namespace vMenuClient
                 }
             }
 
+            await GiveWeaponLoadoutAsync(loadout, appendWeapons, ignoreSettingsAndPerms, saveName == "vmenu_temp_weapons_loadout_before_respawn" || dontNotify);
+        }
+
+        /// <summary>
+        /// Gives the player the weapons in a loadout. Each weapon's permission is checked against the current
+        /// weapon list unless ignoreSettingsAndPerms is set (only for restoring the player's own weapons).
+        /// </summary>
+        public static async Task GiveWeaponLoadoutAsync(List<ValidWeapon> loadout, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify)
+        {
             Log(JsonConvert.SerializeObject(loadout));
             if (loadout.Count > 0)
             {
@@ -3061,7 +3078,9 @@ namespace vMenuClient
                                 ammo = w.GetMaxAmmo;
                             }
                             var doIt = false;
-                            while (GetAmmoInPedWeapon(Game.PlayerPed.Handle, w.Hash) != ammo && w.CurrentAmmo != -1)
+                            var ammoTimer = GetGameTimer();
+                            // Some weapons never report the requested ammo; give up after a second rather than spin forever.
+                            while (GetAmmoInPedWeapon(Game.PlayerPed.Handle, w.Hash) != ammo && w.CurrentAmmo != -1 && GetGameTimer() - ammoTimer < 1000)
                             {
                                 if (doIt)
                                 {
@@ -3084,7 +3103,7 @@ namespace vMenuClient
 
                 SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_unarmed"), true);
 
-                if (!(saveName == "vmenu_temp_weapons_loadout_before_respawn" || dontNotify))
+                if (!dontNotify)
                 {
                     Notify.Success("Weapon loadout spawned.");
                 }

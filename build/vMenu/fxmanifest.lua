@@ -30,6 +30,8 @@ files {
 client_scripts {
     'vMenuClient.net.dll',
     'config/config_client.lua',
+    -- Shared helpers first: the files in client/ use them as they load.
+    'client/lib/*.lua',
     'client/*.lua'
 }
 server_scripts {
@@ -37,6 +39,8 @@ server_scripts {
     -- config_server.lua defines Config; locations.lua extends it, so order matters here.
     'config/config_server.lua',
     'config/locations.lua',
+    -- Shared helpers first: the files in server/ use them as they load.
+    'server/lib/*.lua',
     'server/*.lua'
 }
 

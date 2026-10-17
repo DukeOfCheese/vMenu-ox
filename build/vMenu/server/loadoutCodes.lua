@@ -1,97 +1,30 @@
-local userRequestCooldowns = {}
-lib.callback.register(
-    'vMenu:Loadouts:Request',
-    function(source, id)
+-- Weapon loadout share codes. The plumbing (cooldowns, quota, size cap, convar gate) is in server/lib/codes.lua.
 
-        if userRequestCooldowns[source] then
-            lib.print.error(string.format('%s [%s] tried to request loadouts too quickly.', GetPlayerName(source), source))
-            return false, 'You are requesting loadouts too quickly. Please wait a moment.'
-        end
+local function isWeapon(index, weapon, count)
+    if not ShareCodes.isInteger(index, 1, count) or type(weapon) ~= 'table' then return false end
+    -- Weapon hashes are stored unsigned.
+    if not ShareCodes.isInteger(weapon.Hash, 0, 0xFFFFFFFF) then return false end
+    if weapon.Components ~= nil and not ShareCodes.eachEntry(weapon.Components, 64, function(name, hash)
+            return ShareCodes.isString(name, 64) and ShareCodes.isInteger(hash, 0, 0xFFFFFFFF)
+        end) then
+        return false
+    end
+    if weapon.CurrentAmmo ~= nil and not ShareCodes.isInteger(weapon.CurrentAmmo, -1, 100000) then return false end
+    if weapon.CurrentTint ~= nil and not ShareCodes.isInteger(weapon.CurrentTint, -1, 64) then return false end
+    return true
+end
 
-        if not id then
-            lib.print.error(string.format('%s [%s] tried to load loadout with no id?', GetPlayerName(source), source))
-            return false
-        end
-
-        if type(id) ~= 'number' then
-            lib.print.error(string.format('%s [%s] tried to load loadout with invalid id?', GetPlayerName(source), source))
-            return false
-        end
-
-        userRequestCooldowns[source] = true
-
-        local response = exports.oxmysql:query_async('SELECT `data` FROM `vmenu_loadouts` WHERE `id` = ?', {
-            id
-        })
-
-        SetTimeout(3500, function()
-            userRequestCooldowns[source] = nil
+ShareCodes.register({
+    name = 'Loadouts',
+    label = 'loadout',
+    table = 'vmenu_loadouts',
+    convar = 'vmenu_loadout_codes',
+    validate = function(data)
+        if type(data) ~= 'table' then return false end
+        local count = #data
+        if count == 0 or count > 128 then return false end
+        return ShareCodes.eachEntry(data, count, function(index, weapon)
+            return isWeapon(index, weapon, count)
         end)
-
-        if response then
-            return response[1] and response[1].data or false
-        end
-
-        return false, 'Failed to load loadout from database.'
-    end
-)
-
-local userGenerateCooldowns = {}
-lib.callback.register(
-    'vMenu:Loadouts:Generate',
-    function(source, data)
-
-        if userGenerateCooldowns[source] then
-            lib.print.error(string.format('%s [%s] tried to generate loadouts too quickly.', GetPlayerName(source), source))
-            return false
-        end
-
-        if type(data) ~= "table" then
-            lib.print.error(string.format('%s [%s] tried to save loadout with invalid data?', GetPlayerName(source), source))
-            return false
-        end
-
-        local discord = GetPlayerIdentifierByType(source, "discord") and
-            GetPlayerIdentifierByType(source, "discord"):gsub("discord:", "") or false
-        if not discord then
-            return false, 'You need to have Discord linked to generate loadout codes.'
-        end
-
-        local encoded = json.encode(data)
-        if not encoded or #encoded > 65536 then
-            lib.print.error(string.format('%s [%s] tried to generate an oversized loadout code (%d bytes).', GetPlayerName(source), source, encoded and #encoded or 0))
-            return false, 'Your loadout is too large to share.'
-        end
-
-        userGenerateCooldowns[source] = true
-
-        local id = exports.oxmysql:insert_async('INSERT INTO `vmenu_loadouts` (`discord_id`, `data`) VALUES (?, ?)', {
-            discord, encoded
-        })
-
-        SetTimeout(12500, function()
-            userGenerateCooldowns[source] = nil
-        end)
-
-        return id or false
-    end
-)
-
-CreateThread(function()
-    if not GetConvarBool('vmenu_loadout_codes', false) then
-        return
-    end
-
-    if GetResourceState('oxmysql') ~= 'started' then
-        lib.print.error('Loadout Code System is enabled but oxmysql is not started..')
-        return
-    end
-
-    lib.print.info('Loadout Code System is enabled.')
-end)
-
-AddEventHandler('playerDropped', function()
-    local src = source
-    userRequestCooldowns[src] = nil
-    userGenerateCooldowns[src] = nil
-end)
+    end,
+})

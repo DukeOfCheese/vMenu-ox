@@ -1,105 +1,48 @@
-local userRequestCooldowns = {}
-lib.callback.register(
-    "vMenu:Vehicles:Request",
-    function(source, id)
+-- Saved vehicle share codes. The plumbing (cooldowns, quota, size cap, convar gate) is in server/lib/codes.lua.
 
-        if userRequestCooldowns[source] then
-            -- shouldnt be possible with the client side cooldowns but this is to protect against event spam
-            lib.print.error(string.format("%s [%s] tried to request vehicle too quickly.", GetPlayerName(source), source))
-            return false, "You are requesting vehicles too quickly. Please wait a moment."
-        end
+-- The fields the saved vehicles menu reads (CommonFunctions.VehicleInfo), and what each must be.
+local integerFields = { livery = true, plateStyle = true, version = true, wheelType = true, windowTint = true, headlightColor = true }
+local booleanFields = {
+    customWheels = true, neonBack = true, neonFront = true, neonLeft = true, neonRight = true,
+    turbo = true, tyreSmoke = true, xenonHeadlights = true, bulletProofTires = true,
+}
 
-        if not id then
-            lib.print.error(string.format("%s [%s] tried to load vehicle with no id?", GetPlayerName(source), source))
-            return false
-        end
+local function isVehicle(data)
+    if type(data) ~= 'table' or not ShareCodes.isInteger(data.model, 1, 0xFFFFFFFF) then return false end
 
-        if type(id) ~= "number" then
-            lib.print.error(string.format("%s [%s] tried to load vehicle with invalid id?", GetPlayerName(source), source))
-            return false
-        end
-
-        userRequestCooldowns[source] = true
-
-        local response = exports.oxmysql:query_async('SELECT `data` FROM `vmenu_vehicles` WHERE `id` = ?', {
-            id
-        })
-
-        SetTimeout(3500, function()
-            userRequestCooldowns[source] = nil
-        end)
-
-        if response then
-            return response[1] and response[1].data or false
-        end
-
-        return false, "Failed to load vehicle from database."
+    for field in pairs(integerFields) do
+        if data[field] ~= nil and not ShareCodes.isInteger(data[field], -1, 100000) then return false end
     end
-)
-
-local userGenerateCooldowns = {}
-
-lib.callback.register(
-    "vMenu:Vehicles:Generate",
-    function(source, data)
-
-        if userGenerateCooldowns[source] then
-            -- shouldnt be possible with the client side cooldowns but this is to protect against event spam
-            lib.print.error(string.format("%s [%s] tried to generate vehicle too quickly.", GetPlayerName(source), source))
-            return false, "You are generating vehicles too quickly. Please wait a moment."
-        end
-
-        if not data then
-            lib.print.error(string.format("%s [%s] tried to save vehicle with no data?", GetPlayerName(source), source))
-            return false, "No data provided."
-        end
-
-        if type(data) ~= "table" then
-            lib.print.error(string.format("%s [%s] tried to save vehicle with invalid data?", GetPlayerName(source), source))
-            return false, "Invalid data provided."
-        end
-
-        local discord = GetPlayerIdentifierByType(source, "discord") and
-            GetPlayerIdentifierByType(source, "discord"):gsub("discord:", "") or false
-        if not discord then
-            return false, "You need to have Discord linked to generate vehicle codes."
-        end
-
-        local encoded = json.encode(data)
-        if not encoded or #encoded > 65536 then
-            lib.print.error(string.format("%s [%s] tried to generate an oversized vehicle code (%d bytes).", GetPlayerName(source), source, encoded and #encoded or 0))
-            return false, "Your vehicle is too large to share."
-        end
-
-        userGenerateCooldowns[source] = true
-
-        local id = exports.oxmysql:insert_async('INSERT INTO `vmenu_vehicles` (`discord_id`, `data`) VALUES (?, ?)', {
-            discord, encoded
-        })
-
-        SetTimeout(12500, function()
-            userGenerateCooldowns[source] = nil
-        end)
-
-        return id or false
+    for field in pairs(booleanFields) do
+        if data[field] ~= nil and type(data[field]) ~= 'boolean' then return false end
     end
-)
+    if data.enveffScale ~= nil and not ShareCodes.isNumber(data.enveffScale) then return false end
+    if data.name ~= nil and not ShareCodes.isString(data.name, 64) then return false end
+    if data.plateText ~= nil and not ShareCodes.isString(data.plateText, 16) then return false end
+    if data.Category ~= nil and not ShareCodes.isString(data.Category, 64) then return false end
 
-CreateThread(function()
-    if not GetConvarBool("vmenu_vehicle_codes", false) then
-        return
+    if data.mods ~= nil and not ShareCodes.eachEntry(data.mods, 64, function(modType, index)
+            return ShareCodes.isInteger(tonumber(modType), -1, 100) and ShareCodes.isInteger(index, -1, 1000)
+        end) then
+        return false
     end
-
-    if GetResourceState("oxmysql") ~= "started" then
-        lib.print.error("Vehicle Code System is enabled but oxmysql is not started..")
-        return
+    if data.colors ~= nil and not ShareCodes.eachEntry(data.colors, 32, function(name, value)
+            return ShareCodes.isString(name, 32) and ShareCodes.isInteger(value, -1, 1000)
+        end) then
+        return false
     end
+    if data.extras ~= nil and not ShareCodes.eachEntry(data.extras, 32, function(extra, enabled)
+            return ShareCodes.isInteger(tonumber(extra), 0, 31) and type(enabled) == 'boolean'
+        end) then
+        return false
+    end
+    return true
+end
 
-    lib.print.info("Vehicle Code System is enabled.")
-end)
-
-AddEventHandler('playerDropped', function()
-    local src = source
-    userRequestCooldowns[src] = nil
-    userGenerateCooldowns[src] = nil
-end)
+ShareCodes.register({
+    name = 'Vehicles',
+    label = 'vehicle',
+    table = 'vmenu_vehicles',
+    convar = 'vmenu_vehicle_codes',
+    validate = isVehicle,
+})

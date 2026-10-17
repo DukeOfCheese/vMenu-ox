@@ -1,100 +1,67 @@
-local Cooldown = false
-local GenerateCooldown = false
+-- Saved vehicle share codes. Shared helpers: client/lib/codes.lua. The vehicle data is checked and
+-- normalised by the C# side (SharedCodes.cs) before it is saved; spawning it later goes through the same
+-- checks as any other saved vehicle.
 
----@class loadSharedVehicle
-exports("loadSharedVehicle", function()
-    if Cooldown then
-        Config.Notify("vMenu", "You must wait before loading another vehicle!", "error", 6500)
+local CONVAR = 'vmenu_vehicle_codes'
+local VEHICLE_PREFIX = 'veh_'
+
+---Asks for a code and saves the vehicle under a new name. Used by the Saved Vehicles menu.
+exports('loadSharedVehicle', function()
+    if not ShareCodes.enabled(CONVAR) then
+        ShareCodes.notify('Vehicle codes are disabled on this server.')
+        return false
+    end
+    if not ShareCodes.claim('vehicle:load', 5000) then
+        ShareCodes.notify('You must wait before loading another vehicle!')
         return false
     end
 
-    local input = lib.inputDialog("Enter Vehicle Code", {
-        { type = 'number', label = 'Vehicle Code', description = "The sharing code you were given.", icon = 'hashtag', required = true },
-        { type = 'input', label = 'Save Name', description = "What should we save this vehicle as?", icon = 'tag', max = 30, min = 3, required = true },
-    })
-
-    if not input then
-        Config.Notify("vMenu", "You must enter a valid vehicle code!", "error", 6500)
+    local id, name = ShareCodes.prompt('Vehicle')
+    if not id then
+        ShareCodes.notify('You must enter a valid vehicle code and a save name!')
+        return false
+    end
+    if GetResourceKvpString(VEHICLE_PREFIX .. name) then
+        ShareCodes.notify('You have a vehicle saved with that name already!')
         return false
     end
 
-    local code = input[1]
-    local newName = input[2]
-    local nameExists = GetResourceKvpString(format("veh_%s", newName))
-    if nameExists then
-        Config.Notify("vMenu", "You have a vehicle saved with that name already!", "error", 6500)
+    local data, reason = ShareCodes.fetch('Vehicles', id)
+    if not data then
+        ShareCodes.notify(reason)
         return false
     end
 
-    local Valid = lib.callback.await("vMenu:Vehicles:Request", false, code)
-    Cooldown = true
-    SetTimeout(5000, function()
-        Cooldown = false
-        lib.print.debug("Vehicle load cooldown expired.")
-    end)
-
-    if not Valid then
-        Config.Notify("vMenu", "The vehicle code you entered is invalid!", "error", 6500)
+    local ok, message = ShareCodes.apply('ImportSharedVehicle', name, data)
+    if not ok then
+        ShareCodes.notify(message)
         return false
     end
 
-    local decoded = json.decode(Valid)
-    local vehicleClass = GetVehicleClassFromName(decoded.model)
-    local vehicleClassLabel = "Not Found"
-    if IsModelInCdimage(decoded.model) and IsModelValid(decoded.model) then
-        -- in case this vehicle save is for a car that is disabled / not being streamed currently
-        vehicleClassLabel = GetFilenameForAudioConversation(format("VEH_CLASS_%s", vehicleClass))
-    end
-
-    if json.encode(decoded.extras) == "[]" then
-        -- fix json fuckery from db
-        decoded.extras = json.decode("{}")
-        Valid = json.encode(decoded)
-    end
-
-    SetResourceKvp(format("veh_%s", newName), Valid)
-    Config.Notify("vMenu", format("Name: **%s** \n\n Category: **Uncategorized** \n\n Class: **%s**", newName, vehicleClassLabel), "success", 6500)
-
+    ShareCodes.notify(('Vehicle saved as **%s** in **Uncategorized**.'):format(name), 'success')
     return true
-
 end)
 
----@class generateVehicleCode
----@param saveName string
-AddEventHandler("vMenu:Vehicles:GenerateCode", function(saveName)
-
-    if not saveName or type(saveName) ~= "string" then
-        lib.print.error("export: generateVehicleCode - saveName is required and must be a string.")
-        return false
+-- Fired by the Saved Vehicles menu with the vehicle's name, without the KVP prefix.
+AddEventHandler('vMenu:Vehicles:GenerateCode', function(name)
+    if type(name) ~= 'string' or not ShareCodes.enabled(CONVAR) then
+        return
+    end
+    if not ShareCodes.claim('vehicle:generate', 15000) then
+        ShareCodes.notify('You must wait before generating another vehicle code!')
+        return
     end
 
-    if GenerateCooldown then
-        Config.Notify("vMenu", "You must wait before generating another vehicle code!", "error", 6500)
-        return false
+    local saved = GetResourceKvpString(VEHICLE_PREFIX .. name)
+    if not saved then
+        ShareCodes.notify('Error fetching vehicle data.')
+        return
     end
 
-    local vehicleData = GetResourceKvpString(format("veh_%s", saveName))
-    if not vehicleData then
-        lib.print.debug("Vehicle data does not exist somehow?")
-        Config.Notify("vMenu", "Error fetching vehicle data.", "error", 6500)
-        return false
+    local id, reason = ShareCodes.create('Vehicles', saved)
+    if not id then
+        ShareCodes.notify(reason or 'Failed to generate vehicle code.')
+        return
     end
-
-    local decoded = json.decode(vehicleData)
-    decoded.Category = "Uncategorized" -- We don't want to break something by having the origin user having a custom category name that doesnt exist on other clients
-
-    local generated, error = lib.callback.await("vMenu:Vehicles:Generate", false, decoded)
-    GenerateCooldown = true
-    SetTimeout(15000, function()
-        GenerateCooldown = false
-        lib.print.debug("Vehicle generate cooldown expired.")
-    end)
-
-    if not generated then
-        Config.Notify("vMenu", error or "Failed to generate vehicle code.", "error", 6500)
-        return false
-    end
-
-    print(format("Vehicle code generated: %s", generated))
-    Config.Notify("vMenu", format("Vehicle code has been generated - id: #%s", generated), "success", 6500)
+    ShareCodes.announce('Vehicle', id)
 end)

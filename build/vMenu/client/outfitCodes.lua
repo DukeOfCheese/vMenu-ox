@@ -1,200 +1,125 @@
-local Cooldown = false
-local GenerateCooldown = false
-format = string.format
+-- MP ped outfit share codes. Shared helpers: client/lib/codes.lua. The outfit is checked against the
+-- player's current ped and their EUP permission by the C# side (MpPedCustomization.cs) before it is saved
+-- or worn.
 
-local function isValidComp(ped, comp, drawable, texture)
-    local maxDraw = GetNumberOfPedDrawableVariations(ped, comp)
-    if drawable < 0 or drawable >= maxDraw then return false end
+local CONVAR = 'vmenu_outfit_codes'
+local PED_PREFIX = 'mp_ped_'
 
-    local maxTex = GetNumberOfPedTextureVariations(ped, comp, drawable)
-    if texture < 0 or texture >= maxTex then return false end
-
-    return true
-end
-
----@class loadSharedOutfit
-exports("loadSharedOutfit", function()
-    if Cooldown then
-        Config.Notify("vMenu", "You must wait before loading another outfit!", "error", 6500)
+---Asks for a code and saves the outfit as a new MP character based on the one currently loaded.
+---Used by the MP Ped Customization menu.
+exports('loadSharedOutfit', function()
+    if not ShareCodes.enabled(CONVAR) then
+        ShareCodes.notify('Outfit codes are disabled on this server.')
+        return false
+    end
+    if not ShareCodes.claim('outfit:load', 5000) then
+        ShareCodes.notify('You must wait before loading another outfit!')
         return false
     end
 
-    local input = lib.inputDialog("Enter Outfit Code", {
-        { type = 'number', label = 'Outfit Code', description = "The sharing code you were given.", icon = 'hashtag', required = true },
-        { type = 'input', label = 'Save Name', description = "What should we save this outfit as?", icon = 'tag', max = 30, min = 3, required = true },
-    })
-
-    if not input then
-        Config.Notify("vMenu", "You must enter a valid outfit code!", "error", 6500)
+    local id, name = ShareCodes.prompt('Outfit')
+    if not id then
+        ShareCodes.notify('You must enter a valid outfit code and a save name!')
+        return false
+    end
+    if GetResourceKvpString(PED_PREFIX .. name) then
+        ShareCodes.notify('You have an outfit saved with that name already!')
         return false
     end
 
-    local code = input[1]
-    local newName = input[2]
-
-    local nameExists = GetResourceKvpString(format("mp_ped_%s", newName))
-    if nameExists then
-        Config.Notify("vMenu", "You have an outfit saved with that name already!", "error", 6500)
+    local data, reason = ShareCodes.fetch('Outfits', id)
+    if not data then
+        ShareCodes.notify(reason)
         return false
     end
 
-    local Valid = lib.callback.await("vMenu:Outfits:Request", false, code)
-    Cooldown = true
-    SetTimeout(5000, function()
-        Cooldown = false
-        lib.print.debug("Outfit load cooldown expired.")
-    end)
-
-    if not Valid then
-        Config.Notify("vMenu", "The outfit code you entered is invalid!", "error", 6500)
+    local ok, message = ShareCodes.apply('ImportSharedOutfit', name, data)
+    if not ok then
+        ShareCodes.notify(message)
         return false
     end
 
-    local validData = json.decode(Valid)
-    local charJson = exports[GetCurrentResourceName()]:GetMpCharacterData()
-    if charJson == nil then
-        Config.Notify("vMenu", "Failed to fetch character data!", "error", 6500)
-        return false
-    end
-
-    local charData = json.decode(charJson)
-
-    for k, v in pairs(validData.Clothes) do
-        local comp = tonumber(k)
-        if isValidComp(cache.ped, comp, v.Item, v.Texture) then
-            SetPedComponentVariation(cache.ped, comp, v.Item, v.Texture, 0)
-        else
-            lib.print.warn(("Invalid clothing: comp %s drawable %s texture %s"):format(comp, v.Item, v.Texture))
-        end
-    end
-
-    for k, v in pairs(validData.Props) do
-        SetPedPropIndex(cache.ped, tonumber(k), v.Item, v.Texture, true)
-    end
-
-    charData.DrawableVariations = charData.DrawableVariations or {}
-    charData.DrawableVariations.clothes = charData.DrawableVariations.clothes or {}
-
-    charData.PropVariations = charData.PropVariations or {}
-    charData.PropVariations.props = charData.PropVariations.props or {}
-
-    for k, v in pairs(validData.Clothes) do
-        local key = tostring(k)
-
-        charData.DrawableVariations.clothes[key] =
-            charData.DrawableVariations.clothes[key] or {}
-
-        charData.DrawableVariations.clothes[key].Key = v.Item
-        charData.DrawableVariations.clothes[key].Value = v.Texture
-    end
-
-    for k, v in pairs(validData.Props) do
-        local key = tostring(k)
-
-        charData.PropVariations.props[key] =
-            charData.PropVariations.props[key] or {}
-
-        charData.PropVariations.props[key].Key = v.Item
-        charData.PropVariations.props[key].Value = v.Texture
-    end
-
-    SetResourceKvp(format("mp_ped_%s", newName), json.encode(charData))
-    
-    Config.Notify("vMenu", "Outfit has been successfully loaded!", "success", 6500)
-
+    ShareCodes.notify('Outfit has been successfully loaded!', 'success')
     return true
 end)
 
-exports("loadOutfitFromCode", function(outfitCode)
-    if not outfitCode then
-        return lib.print.error("export: Tried to load outfit failed, no code provided.")
+---Puts the outfit behind a code on the player's current ped without saving it. For other resources and
+---the /loadoutfitfromcode command.
+---@param outfitCode integer
+exports('loadOutfitFromCode', function(outfitCode)
+    local id = ShareCodes.toId(outfitCode)
+    if not id then
+        lib.print.error('loadOutfitFromCode: a positive integer code is required.')
+        return false
     end
-    if type(outfitCode) ~= "number" then
-        return lib.print.error("export: Tried to load outfit failed, invalid code provided. (not a number)")
+    if not ShareCodes.enabled(CONVAR) then
+        return false
     end
-
-    local Valid = lib.callback.await("vMenu:Outfits:Request", false, outfitCode)
-    if not Valid then
-        lib.print.debug(format("export: Failed to load outfit with code: %s", outfitCode))
+    if not ShareCodes.claim('outfit:load', 5000) then
+        ShareCodes.notify('You must wait before loading another outfit!')
         return false
     end
 
-    local validData = json.decode(Valid)
-
-    for k, v in pairs(validData.Clothes) do
-        local comp = tonumber(k)
-        if isValidComp(cache.ped, comp, v.Item, v.Texture) then
-            SetPedComponentVariation(cache.ped, comp, v.Item, v.Texture, 0)
-        else
-            lib.print.warn(("Invalid clothing: comp %s drawable %s texture %s"):format(comp, v.Item, v.Texture))
-        end
+    local data, reason = ShareCodes.fetch('Outfits', id)
+    if not data then
+        lib.print.debug(('loadOutfitFromCode: could not load code %s: %s'):format(id, reason))
+        return false
     end
 
-    for k, v in pairs(validData.Props) do
-        SetPedPropIndex(PlayerPedId(), k, v.Item, v.Texture, true)
+    local ok, message = ShareCodes.apply('ApplySharedOutfit', data)
+    if not ok then
+        ShareCodes.notify(message)
+        return false
     end
-
     return true
 end)
 
 if Config.OutfitSharing.CommandEnabled then
-    TriggerEvent("chat:addSuggestion", Config.OutfitSharing.CommandName, "Load an outfit from a code", {
-        { name = "code", help = "The outfit code you were given." }
+    TriggerEvent('chat:addSuggestion', '/' .. Config.OutfitSharing.CommandName, 'Wear an outfit from a code', {
+        { name = 'code', help = 'The outfit code you were given.' }
     })
-    RegisterCommand(Config.OutfitSharing.CommandName, function(source, args)
-        if #args ~= 1 then
-            Config.Notify("vMenu", "Invalid Usage! \n\n /" .. Config.OutfitSharing.CommandName .. " <code>", "error", 6500)
+    RegisterCommand(Config.OutfitSharing.CommandName, function(_, args)
+        local id = ShareCodes.toId(args[1])
+        if #args ~= 1 or not id then
+            ShareCodes.notify(('Invalid usage!\n\n/%s <code>'):format(Config.OutfitSharing.CommandName))
             return
         end
-        if not tonumber(args[1]) then
-            Config.Notify("vMenu", "You must provide a valid outfit code!", "error", 6500)
-            return
-        end
-        exports[GetCurrentResourceName()]:loadOutfitFromCode(tonumber(args[1]))
+        exports[GetCurrentResourceName()]:loadOutfitFromCode(id)
     end, false)
 end
 
-AddEventHandler("vMenu:Outfits:GenerateCode", function(name)
-    name = string.sub(name, 8) -- this removes the prefix of mp_ped_ from the name used to store kvp data
-
-    if GenerateCooldown then
-        Config.Notify("vMenu", "You must wait before generating another outfit code!", "error", 6500)
+-- Fired by the MP Ped Customization menu with the character's full KVP key (mp_ped_<name>).
+AddEventHandler('vMenu:Outfits:GenerateCode', function(saveName)
+    if type(saveName) ~= 'string' or not ShareCodes.enabled(CONVAR) then
+        return
+    end
+    if not ShareCodes.claim('outfit:generate', 15000) then
+        ShareCodes.notify('You must wait before generating another outfit code!')
         return
     end
 
-    local Existing = GetResourceKvpString(format("mp_ped_%s", name))
-    if not Existing then
-        Config.Notify("vMenu", "You do not have a MP ped saved with this name!", "error", 6500)
+    local saved = GetResourceKvpString(saveName)
+    local character = saved and json.decode(saved)
+    if type(character) ~= 'table' then
+        ShareCodes.notify('You do not have a MP ped saved with this name!')
         return
     end
 
-    local Data = json.decode(Existing)
-
-    local ToSave = {
-        Clothes = {},
-        Props = {}
-    }
-    for k, v in pairs(Data.DrawableVariations.clothes) do
-        ToSave.Clothes[k] = { Item = v.Key, Texture = v.Value }
+    -- Only the clothing and props are shared, never the face or the rest of the character.
+    local outfit = { Clothes = {}, Props = {} }
+    local clothes = character.DrawableVariations and character.DrawableVariations.clothes or {}
+    local props = character.PropVariations and character.PropVariations.props or {}
+    for slot, item in pairs(clothes) do
+        outfit.Clothes[tostring(slot)] = { Item = item.Key, Texture = item.Value }
+    end
+    for slot, item in pairs(props) do
+        outfit.Props[tostring(slot)] = { Item = item.Key, Texture = item.Value }
     end
 
-    for k, v in pairs(Data.PropVariations.props) do
-        ToSave.Props[k] = { Item = v.Key, Texture = v.Value }
-    end
-
-    local Generated, errorMessage = lib.callback.await("vMenu:Outfits:Generate", false, ToSave)
-    GenerateCooldown = true
-    SetTimeout(15000, function()
-        GenerateCooldown = false
-        lib.print.debug("Outfit load cooldown expired.")
-    end)
-
-    if not Generated then
-        Config.Notify("vMenu", errorMessage or "Failed to generate outfit code!", "error", 6500)
+    local id, reason = ShareCodes.create('Outfits', json.encode(outfit))
+    if not id then
+        ShareCodes.notify(reason or 'Failed to generate outfit code!')
         return
     end
-
-    print(format("Outfit code created: %s", Generated))
-    Config.Notify("vMenu", "Outfit code has been generated #" .. Generated, "success", 10000)
-    lib.setClipboard(Generated)
+    ShareCodes.announce('Outfit', id)
 end)

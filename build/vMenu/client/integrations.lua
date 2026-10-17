@@ -154,6 +154,8 @@ exports("canDoInteraction", function(action)
 
     elseif action == "spawnloadout" then
 
+    elseif action == "loadoutfit" then -- wearing an outfit from a share code
+
     elseif action == "noclip" then
 
     elseif action == "nightvision" then
