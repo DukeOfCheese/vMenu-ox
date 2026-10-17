@@ -31,7 +31,9 @@ namespace vMenuClient
     {
         private int LastVehicle = 0;
         private bool SwitchedVehicle = false;
-        private readonly List<int> deadPlayers = new();
+        private readonly HashSet<int> deadPlayers = new();
+        private readonly Dictionary<int, Player> killerPedLookup = new();
+        private readonly Dictionary<int, Player> killerVehicleLookup = new();
         private float cameraRotationHeading = 0f;
         private bool cameraButtonsDisabledForVehicle = false;
 
@@ -46,6 +48,9 @@ namespace vMenuClient
         public const string clothingAnimationDecor = "clothing_animation_type";
         private bool clothingAnimationReverse = false;
         private float clothingOpacity = 1f;
+        // Ped handle -> clothing animation decor value last applied by PlayerClothingAnimationsController.
+        private readonly Dictionary<int, int> clothingGlowApplied = new();
+        private int clothingGlowCacheRuns = 0;
 
         private const string snowball_anim_dict = "anim@mp_snowball";
         private const string snowball_anim_name = "pickup_snowball";
@@ -61,11 +66,19 @@ namespace vMenuClient
         private readonly Dictionary<int, string> overheadNamesCache = new();
         private readonly Dictionary<int, int> overheadColourCache = new();
 
+        /// <summary>
+        /// Receives overhead names from the server (build/vMenu/server/integrations.lua).
+        /// A full table replaces everything; otherwise it only holds what changed, where an entry of
+        /// <c>false</c> means that player left.
+        /// </summary>
         [EventHandler("vMenu:SyncOverheadNames")]
-        private void SyncOverheadNames(dynamic cacheObj)
+        private void SyncOverheadNames(dynamic cacheObj, bool isFull)
         {
-            overheadNamesCache.Clear();
-            overheadColourCache.Clear();
+            if (isFull)
+            {
+                overheadNamesCache.Clear();
+                overheadColourCache.Clear();
+            }
 
             var dict = cacheObj as IDictionary<string, object>;
             if (dict == null) return;
@@ -77,7 +90,11 @@ namespace vMenuClient
 
                 var entry = kvp.Value as IDictionary<string, object>;
                 if (entry == null)
+                {
+                    overheadNamesCache.Remove(playerId);
+                    overheadColourCache.Remove(playerId);
                     continue;
+                }
 
                 if (entry.TryGetValue("name", out var nameObj))
                 {
@@ -118,7 +135,6 @@ namespace vMenuClient
             Tick += MiscRecordingKeybinds;
             Tick += MiscSettings;
             Tick += GeneralTasks;
-            Tick += GcTick;
 
             // Configuration and permissions based
             if (IsAllowed(Permission.WOMenu) && GetSettingsBool(Setting.vmenu_enable_weather_sync))
@@ -183,6 +199,8 @@ namespace vMenuClient
             if (IsAllowed(Permission.MSOverheadNames))
             {
                 Tick += PlayerOverheadNamesControl;
+                // The server only sends changes from now on, so fetch the full name table once.
+                TriggerServerEvent("vMenu:RequestOverheadNames");
             }
             if (IsAllowed(Permission.POMenu))
             {
@@ -207,25 +225,6 @@ namespace vMenuClient
         }
 
         /// Task related
-        #region gc thread
-        int gcTimer = GetGameTimer();
-        /// <summary>
-        /// Task for clearing unused memory periodically.
-        /// </summary>
-        /// <returns></returns>
-        private async Task GcTick()
-        {
-            if (GetGameTimer() - gcTimer > 60000)
-            {
-                gcTimer = GetGameTimer();
-                GC.Collect();
-                Log($"[vMenu] GC at {GetGameTimer()} ({GetTimeAsString(GetGameTimer())}).");
-
-            }
-            await Delay(1000);
-        }
-        #endregion
-
         #region General Tasks
         /// <summary>
         /// All general tasks that run every 1 game ticks (and are not (sub)menu specific).
@@ -250,6 +249,14 @@ namespace vMenuClient
         #endregion
 
         #region Player Options Tasks
+        // Last god mode / ragdoll values written to the player ped (null = write again next frame).
+        private bool? appliedPlayerGodMode = null;
+        private bool? appliedPlayerCanRagdoll = null;
+        private int playerFlagsPed = 0;
+        private int playerFlagsReassertTimer = 0;
+        private bool noclipWasActive = false;
+        private bool handleInvisibility = false;
+
         /// <summary>
         /// Run all tasks for the Player Options menu.
         /// </summary>
@@ -259,6 +266,22 @@ namespace vMenuClient
             // perms
             var godmodeAllowed = IsAllowed(Permission.POGod);
             var noRagdollAllowed = IsAllowed(Permission.PONoRagdoll);
+
+            // God mode and ragdoll are only written when they change. Noclip resets invincibility on every
+            // noclip frame and other resources (e.g. spawnmanager) touch these too, so they are also
+            // re-asserted for a new ped, while/just after noclip, and every 250 ms. The convar is
+            // refreshed on that same timer instead of being read every frame.
+            var playerPed = Game.PlayerPed.Handle;
+            var noclipActive = NoClip.IsNoclipActive();
+            if (playerPed != playerFlagsPed || noclipActive || noclipWasActive || GetGameTimer() - playerFlagsReassertTimer > 250)
+            {
+                playerFlagsPed = playerPed;
+                playerFlagsReassertTimer = GetGameTimer();
+                appliedPlayerGodMode = null;
+                appliedPlayerCanRagdoll = null;
+                handleInvisibility = GetSettingsBool(Setting.vmenu_handle_invisibility);
+            }
+            noclipWasActive = noclipActive;
 
             if (MainMenu.MpPedCustomizationMenu != null && MainMenu.MpPedCustomizationMenu.appearanceMenu != null && MainMenu.MpPedCustomizationMenu.faceShapeMenu != null && MainMenu.MpPedCustomizationMenu.createCharacterMenu != null && MainMenu.MpPedCustomizationMenu.inheritanceMenu != null && MainMenu.MpPedCustomizationMenu.propsMenu != null && MainMenu.MpPedCustomizationMenu.clothesMenu != null && MainMenu.MpPedCustomizationMenu.tattoosMenu != null)
             {
@@ -276,12 +299,22 @@ namespace vMenuClient
                 }
                 if (!IsMpPedCreatorOpen())
                 {
-                    SetEntityInvincible(Game.PlayerPed.Handle, MainMenu.PlayerOptionsMenu.PlayerGodMode && godmodeAllowed);
+                    var godMode = MainMenu.PlayerOptionsMenu.PlayerGodMode && godmodeAllowed;
+                    if (appliedPlayerGodMode != godMode)
+                    {
+                        SetEntityInvincible(playerPed, godMode);
+                        appliedPlayerGodMode = godMode;
+                    }
+                }
+                else
+                {
+                    // The creator manages invincibility itself, so write it again once it closes.
+                    appliedPlayerGodMode = null;
                 }
             }
 
             // Manage PlayerInvisible
-            if (GetSettingsBool(Setting.vmenu_handle_invisibility) && MainMenu.PlayerOptionsMenu.PlayerInvisible && IsAllowed(Permission.POInvisible))
+            if (handleInvisibility && MainMenu.PlayerOptionsMenu.PlayerInvisible && IsAllowed(Permission.POInvisible))
             {
                 SetEntityVisible(Game.PlayerPed.Handle, false, false);
             }
@@ -293,8 +326,12 @@ namespace vMenuClient
             }
 
             // Manage PlayerNoRagdoll
-            SetPedCanRagdoll(Game.PlayerPed.Handle, (!MainMenu.PlayerOptionsMenu.PlayerNoRagdoll && noRagdollAllowed) ||
-                (!noRagdollAllowed));
+            var canRagdoll = (!MainMenu.PlayerOptionsMenu.PlayerNoRagdoll && noRagdollAllowed) || (!noRagdollAllowed);
+            if (appliedPlayerCanRagdoll != canRagdoll)
+            {
+                SetPedCanRagdoll(playerPed, canRagdoll);
+                appliedPlayerCanRagdoll = canRagdoll;
+            }
 
 
             // Manage never wanted.
@@ -348,6 +385,14 @@ namespace vMenuClient
         #endregion
 
         #region Vehicle Options Tasks
+        // Vehicle god mode flags last written by VehicleOptions (bitmask), the vehicle they were written to and when.
+        private int vehicleGodFlagsHandle = 0;
+        private int vehicleGodFlagsApplied = -1;
+        private int vehicleGodFlagsTimer = 0;
+        private bool vehicleNoclipWasActive = false;
+        // Last time "engine always on" turned the engine of the last vehicle on.
+        private int engineAlwaysOnTimer = 0;
+
         /// <summary>
         /// Manage all vehicle related tasks.
         /// </summary>
@@ -369,8 +414,6 @@ namespace vMenuClient
                     var autoRepairGod = MainMenu.VehicleOptionsMenu.VehicleGodAutoRepair && god;
                     var rampGod = MainMenu.VehicleOptionsMenu.VehicleGodRamp && god;
 
-                    SetRampVehicleReceivesRampDamage(veh.Handle, !rampGod);
-
                     if (visualGod && IsVehicleDamaged(veh.Handle))
                     {
                         RemoveDecalsFromVehicle(veh.Handle);
@@ -385,30 +428,49 @@ namespace vMenuClient
                         {
                             return;
                         }
+
+                        // Write the god mode flags again after the repair.
+                        vehicleGodFlagsApplied = -1;
                     }
 
-                    veh.CanBeVisiblyDamaged = !visualGod;
-
-                    veh.CanEngineDegrade = !engineGod;
                     if (engineGod && veh.EngineHealth < 1000f)
                     {
                         veh.EngineHealth = 1000f;
                     }
 
-                    veh.CanWheelsBreak = !strongWheelsGod;
-                    veh.IsAxlesStrong = strongWheelsGod;
-
-                    veh.IsBulletProof = invincibleGod;
-                    veh.IsCollisionProof = invincibleGod;
-                    veh.IsExplosionProof = invincibleGod;
-                    veh.IsFireProof = invincibleGod;
-                    veh.IsInvincible = invincibleGod;
-                    veh.IsMeleeProof = invincibleGod;
-
-                    foreach (var vehicleDoor in veh.Doors.GetAll())
+                    // The god mode flags below are only written when they or the vehicle change. Noclip resets
+                    // invincibility on its entity and other resources may touch these too, so they are also
+                    // re-asserted while/just after noclip and once a second.
+                    var godFlags = (invincibleGod ? 1 : 0) | (visualGod ? 2 : 0) | (engineGod ? 4 : 0) | (strongWheelsGod ? 8 : 0) | (rampGod ? 16 : 0);
+                    var noclipActive = NoClip.IsNoclipActive();
+                    if (veh.Handle != vehicleGodFlagsHandle || godFlags != vehicleGodFlagsApplied || noclipActive || vehicleNoclipWasActive || GetGameTimer() - vehicleGodFlagsTimer > 1000)
                     {
-                        vehicleDoor.CanBeBroken = !invincibleGod;
+                        vehicleGodFlagsHandle = veh.Handle;
+                        vehicleGodFlagsApplied = godFlags;
+                        vehicleGodFlagsTimer = GetGameTimer();
+
+                        SetRampVehicleReceivesRampDamage(veh.Handle, !rampGod);
+
+                        veh.CanBeVisiblyDamaged = !visualGod;
+
+                        veh.CanEngineDegrade = !engineGod;
+
+                        veh.CanWheelsBreak = !strongWheelsGod;
+                        veh.IsAxlesStrong = strongWheelsGod;
+
+                        veh.IsBulletProof = invincibleGod;
+                        veh.IsCollisionProof = invincibleGod;
+                        veh.IsExplosionProof = invincibleGod;
+                        veh.IsFireProof = invincibleGod;
+                        veh.IsInvincible = invincibleGod;
+                        veh.IsMeleeProof = invincibleGod;
+
+                        foreach (var vehicleDoor in veh.Doors.GetAll())
+                        {
+                            vehicleDoor.CanBeBroken = !invincibleGod;
+                        }
                     }
+                    vehicleNoclipWasActive = noclipActive;
 
                     // Freeze Vehicle Position (if enabled).
                     if (MainMenu.VehicleOptionsMenu.VehicleFrozen && IsAllowed(Permission.VOFreeze))
@@ -591,6 +653,9 @@ namespace vMenuClient
             // When the player is not inside a vehicle:
             else
             {
+                // Vehicle handles get reused, so always write the god mode flags once after getting back in.
+                vehicleGodFlagsHandle = 0;
+
                 var lastVehicle = GetVehicle(true);
                 if (lastVehicle != null && lastVehicle.Exists())
                 {
@@ -625,17 +690,17 @@ namespace vMenuClient
 
             await Delay(1);
 
-            // Manage vehicle engine always on.
-            if (MainMenu.VehicleOptionsMenu.VehicleEngineAlwaysOn && !Game.PlayerPed.IsInVehicle() && IsAllowed(Permission.VOEngineAlwaysOn))
+            // Manage vehicle engine always on. Paced with a timer (every 100 ms) rather than an
+            // await, which would stall the rest of this tick.
+            if (MainMenu.VehicleOptionsMenu.VehicleEngineAlwaysOn && GetGameTimer() - engineAlwaysOnTimer >= 100 && !Game.PlayerPed.IsInVehicle() && IsAllowed(Permission.VOEngineAlwaysOn))
             {
                 var lastVeh = GetVehicle(true);
                 if (lastVeh != null && lastVeh.Exists())
                 {
-                    await Delay(100);
+                    engineAlwaysOnTimer = GetGameTimer();
                     SetVehicleEngineOn(lastVeh.Handle, true, true, true);
                 }
             }
-            await Task.FromResult(0);
         }
 
         /// <summary>
@@ -1260,11 +1325,43 @@ namespace vMenuClient
             // Death notifications
             if (MainMenu.MiscSettingsMenu.DeathNotifications)
             {
-                var pl = Players;
-                var tmpiterator = 0;
+                var pl = Players.ToList();
+                // Ped/vehicle handle -> player lookups, only built when a newly dead player has a killer to resolve.
+                var lookupsBuilt = false;
+                void BuildKillerLookups()
+                {
+                    if (lookupsBuilt)
+                    {
+                        return;
+                    }
+                    lookupsBuilt = true;
+                    killerPedLookup.Clear();
+                    killerVehicleLookup.Clear();
+                    foreach (var player in pl)
+                    {
+                        var character = player.Character;
+                        if (character == null)
+                        {
+                            continue;
+                        }
+                        // First match wins, like the player-order scans this replaces.
+                        if (!killerPedLookup.ContainsKey(character.Handle))
+                        {
+                            killerPedLookup[character.Handle] = player;
+                        }
+                        if (character.IsInVehicle())
+                        {
+                            var vehicle = character.CurrentVehicle;
+                            if (vehicle != null && !killerVehicleLookup.ContainsKey(vehicle.Handle))
+                            {
+                                killerVehicleLookup[vehicle.Handle] = player;
+                            }
+                        }
+                    }
+                }
+
                 foreach (var p in pl)
                 {
-                    tmpiterator++;
                     if (p.IsDead)
                     {
                         if (deadPlayers.Contains(p.Handle)) { continue; }
@@ -1277,37 +1374,24 @@ namespace vMenuClient
                                 {
                                     if (killer.Model.IsPed)
                                     {
-                                        var found = false;
-                                        foreach (var playerKiller in pl)
+                                        BuildKillerLookups();
+                                        if (killerPedLookup.TryGetValue(killer.Handle, out var playerKiller))
                                         {
-                                            if (playerKiller.Character.Handle == killer.Handle)
-                                            {
-                                                Notify.Custom($"~o~<C>{GetSafePlayerName(p.Name)}</C> ~s~has been murdered by ~y~<C>{GetSafePlayerName(playerKiller.Name)}</C>~s~.");
-                                                found = true;
-                                                break;
-                                            }
+                                            Notify.Custom($"~o~<C>{GetSafePlayerName(p.Name)}</C> ~s~has been murdered by ~y~<C>{GetSafePlayerName(playerKiller.Name)}</C>~s~.");
                                         }
-                                        if (!found)
+                                        else
                                         {
                                             Notify.Custom($"~o~<C>{GetSafePlayerName(p.Name)}</C> ~s~has been murdered.");
                                         }
                                     }
                                     else if (killer.Model.IsVehicle)
                                     {
-                                        var found = false;
-                                        foreach (var playerKiller in pl)
+                                        BuildKillerLookups();
+                                        if (killerVehicleLookup.TryGetValue(killer.Handle, out var playerKiller))
                                         {
-                                            if (playerKiller.Character.IsInVehicle())
-                                            {
-                                                if (playerKiller.Character.CurrentVehicle.Handle == killer.Handle)
-                                                {
-                                                    Notify.Custom($"~o~<C>{GetSafePlayerName(p.Name)}</C> ~s~has been murdered by ~y~<C>{GetSafePlayerName(playerKiller.Name)}</C>~s~.");
-                                                    found = true;
-                                                    break;
-                                                }
-                                            }
+                                            Notify.Custom($"~o~<C>{GetSafePlayerName(p.Name)}</C> ~s~has been murdered by ~y~<C>{GetSafePlayerName(playerKiller.Name)}</C>~s~.");
                                         }
-                                        if (!found)
+                                        else
                                         {
                                             Notify.Custom($"~o~<C>{GetSafePlayerName(p.Name)}</C> ~s~has been murdered.");
                                         }
@@ -1335,14 +1419,12 @@ namespace vMenuClient
                     }
                     else
                     {
-                        if (deadPlayers.Contains(p.Handle))
-                        {
-                            deadPlayers.Remove(p.Handle);
-                        }
+                        deadPlayers.Remove(p.Handle);
                     }
                 }
             }
-            await Task.FromResult(0);
+            // Deaths do not need to be noticed within a frame.
+            await Delay(250);
         }
         #endregion
         #endregion
@@ -1373,36 +1455,43 @@ namespace vMenuClient
         /// Manage all weapon options that need to be handeled every tick.
         /// </summary>
         /// <returns></returns>
+        private static readonly uint gadgetParachuteHash = Game.GenerateHashASCII("gadget_parachute");
+
         private async Task WeaponOptions()
         {
+            var weaponsMenu = MainMenu.WeaponOptionsMenu;
+            var playerPed = Game.PlayerPed;
+            // Read once: every Weapons.Current access goes through a native.
+            var currentWeapon = playerPed.Weapons.Current;
+
             // If no reload is enabled.
-            if (MainMenu.WeaponOptionsMenu.NoReload && Game.PlayerPed.Weapons.Current.Hash != WeaponHash.Minigun && IsAllowed(Permission.WPNoReload))
+            if (weaponsMenu.NoReload && currentWeapon != null && currentWeapon.Hash != WeaponHash.Minigun && IsAllowed(Permission.WPNoReload))
             {
                 // Disable reloading.
-                SetAmmoInClip(Game.PlayerPed.Handle, (uint)Game.PlayerPed.Weapons.Current.Hash, 5);
+                SetAmmoInClip(playerPed.Handle, (uint)currentWeapon.Hash, 5);
             }
 
             // Enable/disable infinite ammo.
-            if (IsAllowed(Permission.WPUnlimitedAmmo) && Game.PlayerPed.Weapons.Current != null && Game.PlayerPed.Weapons.Current.Hash != WeaponHash.Unarmed)
+            if (IsAllowed(Permission.WPUnlimitedAmmo) && currentWeapon != null && currentWeapon.Hash != WeaponHash.Unarmed)
             {
-                Game.PlayerPed.Weapons.Current.InfiniteAmmo = MainMenu.WeaponOptionsMenu.UnlimitedAmmo;
+                currentWeapon.InfiniteAmmo = weaponsMenu.UnlimitedAmmo;
             }
 
-            if (MainMenu.WeaponOptionsMenu.AutoEquipChute)
+            if (weaponsMenu.AutoEquipChute)
             {
-                if ((IsPedInAnyHeli(Game.PlayerPed.Handle) || IsPedInAnyPlane(Game.PlayerPed.Handle)) && !HasPedGotWeapon(Game.PlayerPed.Handle, (uint)WeaponHash.Parachute, false))
+                if ((IsPedInAnyHeli(playerPed.Handle) || IsPedInAnyPlane(playerPed.Handle)) && !HasPedGotWeapon(playerPed.Handle, (uint)WeaponHash.Parachute, false))
                 {
-                    GiveWeaponToPed(Game.PlayerPed.Handle, (uint)WeaponHash.Parachute, 1, false, true);
+                    GiveWeaponToPed(playerPed.Handle, (uint)WeaponHash.Parachute, 1, false, true);
                     SetPlayerHasReserveParachute(Game.Player.Handle);
-                    SetPlayerCanLeaveParachuteSmokeTrail(Game.PlayerPed.Handle, true);
+                    SetPlayerCanLeaveParachuteSmokeTrail(playerPed.Handle, true);
                 }
             }
 
-            if (MainMenu.WeaponOptionsMenu.UnlimitedParachutes)
+            if (weaponsMenu.UnlimitedParachutes)
             {
-                if (!HasPedGotWeapon(Game.PlayerPed.Handle, Game.GenerateHashASCII("gadget_parachute"), false))
+                if (!HasPedGotWeapon(playerPed.Handle, gadgetParachuteHash, false))
                 {
-                    GiveWeaponToPed(Game.PlayerPed.Handle, Game.GenerateHashASCII("gadget_parachute"), 0, false, false);
+                    GiveWeaponToPed(playerPed.Handle, gadgetParachuteHash, 0, false, false);
                 }
 
                 if (!GetPlayerHasReserveParachute(Game.Player.Handle))
@@ -1410,7 +1499,12 @@ namespace vMenuClient
                     SetPlayerHasReserveParachute(Game.Player.Handle);
                 }
             }
-            await Task.FromResult(0);
+
+            // With every per-frame weapon option off this only resets infinite ammo, which can wait a bit.
+            if (!(weaponsMenu.NoReload || weaponsMenu.UnlimitedAmmo || weaponsMenu.AutoEquipChute || weaponsMenu.UnlimitedParachutes))
+            {
+                await Delay(100);
+            }
         }
         #endregion
 
@@ -1582,6 +1676,8 @@ namespace vMenuClient
                     await Delay(0);
                 }
 
+                // Whether the watch animation was requested last frame; null forces the first ClearAll.
+                bool? watchAnimPlaying = null;
                 while (IsMpCharEditorOpen())
                 {
                     await Delay(0);
@@ -1590,10 +1686,13 @@ namespace vMenuClient
                     if (MenuController.GetCurrentMenu() == MainMenu.MpPedCustomizationMenu.propsMenu && MenuController.GetCurrentMenu().CurrentIndex == 3 && !reverseCamera)
                     {
                         TaskPlayAnim(Game.PlayerPed.Handle, "anim@random@shop_clothes@watches", "BASE", 8f, -8f, -1, 1, 0, false, false, false);
+                        watchAnimPlaying = true;
                     }
-                    else
+                    // Only clear the tasks when entering the editor or leaving the watch animation, not every frame.
+                    else if (watchAnimPlaying != false)
                     {
                         Game.PlayerPed.Task.ClearAll();
+                        watchAnimPlaying = false;
                     }
 
                     var xOffset = 0f;
@@ -2044,6 +2143,13 @@ namespace vMenuClient
                     Debug.WriteLine($"Error Location: {e.StackTrace}\nError info: {e.Message}");
                     await Delay(1000);
                 }
+                // Solid/off glow only has to be written when a ped's decor changes. The cache is dropped
+                // every 20 runs (~1 s), so everything is written again then and left peds do not pile up.
+                if (++clothingGlowCacheRuns >= 20)
+                {
+                    clothingGlowCacheRuns = 0;
+                    clothingGlowApplied.Clear();
+                }
                 foreach (var player in Players)
                 {
                     var p = player.Character;
@@ -2052,6 +2158,12 @@ namespace vMenuClient
                         if (DecorExistOn(p.Handle, clothingAnimationDecor))
                         {
                             var decorVal = DecorGetInt(p.Handle, clothingAnimationDecor);
+                            if (decorVal is 0 or 1 && clothingGlowApplied.TryGetValue(p.Handle, out var appliedVal) && appliedVal == decorVal)
+                            {
+                                continue;
+                            }
+                            clothingGlowApplied[p.Handle] = decorVal;
+
                             if (decorVal == 0) // on solid/no animation.
                             {
                                 SetPedIlluminatedClothingGlowIntensity(p.Handle, 1f);
@@ -2649,6 +2761,14 @@ namespace vMenuClient
         /// <returns></returns>
         private async Task ModelDrawDimensions()
         {
+            // Nothing to draw: check again a little later instead of every frame.
+            if (!MainMenu.PermissionsSetupComplete || MainMenu.MiscSettingsMenu == null
+                || !(MainMenu.MiscSettingsMenu.ShowVehicleModelDimensions || MainMenu.MiscSettingsMenu.ShowPropModelDimensions || MainMenu.MiscSettingsMenu.ShowPedModelDimensions))
+            {
+                await Delay(100);
+                return;
+            }
+
             if (MainMenu.PermissionsSetupComplete && MainMenu.MiscSettingsMenu != null)
             {
                 // Vehicles
@@ -2793,10 +2913,6 @@ namespace vMenuClient
                     }
                 }
             }
-            else
-            {
-                await Task.FromResult(0);
-            }
         }
         #endregion
 
@@ -2829,6 +2945,14 @@ namespace vMenuClient
         private async Task SlowMiscTick()
         {
             const int delay = 50;
+            // No outlines enabled: nothing to collect, so do not run every frame.
+            if (!MainMenu.PermissionsSetupComplete || MainMenu.MiscSettingsMenu == null
+                || !(MainMenu.MiscSettingsMenu.ShowVehicleModelDimensions || MainMenu.MiscSettingsMenu.ShowPropModelDimensions || MainMenu.MiscSettingsMenu.ShowPedModelDimensions))
+            {
+                await Delay(100);
+                return;
+            }
+
             if (MainMenu.PermissionsSetupComplete && MainMenu.MiscSettingsMenu != null)
             {
                 var pp = Game.PlayerPed.Position;
@@ -2918,7 +3042,6 @@ namespace vMenuClient
             {
                 await Delay(100);
             }
-            await Task.FromResult(0);
         }
         #endregion
 

@@ -20,7 +20,26 @@ namespace vMenuClient
     public class EventManager : BaseScript
     {
         public static WeatherOptions WeatherOptionsMenu { get; private set; }
-        public static bool IsSnowEnabled => GetSettingsBool(Setting.vmenu_enable_snow);
+        /// <summary>
+        /// Whether the server enabled snow. Read every frame by the snowball pickup check, so the
+        /// convar is only read again once a second.
+        /// </summary>
+        public static bool IsSnowEnabled
+        {
+            get
+            {
+                if (!snowEnabledRead || GetGameTimer() - snowEnabledReadTime >= 1000)
+                {
+                    snowEnabled = GetSettingsBool(Setting.vmenu_enable_snow);
+                    snowEnabledReadTime = GetGameTimer();
+                    snowEnabledRead = true;
+                }
+                return snowEnabled;
+            }
+        }
+        private static bool snowEnabled = false;
+        private static bool snowEnabledRead = false;
+        private static int snowEnabledReadTime = 0;
         public static int GetServerMinutes => MathUtil.Clamp(GetSettingsInt(Setting.vmenu_current_minute), 0, 59);
         public static int GetServerHours => MathUtil.Clamp(GetSettingsInt(Setting.vmenu_current_hour), 0, 23);
         public static int GetServerMinuteDuration => GetSettingsInt(Setting.vmenu_ingame_minute_duration);
@@ -237,12 +256,24 @@ namespace vMenuClient
         /// This function will take care of time sync. It'll be called once, and never stop.
         /// </summary>
         /// <returns></returns>
+        // Whether TimeSync currently has the game clock paused.
+        private bool clockPausedByTimeSync = false;
         private async Task TimeSync()
         {
             NetworkOverrideClockTime(GetServerHours, GetServerMinutes, 0);
-            if (IsServerTimeFrozen || IsServerTimeSyncedWithMachineTime)
+
+            // Frozen or machine-synced time only changes when the server says so, so the clock is paused
+            // instead of being pinned back every few milliseconds; once a second is enough to pick up a change.
+            var serverOwnsMinute = IsServerTimeFrozen || IsServerTimeSyncedWithMachineTime;
+            if (serverOwnsMinute != clockPausedByTimeSync)
             {
-                await Delay(5);
+                PauseClock(serverOwnsMinute);
+                clockPausedByTimeSync = serverOwnsMinute;
+            }
+
+            if (serverOwnsMinute)
+            {
+                await Delay(1000);
             }
             else
             {

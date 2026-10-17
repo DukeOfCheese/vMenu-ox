@@ -105,6 +105,13 @@ namespace vMenuClient
         }
         private async Task NoClipHandler()
         {
+            // Idle while noclip is off instead of running every frame.
+            if (!NoclipActive)
+            {
+                await Delay(50);
+                return;
+            }
+
             if (NoclipActive)
             {
                 Scale = RequestScaleformMovie("INSTRUCTIONAL_BUTTONS");
@@ -306,8 +313,6 @@ namespace vMenuClient
                 SetEveryoneIgnorePlayer(Game.PlayerPed.Handle, false);
                 SetPoliceIgnorePlayer(Game.PlayerPed.Handle, false);
             }
-
-            await Task.FromResult(0);
         }
     }
 }

@@ -41,8 +41,11 @@ namespace vMenuClient
         /// every convar to false. A server whose permissions.cfg predates this feature would
         /// otherwise silently lose every search button with no indication why; opting out has to be
         /// deliberate.
+        ///
+        /// Read once, on first use (menu construction, after the convars are available).
         /// </summary>
-        public static bool Enabled => GetConvar("vmenu_enable_menu_search", "true") != "false";
+        public static bool Enabled => enabled ??= GetConvar("vmenu_enable_menu_search", "true") != "false";
+        private static bool? enabled;
 
         /// <summary>
         /// net462 has no string.Contains(string, StringComparison) overload.

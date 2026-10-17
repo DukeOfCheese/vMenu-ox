@@ -65,34 +65,101 @@ RegisterNetEvent("vMenu:RequestBanList", function()
     vMenu:SendBanList(source)
 end)
 
--- Refreshes Show Player Names
-Citizen.CreateThread(function()
-    local lastEncoded = nil
-    local ticksSinceBroadcast = 0
+-- Show Player Names. Each client keeps its own copy of this table: it asks for the whole table once
+-- its menu is set up (vMenu:RequestOverheadNames) and after that only receives what changed, where an
+-- entry of `false` means that player left. Keys are always strings (tostring(id)) so the table is
+-- sent as a map, never as a list.
+local overheadNames = {}
+local overheadNamesRequested = {}
+
+local function buildOverheadName(id)
+    return {
+        -- Parse EXACTLY what you want to show as the name (incl. staff ranks etc.)
+        name = string.format("%s [%d]", GetPlayerName(id) or "Unknown", tonumber(id)),
+        -- https://docs.fivem.net/docs/game-references/hud-colors/
+        colour = 18
+    }
+end
+
+---@param target integer server id, or -1 for everyone
+---@param names table never empty: an empty table would arrive as a list
+---@param isFull boolean true replaces the client's table, false merges into it
+local function sendOverheadNames(target, names, isFull)
+    TriggerClientEvent('vMenu:SyncOverheadNames', target, names, isFull)
+end
+
+for _, id in ipairs(GetPlayers()) do
+    overheadNames[tostring(id)] = buildOverheadName(id)
+end
+
+-- Server-only events: AddEventHandler, so clients cannot fake a join or a drop.
+AddEventHandler('playerJoining', function()
+    local key = tostring(source)
+    local entry = buildOverheadName(key)
+    overheadNames[key] = entry
+    sendOverheadNames(-1, { [key] = entry }, false)
+end)
+
+AddEventHandler('playerDropped', function()
+    local playerId = source
+    overheadNamesRequested[playerId] = nil
+
+    local key = tostring(playerId)
+    if overheadNames[key] ~= nil then
+        overheadNames[key] = nil
+        sendOverheadNames(-1, { [key] = false }, false)
+    end
+end)
+
+-- playerJoining fires before the client's scripts are listening, so the client asks for the full
+-- table itself once it is ready.
+RegisterNetEvent('vMenu:RequestOverheadNames', function()
+    local playerId = source
+    local now = GetGameTimer()
+    -- The client asks once; anything more often than every few seconds is ignored.
+    local last = overheadNamesRequested[playerId]
+    if last and now - last < 5000 then
+        return
+    end
+    overheadNamesRequested[playerId] = now
+
+    if next(overheadNames) ~= nil then
+        sendOverheadNames(playerId, overheadNames, true)
+    end
+end)
+
+-- Names can change while connected, and this also catches a missed join or drop: compare the names
+-- every 5 seconds and only broadcast what changed.
+CreateThread(function()
     while true do
-        local players = GetPlayers()
-        local cache = {}
+        Wait(5000)
 
-        for _, id in ipairs(players) do
-            cache[id] = {
-                -- Parse EXACTLY what you want to show as the name (incl. staff ranks etc.)
-                name=string.format("%s [%d]", GetPlayerName(id) or "Unknown", id),
-                -- https://docs.fivem.net/docs/game-references/hud-colors/
-                colour=18
-            }
+        local changes = {}
+        local changed = false
+        local online = {}
+
+        for _, id in ipairs(GetPlayers()) do
+            local key = tostring(id)
+            online[key] = true
+            local entry = buildOverheadName(key)
+            local current = overheadNames[key]
+            if current == nil or current.name ~= entry.name or current.colour ~= entry.colour then
+                overheadNames[key] = entry
+                changes[key] = entry
+                changed = true
+            end
         end
 
-        -- Only broadcast when the name table actually changes (join/drop/name change),
-        -- plus a periodic heartbeat (~every 10s) so newly-connected clients reliably
-        -- receive the current names even if they missed a change-triggered broadcast.
-        local encoded = json.encode(cache)
-        ticksSinceBroadcast = ticksSinceBroadcast + 1
-        if encoded ~= lastEncoded or ticksSinceBroadcast >= 10 then
-            lastEncoded = encoded
-            ticksSinceBroadcast = 0
-            TriggerClientEvent('vMenu:SyncOverheadNames', -1, cache)
+        for key in pairs(overheadNames) do
+            if not online[key] then
+                overheadNames[key] = nil
+                changes[key] = false
+                changed = true
+            end
         end
 
-        Citizen.Wait(1000)
+        if changed then
+            sendOverheadNames(-1, changes, false)
+        end
     end
 end)
