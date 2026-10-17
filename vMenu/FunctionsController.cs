@@ -68,13 +68,13 @@ namespace vMenuClient
 
         /// <summary>
         /// Receives overhead names from the server (build/vMenu/server/integrations.lua).
-        /// A full table replaces everything; otherwise it only holds what changed, where an entry of
-        /// <c>false</c> means that player left.
+        /// A full table replaces everything (also what a sender without the second argument gets).
+        /// A delta only holds what changed, where an entry of <c>false</c> means that player left.
         /// </summary>
         [EventHandler("vMenu:SyncOverheadNames")]
-        private void SyncOverheadNames(dynamic cacheObj, bool isFull)
+        private void SyncOverheadNames(dynamic cacheObj, bool isDelta)
         {
-            if (isFull)
+            if (!isDelta)
             {
                 overheadNamesCache.Clear();
                 overheadColourCache.Clear();

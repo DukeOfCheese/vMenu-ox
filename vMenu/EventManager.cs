@@ -256,8 +256,22 @@ namespace vMenuClient
         /// This function will take care of time sync. It'll be called once, and never stop.
         /// </summary>
         /// <returns></returns>
-        // Whether TimeSync currently has the game clock paused.
-        private bool clockPausedByTimeSync = false;
+        // Whether TimeSync currently has the game clock paused (null until the first run, so the
+        // current state is always written once, e.g. after a restart that left the clock paused).
+        private bool? clockPausedByTimeSync = null;
+
+        /// <summary>
+        /// Lets the clock run again if vMenu stops while it had it paused.
+        /// </summary>
+        [EventHandler("onClientResourceStop")]
+        private void OnClientResourceStop(string resourceName)
+        {
+            if (resourceName == GetCurrentResourceName() && clockPausedByTimeSync == true)
+            {
+                PauseClock(false);
+            }
+        }
+
         private async Task TimeSync()
         {
             NetworkOverrideClockTime(GetServerHours, GetServerMinutes, 0);

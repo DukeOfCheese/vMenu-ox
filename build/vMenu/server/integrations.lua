@@ -83,9 +83,9 @@ end
 
 ---@param target integer server id, or -1 for everyone
 ---@param names table never empty: an empty table would arrive as a list
----@param isFull boolean true replaces the client's table, false merges into it
-local function sendOverheadNames(target, names, isFull)
-    TriggerClientEvent('vMenu:SyncOverheadNames', target, names, isFull)
+---@param isDelta boolean false replaces the client's table, true merges into it
+local function sendOverheadNames(target, names, isDelta)
+    TriggerClientEvent('vMenu:SyncOverheadNames', target, names, isDelta)
 end
 
 for _, id in ipairs(GetPlayers()) do
@@ -97,7 +97,7 @@ AddEventHandler('playerJoining', function()
     local key = tostring(source)
     local entry = buildOverheadName(key)
     overheadNames[key] = entry
-    sendOverheadNames(-1, { [key] = entry }, false)
+    sendOverheadNames(-1, { [key] = entry }, true)
 end)
 
 AddEventHandler('playerDropped', function()
@@ -107,7 +107,7 @@ AddEventHandler('playerDropped', function()
     local key = tostring(playerId)
     if overheadNames[key] ~= nil then
         overheadNames[key] = nil
-        sendOverheadNames(-1, { [key] = false }, false)
+        sendOverheadNames(-1, { [key] = false }, true)
     end
 end)
 
@@ -124,7 +124,7 @@ RegisterNetEvent('vMenu:RequestOverheadNames', function()
     overheadNamesRequested[playerId] = now
 
     if next(overheadNames) ~= nil then
-        sendOverheadNames(playerId, overheadNames, true)
+        sendOverheadNames(playerId, overheadNames, false)
     end
 end)
 
@@ -159,7 +159,7 @@ CreateThread(function()
         end
 
         if changed then
-            sendOverheadNames(-1, changes, false)
+            sendOverheadNames(-1, changes, true)
         end
     end
 end)
