@@ -343,6 +343,24 @@ namespace vMenuClient.data
             new VehicleColor(238, "G9_PAINT16"),
         };
 
+        // Neon (and xenon headlight) preset colours, indexed the same as the CMOD_NEONCOL_x labels //
+        public static readonly List<int[]> NeonLightColors = new()
+        {
+            { new int[3] { 255, 255, 255 } },   // White
+            { new int[3] { 2, 21, 255 } },      // Blue
+            { new int[3] { 3, 83, 255 } },      // Electric blue
+            { new int[3] { 0, 255, 140 } },     // Mint Green
+            { new int[3] { 94, 255, 1 } },      // Lime Green
+            { new int[3] { 255, 255, 0 } },     // Yellow
+            { new int[3] { 255, 150, 5 } },     // Golden Shower
+            { new int[3] { 255, 62, 0 } },      // Orange
+            { new int[3] { 255, 0, 0 } },       // Red
+            { new int[3] { 255, 50, 100 } },    // Pony Pink
+            { new int[3] { 255, 5, 190 } },     // Hot Pink
+            { new int[3] { 35, 1, 255 } },      // Purple
+            { new int[3] { 15, 3, 255 } },      // Blacklight
+        };
+
         public static class Vehicles
         {
             #region Vehicle List Per Class

@@ -49,9 +49,9 @@ namespace vMenuClient
         {
             return await Exports["vMenu"].sliderDialog(windowTitle, defaultVal, minimum, maximum, step);
         }
-        public async Task<string> GetCustomColourInput(int type)
+        public async Task<string> GetCustomColourInput(int type, string defaultColour = null, string label = null)
         {
-            return await Exports["vMenu"].colourDialog(type);
+            return await Exports["vMenu"].colourDialog(type, defaultColour, label);
         }
         public void SetPlayerClipboard(string text)
         {
@@ -1709,6 +1709,32 @@ namespace vMenuClient
 
                 SetVehicleExtraColours(vehicle.Handle, vehicleInfo.colors["pearlescent"], vehicleInfo.colors["wheels"]);
 
+                // Paint finish (paint type) for the primary/secondary colour. Optional, older saves don't have these keys.
+                if (vehicleInfo.colors.ContainsKey("PrimaryPaintFinish") || vehicleInfo.colors.ContainsKey("SecondaryPaintFinish"))
+                {
+                    if (vehicleInfo.colors.TryGetValue("PrimaryPaintFinish", out var primaryPaintFinish) && VehicleOptions.IsValidPaintFinish(primaryPaintFinish))
+                    {
+                        SetVehicleModColor_1(vehicle.Handle, primaryPaintFinish, vehicleInfo.colors["primary"], vehicleInfo.colors["pearlescent"]);
+                        VehicleOptions.SetPaintFinishState(vehicle, true, primaryPaintFinish);
+                    }
+                    if (vehicleInfo.colors.TryGetValue("SecondaryPaintFinish", out var secondaryPaintFinish) && VehicleOptions.IsValidPaintFinish(secondaryPaintFinish))
+                    {
+                        SetVehicleModColor_2(vehicle.Handle, secondaryPaintFinish, vehicleInfo.colors["secondary"]);
+                        VehicleOptions.SetPaintFinishState(vehicle, false, secondaryPaintFinish);
+                    }
+
+                    // Setting the paint finish can reset the custom RGB colours and extra colours, so re-apply them.
+                    if (useCustomRgbPrimary && vehicleInfo.colors["customPrimaryR"] > 0 && vehicleInfo.colors["customPrimaryG"] > 0 && vehicleInfo.colors["customPrimaryB"] > 0)
+                    {
+                        vehicle.Mods.CustomPrimaryColor = System.Drawing.Color.FromArgb(255, vehicleInfo.colors["customPrimaryR"], vehicleInfo.colors["customPrimaryG"], vehicleInfo.colors["customPrimaryB"]);
+                    }
+                    if (useCustomRgbSecondary && vehicleInfo.colors["customSecondaryR"] > 0 && vehicleInfo.colors["customSecondaryG"] > 0 && vehicleInfo.colors["customSecondaryB"] > 0)
+                    {
+                        vehicle.Mods.CustomSecondaryColor = System.Drawing.Color.FromArgb(255, vehicleInfo.colors["customSecondaryR"], vehicleInfo.colors["customSecondaryG"], vehicleInfo.colors["customSecondaryB"]);
+                    }
+                    SetVehicleExtraColours(vehicle.Handle, vehicleInfo.colors["pearlescent"], vehicleInfo.colors["wheels"]);
+                }
+
                 SetVehicleNumberPlateText(vehicle.Handle, vehicleInfo.plateText);
                 SetVehicleNumberPlateTextIndex(vehicle.Handle, vehicleInfo.plateStyle);
 
@@ -1727,6 +1753,15 @@ namespace vMenuClient
                 SetVehicleEnveffScale(vehicle.Handle, vehicleInfo.enveffScale);
 
                 VehicleOptions.SetHeadlightsColorForVehicle(vehicle, vehicleInfo.headlightColor);
+
+                // Custom RGB xenon headlight colour. Optional, older saves don't have these keys.
+                if (vehicleInfo.colors.TryGetValue("customheadlightR", out var customHeadlightR) &&
+                    vehicleInfo.colors.TryGetValue("customheadlightG", out var customHeadlightG) &&
+                    vehicleInfo.colors.TryGetValue("customheadlightB", out var customHeadlightB) &&
+                    customHeadlightR is >= 0 and <= 255 && customHeadlightG is >= 0 and <= 255 && customHeadlightB is >= 0 and <= 255)
+                {
+                    SetVehicleXenonLightsCustomColor(vehicle.Handle, customHeadlightR, customHeadlightG, customHeadlightB);
+                }
 
                 if (IsAllowed(Permission.VOUnderglow))
                 {
@@ -1881,6 +1916,28 @@ namespace vMenuClient
                         colors.Add("customSecondaryR", customSecondaryR);
                         colors.Add("customSecondaryG", customSecondaryG);
                         colors.Add("customSecondaryB", customSecondaryB);
+
+                        // Paint finish set through the vMenu colours menu (stored in a vehicle statebag).
+                        var primaryPaintFinish = VehicleOptions.GetPaintFinishState(veh, true);
+                        if (primaryPaintFinish.HasValue)
+                        {
+                            colors.Add("PrimaryPaintFinish", primaryPaintFinish.Value);
+                        }
+                        var secondaryPaintFinish = VehicleOptions.GetPaintFinishState(veh, false);
+                        if (secondaryPaintFinish.HasValue)
+                        {
+                            colors.Add("SecondaryPaintFinish", secondaryPaintFinish.Value);
+                        }
+
+                        int customHeadlightR = -1;
+                        int customHeadlightG = -1;
+                        int customHeadlightB = -1;
+                        if (GetVehicleXenonLightsCustomColor(veh.Handle, ref customHeadlightR, ref customHeadlightG, ref customHeadlightB))
+                        {
+                            colors.Add("customheadlightR", customHeadlightR);
+                            colors.Add("customheadlightG", customHeadlightG);
+                            colors.Add("customheadlightB", customHeadlightB);
+                        }
                         #endregion
 
                         var extras = new Dictionary<int, bool>();
@@ -2108,9 +2165,47 @@ namespace vMenuClient
         {
             return await ExternalFunctions.Instance.GetCustomSlider(windowTitle, defaultVal, minimum, maximum, step);
         }
-        public static async Task<string> GetUserColourInput(int type)
+        /// <summary>
+        /// Opens the ox_lib colour picker and returns the chosen colour as "#RRGGBB", or an empty string if cancelled.
+        /// </summary>
+        /// <param name="type">1 = primary paint, 2 = secondary paint (default value read from the vehicle). Any other value needs <paramref name="defaultColour"/>.</param>
+        /// <param name="defaultColour">Optional "#RRGGBB" value to pre-fill the picker with.</param>
+        /// <param name="label">Optional label shown above the picker.</param>
+        public static async Task<string> GetUserColourInput(int type, string defaultColour = null, string label = null)
         {
-            return await ExternalFunctions.Instance.GetCustomColourInput(type);
+            return await ExternalFunctions.Instance.GetCustomColourInput(type, defaultColour, label);
+        }
+
+        /// <summary>
+        /// Formats an RGB colour as "#RRGGBB".
+        /// </summary>
+        public static string RgbToHex(int r, int g, int b)
+        {
+            return $"#{MathUtil.Clamp(r, 0, 255):X2}{MathUtil.Clamp(g, 0, 255):X2}{MathUtil.Clamp(b, 0, 255):X2}";
+        }
+
+        /// <summary>
+        /// Parses a "#RRGGBB" (or "RRGGBB") string into its RGB components.
+        /// </summary>
+        /// <returns>True if the string was a valid 6 digit hex colour.</returns>
+        public static bool TryParseHexColour(string hex, out int r, out int g, out int b)
+        {
+            r = g = b = 0;
+            if (string.IsNullOrWhiteSpace(hex))
+            {
+                return false;
+            }
+
+            hex = hex.Trim().TrimStart('#');
+            if (hex.Length != 6 || !int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var value))
+            {
+                return false;
+            }
+
+            r = (value >> 16) & 255;
+            g = (value >> 8) & 255;
+            b = value & 255;
+            return true;
         }
         public static void CopyToClipboard(string text)
         {

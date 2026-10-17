@@ -50,14 +50,23 @@ local function RgbToHex(r, g, b)
 end
 
 ---@class colourDialog
----@param type integer 1 for primary, 2 for secondary
+---@param type integer 1 for primary, 2 for secondary, any other value (e.g. 3 headlights, 4 tyre smoke, 5 underglow) requires defaultColour
+---@param defaultColour? string "#RRGGBB" to pre-fill the picker with; when omitted the current custom primary/secondary paint is used
+---@param label? string label shown above the picker
 ---@return string
-exports("colourDialog", function(type)
+exports("colourDialog", function(type, defaultColour, label)
 	if not cache.vehicle then return "" end -- edge case
-	local defaultColour = type == 1 and RgbToHex(GetVehicleCustomPrimaryColour(cache.vehicle)) or
-		RgbToHex(GetVehicleCustomSecondaryColour(cache.vehicle))
+	if not (defaultColour and defaultColour:match("^#%x%x%x%x%x%x$")) then
+		if type == 1 then
+			defaultColour = RgbToHex(GetVehicleCustomPrimaryColour(cache.vehicle))
+		elseif type == 2 then
+			defaultColour = RgbToHex(GetVehicleCustomSecondaryColour(cache.vehicle))
+		else
+			defaultColour = "#FFFFFF"
+		end
+	end
 	local input = lib.inputDialog("vMenu", {
-		{ type = 'color', label = 'Select a Colour', default = defaultColour },
+		{ type = 'color', label = (label and label ~= "") and label or 'Select a Colour', default = defaultColour },
 	})
 	return input and input[1] or ""
 end)
