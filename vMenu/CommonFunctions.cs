@@ -3643,7 +3643,11 @@ namespace vMenuClient
             {
                 return "";
             }
-            return name.Replace("^", @"\^").Replace("~", @"\~").Replace("<", "«").Replace(">", "»").Replace("\n", "").Replace("\r", "");
+            // Menus are drawn in NUI now (MenuAPI 4). It reads ~x~ as a colour code and has no escape for it, so
+            // the old \^ / \~ escaping showed up as a literal backslash. Strip FiveM colour codes (^0-^9) and
+            // tildes instead; notifications go through ox_lib, which strips ~x~ codes itself.
+            name = System.Text.RegularExpressions.Regex.Replace(name, @"\^[0-9]", "");
+            return name.Replace("^", "").Replace("~", "").Replace("<", "«").Replace(">", "»").Replace("\n", "").Replace("\r", "");
         }
         #endregion
 
