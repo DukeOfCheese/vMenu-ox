@@ -77,7 +77,10 @@ local function buildOverheadName(id)
         -- Parse EXACTLY what you want to show as the name (incl. staff ranks etc.)
         name = string.format("%s [%d]", GetPlayerName(id) or "Unknown", tonumber(id)),
         -- https://docs.fivem.net/docs/game-references/hud-colors/
-        colour = 18
+        colour = 18,
+        -- Crew tag shown next to the name (ranks, departments etc.), "" for none. For example:
+        -- crewTag = IsPlayerAceAllowed(id, "group.admin") and "ADMN" or ""
+        crewTag = ""
     }
 end
 
@@ -143,7 +146,8 @@ CreateThread(function()
             online[key] = true
             local entry = buildOverheadName(key)
             local current = overheadNames[key]
-            if current == nil or current.name ~= entry.name or current.colour ~= entry.colour then
+            if current == nil or current.name ~= entry.name or current.colour ~= entry.colour
+                or current.crewTag ~= entry.crewTag then
                 overheadNames[key] = entry
                 changes[key] = entry
                 changed = true

@@ -64,7 +64,7 @@ Start from the **new** files and copy your settings into them. Don't copy your o
 | `config/locations.lua` | Unchanged. You can copy your old file back. |
 | `config/config_client.lua` | Copy your `Config.Notify` and command settings into the new file. The only change is a guard against empty messages. |
 | `client/integrations.lua` | Copy your custom code into the new file. There is a new interaction type, `"loadoutfit"`, for wearing an outfit from a code. |
-| `server/integrations.lua` | **Do not restore your old copy.** The ban relays in it called the old internal events, which are the critical security hole this version closes. If you customised the overhead name format, re-apply that change inside `buildOverheadName` in the new file. |
+| `server/integrations.lua` | **Do not restore your old copy.** The ban relays in it called the old internal events, which are the critical security hole this version closes. If you customised the overhead name format, re-apply that change inside `buildOverheadName` in the new file. That function can now also return a `crewTag` (shown next to the name, e.g. a rank), which is `""` (no tag) by default. |
 
 #### New settings to add to your permissions.cfg
 
@@ -140,7 +140,7 @@ ensure vMenu
 | If another resource… | Then |
 |---|---|
 | triggered `vMenu:Internal:TempBanPlayer`, `PermBanPlayer`, `RequestedPlayerUnban`, `RequestBanList`, `playerConnecting` or `LoadConfig` | Those events no longer exist. Use the normal client events (`vMenu:TempBanPlayer`, `vMenu:PermBanPlayer`, `vMenu:RequestPlayerUnban`, `vMenu:RequestBanList`). On the server, `exports.vMenu:TempBanPlayer(adminId, targetId, hours, reason)` and `exports.vMenu:PermBanPlayer(adminId, targetId, reason)` work; vMenu still checks the admin's ACE. |
-| listens to `vMenu:SyncOverheadNames` | It now gets a second argument, `isDelta`. When it's `true`, the table holds only changed entries, and `false` as a value means that player left. |
+| listens to `vMenu:SyncOverheadNames` | It now gets a second argument, `isDelta`. When it's `true`, the table holds only changed entries, and `false` as a value means that player left. Each entry may also carry a `crewTag` string next to `name` and `colour`. |
 | calls `loadSharedOutfit`, `loadOutfitFromCode`, `loadSharedVehicle`, `loadSharedLoadout` or `loadLoadoutFromCode` | Same names and arguments. Each one returns `false` and does nothing if its code type's setting is off. |
 | uses `canDoInteraction` in `client/integrations.lua` | Add a `"loadoutfit"` branch if you want to block wearing outfits from codes in some situations. |
 

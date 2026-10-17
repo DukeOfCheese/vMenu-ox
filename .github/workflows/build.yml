@@ -104,4 +104,7 @@ jobs:
         env:
           ZIP: ${{ steps.ver.outputs.zip }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$ZIP" --title "vMenu-ox $GITHUB_REF_NAME" --generate-notes --verify-tag
+          # Diff the notes against the last stable release, not the moving "dev" tag.
+          prev=$(gh release list --exclude-pre-releases --exclude-drafts -L 1 --json tagName --jq '.[0].tagName // empty')
+          gh release create "$GITHUB_REF_NAME" "$ZIP" --title "vMenu-ox $GITHUB_REF_NAME" --generate-notes --verify-tag \
+            ${prev:+--notes-start-tag "$prev"}
