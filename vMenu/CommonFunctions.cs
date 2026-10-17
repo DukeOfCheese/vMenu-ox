@@ -3663,9 +3663,31 @@ namespace vMenuClient
                     }
                     continue;
                 }
+                if (c == '~')
+                {
+                    // A whole GTA colour/format code such as ~r~ or ~h~ (the same shape MenuAPI's renderer
+                    // treats as a code: up to 24 non-space characters between two tildes) goes; a lone ~ too.
+                    var close = -1;
+                    for (var j = i + 1; j < name.Length && j <= i + 25; j++)
+                    {
+                        if (name[j] == '~')
+                        {
+                            close = j;
+                            break;
+                        }
+                        if (char.IsWhiteSpace(name[j]))
+                        {
+                            break;
+                        }
+                    }
+                    if (close > i + 1)
+                    {
+                        i = close;
+                    }
+                    continue;
+                }
                 switch (c)
                 {
-                    case '~':
                     case '\n':
                     case '\r':
                         continue;
