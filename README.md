@@ -42,7 +42,7 @@ A full review: security fixes, performance work, and an up-to-date sync with Tom
   - Paint finish, custom headlight / tyre smoke / underglow RGB.
   - Default radio override toggle, `vMenu:DV`, Ctrl+Enter to type a clothing ID.
 - **`Config.ModelWhitelist`** locks base-game vehicles, peds and weapons behind their own ACE (`vMenu.<Menu>.WhitelistedModels.<model>`).
-- **Upgrading:** if you use the share codes, run the `ALTER TABLE` statements at the top of `database.sql` once.
+- **Upgrading from 3.0.x:** follow [MIGRATION.md](MIGRATION.md) for the step-by-step upgrade and the checks to run afterwards. If you use the share codes, run the `ALTER TABLE` statements at the top of `database.sql` once.
 
 ### Core/UI
 
