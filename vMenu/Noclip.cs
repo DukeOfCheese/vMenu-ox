@@ -24,6 +24,11 @@ namespace vMenuClient
         // invariant once set, so it is reused instead of rebuilt every frame.
         private static string _noclipInputTag = null;
 
+        // The instructional buttons only change with the speed or when the HUD comes back, so they are rebuilt
+        // then instead of every frame (port of upstream bc452e42).
+        private static bool _buttonsDirty = true;
+        private static bool _hudWasHidden = false;
+
 
         private readonly List<string> speeds = new()
         {
@@ -110,16 +115,28 @@ namespace vMenuClient
 
                 DrawScaleformMovieFullscreen(Scale, 255, 255, 255, 0, 0);
             }
+            if (NoclipActive)
+            {
+                _buttonsDirty = true;
+            }
             while (NoclipActive)
             {
-                if (!IsHudHidden())
+                var hudHidden = IsHudHidden();
+                if (hudHidden != _hudWasHidden)
                 {
+                    _hudWasHidden = hudHidden;
+                    _buttonsDirty = true;
+                }
+                if (!hudHidden && _buttonsDirty)
+                {
+                    _buttonsDirty = false;
                     BeginScaleformMovieMethod(Scale, "CLEAR_ALL");
                     EndScaleformMovieMethod();
 
                     BeginScaleformMovieMethod(Scale, "SET_DATA_SLOT");
                     ScaleformMovieMethodAddParamInt(0);
                     PushScaleformMovieMethodParameterString("~INPUT_SPRINT~");
+                    PushScaleformMovieMethodParameterString("~INPUT_DUCK~");
                     PushScaleformMovieMethodParameterString($"Change Speed ({speeds[MovingSpeed]})");
                     EndScaleformMovieMethod();
 
@@ -163,7 +180,9 @@ namespace vMenuClient
                     BeginScaleformMovieMethod(Scale, "DRAW_INSTRUCTIONAL_BUTTONS");
                     ScaleformMovieMethodAddParamInt(0);
                     EndScaleformMovieMethod();
-
+                }
+                if (!hudHidden)
+                {
                     DrawScaleformMovieFullscreen(Scale, 255, 255, 255, 255, 0);
                 }
 
@@ -186,6 +205,7 @@ namespace vMenuClient
                 Game.DisableControlThisFrame(0, Control.Cover);
                 Game.DisableControlThisFrame(0, Control.MultiplayerInfo);
                 Game.DisableControlThisFrame(0, Control.VehicleHeadlight);
+                Game.DisableControlThisFrame(0, Control.Duck);
                 if (Game.PlayerPed.IsInVehicle())
                 {
                     Game.DisableControlThisFrame(0, Control.VehicleRadioWheel);
@@ -199,10 +219,21 @@ namespace vMenuClient
                     if (Game.IsControlJustPressed(0, Control.Sprint))
                     {
                         MovingSpeed++;
-                        if (MovingSpeed == speeds.Count)
+                        if (MovingSpeed >= speeds.Count)
                         {
                             MovingSpeed = 0;
                         }
+                        _buttonsDirty = true;
+                    }
+
+                    if (Game.IsDisabledControlJustPressed(0, Control.Duck))
+                    {
+                        MovingSpeed--;
+                        if (MovingSpeed < 0)
+                        {
+                            MovingSpeed = speeds.Count - 1;
+                        }
+                        _buttonsDirty = true;
                     }
 
                     if (Game.IsDisabledControlPressed(0, Control.MoveUpOnly))

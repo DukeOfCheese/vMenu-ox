@@ -5,7 +5,8 @@ games { 'gta5' }
 description 'vMenu Fork - github.com/DukeOfCheese/vMenu-ox'
 version '3.0.0'
 author 'Tom Grobbe (vMenu), Gravxd & DukeOfCheese (vMenu-ox)'
-ui_page 'storage.html'
+-- MenuAPI draws the menus on this NUI page.
+ui_page 'index.html'
 
 lua54 "yes"
 shared_scripts {
@@ -23,7 +24,10 @@ experimental_features_enabled '0'
 files {
     'Newtonsoft.Json.dll',
     'MenuAPI.dll',
-    'storage.html'
+    'index.html',
+    'menuapi/**/*',
+    'themes/*.css',
+    'menuapi-banners/*.png'
 }
 
 client_scripts {

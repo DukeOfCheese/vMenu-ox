@@ -177,7 +177,7 @@ namespace vMenuClient
             {
                 MenuToggleKey = "M";
             }
-            MenuController.MenuToggleKey = (Control)(-1); // disables the menu toggle key
+            MenuController.EnableMenuToggleKey = false; // vMenu registers its own toggle key below
             RegisterKeyMapping($"vMenu:{KeyMappingID}:NoClip", "vMenu NoClip Toggle Button", "keyboard", NoClipKey);
             RegisterKeyMapping($"vMenu:{KeyMappingID}:MenuToggle", "vMenu Toggle Button", "keyboard", MenuToggleKey);
             RegisterKeyMapping($"vMenu:{KeyMappingID}:MenuToggle", "vMenu Toggle Button Controller", "pad_digitalbuttonany", "start_index");
@@ -199,11 +199,6 @@ namespace vMenuClient
                         Debug.WriteLine("check");
                         Debug.Write(JsonConvert.SerializeObject(d, Formatting.Indented) + "\n");
                     }
-                }), false);
-
-                RegisterCommand("clearfocus", new Action<dynamic, List<dynamic>, string>((dynamic source, List<dynamic> args, string rawCommand) =>
-                {
-                    SetNuiFocus(false, false);
                 }), false);
             }
 
@@ -569,6 +564,17 @@ namespace vMenuClient
             }), false);
 
             TriggerEvent("vMenu:SetupTickFunctions");
+
+            // Optional NUI theme (themes/custom.css with the menuapi-banners/custom.png header), port of upstream 44f94f73.
+            if (GetSettingsString(Setting.vmenu_theme) == "custom")
+            {
+                NuiTuning.RegisterTheme("custom", "themes/custom.css");
+                NuiTuning.SetTheme("custom");
+                foreach (Menu m in MenuController.Menus)
+                {
+                    m.HeaderImage = "custom";
+                }
+            }
         }
 
         /// <summary>

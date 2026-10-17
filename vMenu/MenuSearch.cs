@@ -277,7 +277,7 @@ namespace vMenuClient
                 return;
             }
 
-            async void FilterMenu(Menu m, Control c)
+            async void FilterMenu(Menu m, MenuKeyBinding c)
             {
                 var input = await GetUserInput(windowTitle: "Filter this list (leave empty to reset the filter)", defaultText: "", maxInputLength: 100);
 
@@ -314,8 +314,7 @@ namespace vMenuClient
 
             menu.OnMenuClose += (m) => m.ResetFilter();
 
-            menu.InstructionalButtons.Add(Control.Jump, hint);
-            menu.ButtonPressHandlers.Add(new Menu.ButtonPressHandler(Control.Jump, Menu.ControlPressCheckType.JUST_RELEASED, new Action<Menu, Control>(FilterMenu), true));
+            menu.AddKeyBinding("menu_search_filter", "vMenu: filter the current list", "SPACE", "RLEFT_INDEX", MenuKeyPressType.JUST_RELEASED, new Action<Menu, MenuKeyBinding>(FilterMenu), hint);
         }
 
         /// <summary>
