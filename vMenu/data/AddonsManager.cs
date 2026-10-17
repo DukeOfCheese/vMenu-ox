@@ -48,6 +48,13 @@ namespace vMenuClient.data
             public bool allowed = true;
         }
 
+        public class RestrictedModels
+        {
+            public List<string> vehicles;
+            public List<string> peds;
+            public List<string> weapons;
+        }
+
         private class Payload
         {
             [JsonProperty("vehicles")]     public List<AddonItem>   vehicles     { get; set; }
@@ -57,6 +64,29 @@ namespace vMenuClient.data
             [JsonProperty("extras")]       public Dictionary<string, Dictionary<int, string>> extras { get; set; }
             [JsonProperty("locations")]    public Locations         locations    { get; set; }
             [JsonProperty("eup")]          public EupState          eup          { get; set; }
+            [JsonProperty("restricted")]   public RestrictedModels  restricted   { get; set; }
+        }
+
+        // Whitelisted base-game models this player may not use (Config.ModelWhitelist), as model hashes.
+        private static HashSet<uint> restrictedVehicles = new HashSet<uint>();
+        private static HashSet<uint> restrictedPeds = new HashSet<uint>();
+        private static HashSet<uint> restrictedWeapons = new HashSet<uint>();
+
+        public static bool IsVehicleRestricted(uint model) => restrictedVehicles.Contains(model);
+        public static bool IsPedRestricted(uint model) => restrictedPeds.Contains(model);
+        public static bool IsWeaponRestricted(uint hash) => restrictedWeapons.Contains(hash);
+
+        private static HashSet<uint> Hashes(List<string> names)
+        {
+            var hashes = new HashSet<uint>();
+            foreach (var name in names ?? new List<string>())
+            {
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    hashes.Add(Game.GenerateHashASCII(name));
+                }
+            }
+            return hashes;
         }
 
         public static List<AddonItem> Vehicles { get; private set; } = new List<AddonItem>();
@@ -81,6 +111,9 @@ namespace vMenuClient.data
                 Teleports = payload.locations.teleports ?? new List<TeleportLocation>();
                 Blips = payload.locations.blips ?? new List<LocationBlip>();
                 Eup = payload.eup ?? new EupState();
+                restrictedVehicles = Hashes(payload.restricted?.vehicles);
+                restrictedPeds = Hashes(payload.restricted?.peds);
+                restrictedWeapons = Hashes(payload.restricted?.weapons);
             }
             catch (System.Exception ex)
             {
@@ -99,6 +132,9 @@ namespace vMenuClient.data
             Teleports = new List<TeleportLocation>();
             Blips = new List<LocationBlip>();
             Eup = new EupState();
+            restrictedVehicles = new HashSet<uint>();
+            restrictedPeds = new HashSet<uint>();
+            restrictedWeapons = new HashSet<uint>();
         }
     }
 }

@@ -68,6 +68,26 @@ Config = {
         },
     },
 
+    -- Base-game models that need their own permission, on top of the normal menu permissions
+    -- (port of upstream's model-whitelists.json). A listed model is locked for everyone except players
+    -- with its ACE, the namespace's ".All", or vMenu.Everything:
+    --   vehicles: vMenu.VehicleSpawner.WhitelistedModels.<model>     e.g. ...WhitelistedModels.rhino
+    --   peds:     vMenu.PlayerAppearance.WhitelistedModels.<model>   e.g. ...WhitelistedModels.s_m_y_swat_01
+    --   weapons:  vMenu.WeaponOptions.WhitelistedModels.<name>       without weapon_, e.g. ...WhitelistedModels.railgun
+    -- This is enforced in the menus (spawning, changing ped, weapon lists and loadouts); other resources
+    -- that spawn these models for the player are not affected.
+    ModelWhitelist = {
+        vehicles = {
+            -- 'rhino',
+        },
+        peds = {
+            -- 's_m_y_swat_01',
+        },
+        weapons = {
+            -- 'weapon_railgun',
+        },
+    },
+
     -- Named vehicle extras, shown in Vehicle Options > Vehicle Extras.
     -- Keyed by vehicle model, then by extra index. Not ACE gated: these are only labels for
     -- extras the player can already toggle, and the menu itself is permission gated.

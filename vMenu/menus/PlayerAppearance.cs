@@ -412,7 +412,7 @@ namespace vMenuClient.menus
                 // both go through the same water-only-animal and model-availability guards.
                 async Task SpawnPedModel(string spawnName, bool isAnimal)
                 {
-                    var model = (uint)GetHashKey(spawnName);
+                    var model = Game.GenerateHashASCII(spawnName);
 
                     if (isAnimal && !Game.PlayerPed.IsInWater)
                     {

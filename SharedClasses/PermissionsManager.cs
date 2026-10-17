@@ -118,6 +118,7 @@ namespace vMenuShared
             #region vehicle spawner
             VSMenu,
             VSAll,
+            VSBypassRateLimit,
             VSDisableReplacePrevious,
             VSSpawnByName,
             VSCompacts,
@@ -532,6 +533,14 @@ namespace vMenuShared
         private static readonly Dictionary<Permission, List<Permission>> parentPermissions = new();
 
         /// <summary>
+        /// Permissions that only vMenu.Everything (or the permission itself) grants, not the menu's .All.
+        /// </summary>
+        private static readonly HashSet<Permission> permissionsNotGrantedByAll = new()
+        {
+            Permission.VSBypassRateLimit,
+        };
+
+        /// <summary>
         /// Gets the current permission and all parent permissions.
         /// </summary>
         /// <param name="permission"></param>
@@ -550,7 +559,8 @@ namespace vMenuShared
                 // if the first 2 characters are both uppercase
                 if (permStr.Substring(0, 2).ToUpper() == permStr.Substring(0, 2))
                 {
-                    if (permStr.Substring(2) is not ("All" or "Menu"))
+                    // Exemptions are not handed out by a menu's .All permission, which servers commonly give everyone.
+                    if (permStr.Substring(2) is not ("All" or "Menu") && !permissionsNotGrantedByAll.Contains(permission))
                     {
                         list.AddRange(Enum.GetValues(typeof(Permission)).Cast<Permission>().Where(a => a.ToString() == permStr.Substring(0, 2) + "All"));
                     }

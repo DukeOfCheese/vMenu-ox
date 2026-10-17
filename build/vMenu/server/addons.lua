@@ -36,6 +36,7 @@ local function sendConfig()
     local cfg = Config or {}
     local payload = json.encode({
         addons    = pruneEmpty(cfg.Addons) or {},
+        modelWhitelist = pruneEmpty(cfg.ModelWhitelist) or {},
         extras    = pruneEmpty(stringifyKeys(cfg.Extras)) or {},
         locations = pruneEmpty(cfg.Locations) or {},
     })

@@ -197,7 +197,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static string GetVehDisplayNameFromModel(string name) => GetLabelText(GetDisplayNameFromVehicleModel((uint)GetHashKey(name)));
+        public static string GetVehDisplayNameFromModel(string name) => GetLabelText(GetDisplayNameFromVehicleModel(Game.GenerateHashASCII(name)));
         #endregion
 
         #region DoesModelExist
@@ -206,7 +206,7 @@ namespace vMenuClient
         /// </summary>
         /// <param name="modelName">The model name</param>
         /// <returns></returns>
-        public static bool DoesModelExist(string modelName) => DoesModelExist((uint)GetHashKey(modelName));
+        public static bool DoesModelExist(string modelName) => DoesModelExist(Game.GenerateHashASCII(modelName));
 
         /// <summary>
         /// Does this model exist?
@@ -290,6 +290,98 @@ namespace vMenuClient
         /// <param name="vehicle">Entity/vehicle.</param>
         /// <returns>Returns the (uint) model hash from a (vehicle) entity.</returns>
         public static uint GetVehicleModel(int vehicle) => (uint)GetEntityModel(vehicle);
+        #endregion
+
+        #region Delete the vehicle you're in or looking at (vMenu:DV)
+        /// <summary>
+        /// Deletes the vehicle the player is driving, or the empty vehicle in front of them within
+        /// vmenu_delete_vehicle_distance metres (port of upstream's vMenu:DV). Vehicles with another player
+        /// in them are left alone, so it can't be used to delete someone else's ride from under them.
+        /// </summary>
+        public static async void DeleteVehicleInFront()
+        {
+            try
+            {
+                var player = Game.PlayerPed;
+                if (player == null || !player.IsAlive)
+                {
+                    return;
+                }
+
+                if (player.IsInVehicle())
+                {
+                    var current = GetVehicle();
+                    if (current != null && current.Exists() && current.Driver == player)
+                    {
+                        SetVehicleHasBeenOwnedByPlayer(current.Handle, false);
+                        SetEntityAsMissionEntity(current.Handle, false, false);
+                        current.Delete();
+                    }
+                    else
+                    {
+                        Notify.Error("You need to be the driver of this vehicle to delete it!");
+                    }
+                    return;
+                }
+
+                var distance = MathUtil.Clamp(vMenuShared.ConfigManager.GetSettingsFloat(vMenuShared.ConfigManager.Setting.vmenu_delete_vehicle_distance, 5f), 1f, 25f);
+                var from = player.Position;
+                var to = GetOffsetFromEntityInWorldCoords(player.Handle, 0f, distance, 0f);
+                var ray = StartShapeTestCapsule(from.X, from.Y, from.Z, to.X, to.Y, to.Z, 2f, 10, player.Handle, 7);
+
+                var hit = false;
+                var endCoords = Vector3.Zero;
+                var surfaceNormal = Vector3.Zero;
+                var entity = 0;
+                for (var i = 0; i < 10; i++)
+                {
+                    if (GetShapeTestResult(ray, ref hit, ref endCoords, ref surfaceNormal, ref entity) != 1)
+                    {
+                        break;
+                    }
+                    await Delay(0);
+                }
+
+                if (!hit || entity == 0 || !DoesEntityExist(entity) || !IsEntityAVehicle(entity))
+                {
+                    Notify.Error("No vehicle found in front of you to delete!");
+                    return;
+                }
+
+                for (var seat = -1; seat < GetVehicleMaxNumberOfPassengers(entity); seat++)
+                {
+                    var occupant = GetPedInVehicleSeat(entity, seat);
+                    if (occupant != 0 && IsPedAPlayer(occupant))
+                    {
+                        Notify.Error("Someone is in that vehicle, it can't be deleted.");
+                        return;
+                    }
+                }
+
+                var target = new Vehicle(entity);
+                for (var i = 0; i < 5 && DoesEntityExist(entity); i++)
+                {
+                    NetworkRequestControlOfEntity(entity);
+                    SetVehicleHasBeenOwnedByPlayer(entity, false);
+                    SetEntityAsMissionEntity(entity, false, false);
+                    target.Delete();
+                    await Delay(0);
+                }
+
+                if (DoesEntityExist(entity))
+                {
+                    Notify.Error("Failed to delete the vehicle in front of you. Try again or ask an admin for help.");
+                }
+                else
+                {
+                    Notify.Success("Vehicle deleted.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[vMenu] Deleting a vehicle failed: {ex.Message}");
+            }
+        }
         #endregion
 
         #region Cooldown function to block any more vehicle spawns.
@@ -976,35 +1068,35 @@ namespace vMenuClient
 
                     if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.PistolMk2))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_PISTOL_MK2");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_PISTOL_MK2");
                     }
                     else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.CombatPistol))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_COMBATPISTOL");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_COMBATPISTOL");
                     }
                     else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.Pistol))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_PISTOL");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_PISTOL");
                     }
-                    else if (Game.PlayerPed.Weapons.HasWeapon((WeaponHash)(uint)GetHashKey("WEAPON_SNSPISTOL_MK2")))
+                    else if (Game.PlayerPed.Weapons.HasWeapon((WeaponHash)Game.GenerateHashASCII("WEAPON_SNSPISTOL_MK2")))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_SNSPISTOL_MK2");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_SNSPISTOL_MK2");
                     }
                     else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.SNSPistol))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_SNSPISTOL");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_SNSPISTOL");
                     }
                     else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.Pistol50))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_PISTOL50");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_PISTOL50");
                     }
                     else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.HeavyPistol))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_HEAVYPISTOL");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_HEAVYPISTOL");
                     }
                     else if (Game.PlayerPed.Weapons.HasWeapon(WeaponHash.VintagePistol))
                     {
-                        weaponHash = (uint)GetHashKey("WEAPON_VINTAGEPISTOL");
+                        weaponHash = Game.GenerateHashASCII("WEAPON_VINTAGEPISTOL");
                     }
                     else
                     {
@@ -1015,7 +1107,7 @@ namespace vMenuClient
                     // If we take the pill, remove any weapons in our hands.
                     if (takePill)
                     {
-                        SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_unarmed"), true);
+                        SetCurrentPedWeapon(Game.PlayerPed.Handle, Game.GenerateHashASCII("weapon_unarmed"), true);
                     }
                     // Otherwise, give the ped a gun.
                     else if (weaponHash != null)
@@ -1025,8 +1117,8 @@ namespace vMenuClient
                     }
                     else
                     {
-                        GiveWeaponToPed(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_pistol_mk2"), 1, false, true);
-                        SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_pistol_mk2"), true);
+                        GiveWeaponToPed(Game.PlayerPed.Handle, Game.GenerateHashASCII("weapon_pistol_mk2"), 1, false, true);
+                        SetCurrentPedWeapon(Game.PlayerPed.Handle, Game.GenerateHashASCII("weapon_pistol_mk2"), true);
                         SetPedDropsWeaponsWhenDead(Game.PlayerPed.Handle, true);
                     }
 
@@ -1038,7 +1130,7 @@ namespace vMenuClient
                     while (true)
                     {
                         var time = GetEntityAnimCurrentTime(Game.PlayerPed.Handle, "MP_SUICIDE", takePill ? "pill" : "pistol");
-                        if (HasAnimEventFired(Game.PlayerPed.Handle, (uint)GetHashKey("Fire")) && !shot) // shoot the gun if the animation event is triggered.
+                        if (HasAnimEventFired(Game.PlayerPed.Handle, Game.GenerateHashASCII("Fire")) && !shot) // shoot the gun if the animation event is triggered.
                         {
                             ClearEntityLastDamageEntity(Game.PlayerPed.Handle);
                             SetPedShootsAtCoord(Game.PlayerPed.Handle, 0f, 0f, 0f, false);
@@ -1321,7 +1413,7 @@ namespace vMenuClient
                 return 0;
             }
 
-            if (VehicleSpawnerCooldownEnabled)
+            if (VehicleSpawnerCooldownEnabled && !IsAllowed(Permission.VSBypassRateLimit))
             {
                 Notify.Error("Vehicle spawner is on cooldown.");
                 return 0;
@@ -1332,7 +1424,7 @@ namespace vMenuClient
                 var result = await GetUserInput(windowTitle: "Enter Vehicle Name");
                 if (!string.IsNullOrEmpty(result))
                 {
-                    var model = (uint)GetHashKey(result);
+                    var model = Game.GenerateHashASCII(result);
 
                     var vehicleHandle = await SpawnVehicle(vehicleHash: model, spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false, vehicleInfo: new VehicleInfo(),
                          saveName: null);
@@ -1350,7 +1442,7 @@ namespace vMenuClient
                 }
             }
 
-            var handle = await SpawnVehicle(vehicleHash: (uint)GetHashKey(vehicleName), spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false,
+            var handle = await SpawnVehicle(vehicleHash: Game.GenerateHashASCII(vehicleName), spawnInside: spawnInside, replacePrevious: replacePrevious, skipLoad: false,
                      vehicleInfo: new VehicleInfo(), saveName: null);
 
             _ = StartVehicleCooldown();
@@ -1397,6 +1489,12 @@ namespace vMenuClient
                 return 0;
             }
 
+            if (AddonsManager.IsVehicleRestricted(vehicleHash))
+            {
+                Notify.Alert("You are not allowed to spawn this vehicle, because it is restricted by the server owner.");
+                return 0;
+            }
+
             if (!skipLoad)
             {
                 var successFull = await LoadModel(vehicleHash);
@@ -1408,7 +1506,7 @@ namespace vMenuClient
                 }
             }
 
-            if (VehicleSpawnerCooldownEnabled)
+            if (VehicleSpawnerCooldownEnabled && !IsAllowed(Permission.VSBypassRateLimit))
             {
                 Notify.Error("Vehicle spawner is on cooldown.");
                 return 0;
@@ -2404,7 +2502,7 @@ namespace vMenuClient
         /// Sets the player's model to the provided modelName.
         /// </summary>
         /// <param name="modelName">The model name.</param>
-        public static async Task SetPlayerSkin(string modelName, PedInfo pedCustomizationOptions, bool keepWeapons = true) => await SetPlayerSkin((uint)GetHashKey(modelName), pedCustomizationOptions, keepWeapons);
+        public static async Task SetPlayerSkin(string modelName, PedInfo pedCustomizationOptions, bool keepWeapons = true) => await SetPlayerSkin(Game.GenerateHashASCII(modelName), pedCustomizationOptions, keepWeapons);
 
         /// <summary>
         /// Sets the player's model to the provided modelHash.
@@ -2412,6 +2510,11 @@ namespace vMenuClient
         /// <param name="modelHash">The model hash.</param>
         public static async Task SetPlayerSkin(uint modelHash, PedInfo pedCustomizationOptions, bool keepWeapons = true)
         {
+            if (AddonsManager.IsPedRestricted(modelHash))
+            {
+                Notify.Alert("You are not allowed to use this ped model, because it is restricted by the server owner.");
+                return;
+            }
             if (IsModelInCdimage(modelHash))
             {
                 if (keepWeapons)
@@ -2507,7 +2610,7 @@ namespace vMenuClient
                 {
                     await SpawnWeaponLoadoutAsync("vmenu_temp_weapons_loadout_before_respawn", false, true, false);
                 }
-                if (modelHash == (uint)GetHashKey("mp_f_freemode_01") || modelHash == (uint)GetHashKey("mp_m_freemode_01"))
+                if (modelHash == Game.GenerateHashASCII("mp_f_freemode_01") || modelHash == Game.GenerateHashASCII("mp_m_freemode_01"))
                 {
                     //var headBlendData = Game.PlayerPed.GetHeadBlendData();
                     if (pedCustomizationOptions.version == -1)
@@ -2537,7 +2640,7 @@ namespace vMenuClient
                 var input = await GetUserInput(windowTitle: "Enter Ped Model Name", maxInputLength: 30);
                 if (!string.IsNullOrEmpty(input))
                 {
-                    await SetPlayerSkin((uint)GetHashKey(input), new PedInfo() { version = -1 });
+                    await SetPlayerSkin(Game.GenerateHashASCII(input), new PedInfo() { version = -1 });
                 }
                 else
                 {
@@ -2604,7 +2707,7 @@ namespace vMenuClient
                 data.props = props;
                 data.propTextures = propTextures;
 
-                data.isMpPed = model == (uint)GetHashKey("mp_f_freemode_01") || model == (uint)GetHashKey("mp_m_freemode_01");
+                data.isMpPed = model == Game.GenerateHashASCII("mp_f_freemode_01") || model == Game.GenerateHashASCII("mp_m_freemode_01");
                 if (data.isMpPed)
                 {
                     Notify.Alert("Note, you should probably use the MP Character creator if you want more advanced features. Saving Multiplayer characters with this function does NOT save a lot of the online peds customization.");
@@ -2887,7 +2990,24 @@ namespace vMenuClient
                         }
                     }
 
-                    var model = (uint)GetHashKey(inputName.ToUpper());
+                    var model = Game.GenerateHashASCII(inputName.ToUpper());
+
+                    // Only weapons this player's weapon list contains: addon weapons the server didn't grant
+                    // them, and whitelisted models they lack the ACE for, are not in it.
+                    var offered = false;
+                    foreach (var weapon in ValidWeapons.WeaponList)
+                    {
+                        if (weapon.Hash == model)
+                        {
+                            offered = true;
+                            break;
+                        }
+                    }
+                    if (!offered)
+                    {
+                        Notify.Error("Sorry, that weapon is not available to you on this server.");
+                        return;
+                    }
 
                     if (IsWeaponValid(model))
                     {
@@ -3122,7 +3242,7 @@ namespace vMenuClient
                     }
                 }
 
-                SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("weapon_unarmed"), true);
+                SetCurrentPedWeapon(Game.PlayerPed.Handle, Game.GenerateHashASCII("weapon_unarmed"), true);
 
                 if (!dontNotify)
                 {
@@ -3200,9 +3320,9 @@ namespace vMenuClient
         {
             try
             {
-                if (IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_f_freemode_01")) || IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_m_freemode_01")))
+                if (IsPedModel(Game.PlayerPed.Handle, Game.GenerateHashASCII("mp_f_freemode_01")) || IsPedModel(Game.PlayerPed.Handle, Game.GenerateHashASCII("mp_m_freemode_01")))
                 {
-                    var isPedMale = IsPedModel(Game.PlayerPed.Handle, (uint)GetHashKey("mp_m_freemode_01"));
+                    var isPedMale = IsPedModel(Game.PlayerPed.Handle, Game.GenerateHashASCII("mp_m_freemode_01"));
                     ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 0, 1f);
                     ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 1, 1f);
                     ClearPedAlternateMovementAnim(Game.PlayerPed.Handle, 2, 1f);
@@ -3716,7 +3836,7 @@ namespace vMenuClient
                 var player = Game.Player;
                 if (player != null && !player.IsDead && !player.Character.IsInVehicle())
                 {
-                    var KeyFobHashKey = (uint)GetHashKey("p_car_keys_01");
+                    var KeyFobHashKey = Game.GenerateHashASCII("p_car_keys_01");
                     RequestModel(KeyFobHashKey);
                     while (!HasModelLoaded(KeyFobHashKey))
                     {
@@ -3728,7 +3848,7 @@ namespace vMenuClient
                     SetModelAsNoLongerNeeded(KeyFobHashKey); // cleanup model from memory
 
                     ClearPedTasks(player.Character.Handle);
-                    //SetCurrentPedWeapon(Game.PlayerPed.Handle, (uint)GetHashKey("WEAPON_UNARMED"), true);
+                    //SetCurrentPedWeapon(Game.PlayerPed.Handle, Game.GenerateHashASCII("WEAPON_UNARMED"), true);
                     //if (player.Character.Weapons.Current.Hash != WeaponHash.Unarmed)
                     //{
                     //    player.Character.Weapons.Give(WeaponHash.Unarmed, 1, true, true);

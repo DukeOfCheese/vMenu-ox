@@ -78,8 +78,17 @@ namespace vMenuServer
             public List<FlatLocation> blips { get; set; }
         }
 
+        /// <summary>Base-game models that need their own ACE (Config.ModelWhitelist in config_server.lua).</summary>
+        private class ModelWhitelistSection
+        {
+            public List<string> vehicles { get; set; }
+            public List<string> peds { get; set; }
+            public List<string> weapons { get; set; }
+        }
+
         private class LuaConfig
         {
+            public ModelWhitelistSection modelWhitelist { get; set; }
             public AddonsSection addons { get; set; }
             public Dictionary<string, Dictionary<int, string>> extras { get; set; }
             public LocationsSection locations { get; set; }
@@ -120,11 +129,20 @@ namespace vMenuServer
             public Dictionary<string, Dictionary<int, string>> extras = new Dictionary<string, Dictionary<int, string>>();
             public Locations locations = new Locations();
             public EupState eup = new EupState();
+            public RestrictedModels restricted = new RestrictedModels();
         }
 
         private class EupState
         {
             public bool allowed = true;
+        }
+
+        /// <summary>Whitelisted models this player may NOT use. Only names, never the ACEs.</summary>
+        private class RestrictedModels
+        {
+            public List<string> vehicles = new List<string>();
+            public List<string> peds = new List<string>();
+            public List<string> weapons = new List<string>();
         }
         #endregion
 
@@ -190,6 +208,12 @@ namespace vMenuServer
                 section.peds = Sanitize(section.peds, "ped");
                 section.engineSounds = Sanitize(section.engineSounds, "engine sound");
                 config.addons = section;
+
+                var whitelist = config.modelWhitelist ?? new ModelWhitelistSection();
+                whitelist.vehicles = SanitizeModelNames(whitelist.vehicles);
+                whitelist.peds = SanitizeModelNames(whitelist.peds);
+                whitelist.weapons = SanitizeModelNames(whitelist.weapons);
+                config.modelWhitelist = whitelist;
 
                 configLoaded = true;
                 FlushPendingRequests();
@@ -283,6 +307,37 @@ namespace vMenuServer
             return kept;
         }
 
+        /// <summary>
+        /// Lower-cased, trimmed, de-duplicated model names; anything empty or over 64 characters is dropped.
+        /// </summary>
+        private static List<string> SanitizeModelNames(List<string> names)
+        {
+            return (names ?? new List<string>())
+                .Where(n => !string.IsNullOrWhiteSpace(n) && n.Trim().Length <= 64)
+                .Select(n => n.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>
+        /// The whitelisted models this player may not use. Allowed by "&lt;namespace&gt;.&lt;model&gt;" (weapons without
+        /// their weapon_ prefix, as upstream named them), "&lt;namespace&gt;.All" or vMenu.Everything.
+        /// </summary>
+        private static List<string> Restricted(Player player, string aceNamespace, List<string> models, string stripPrefix)
+        {
+            if (models == null || models.Count == 0
+                || IsPlayerAceAllowed(player.Handle, aceNamespace + ".All")
+                || IsPlayerAceAllowed(player.Handle, "vMenu.Everything"))
+            {
+                return new List<string>();
+            }
+            return models.Where(model =>
+            {
+                var name = stripPrefix != null && model.StartsWith(stripPrefix) ? model.Substring(stripPrefix.Length) : model;
+                return !IsPlayerAceAllowed(player.Handle, $"{aceNamespace}.{name}");
+            }).ToList();
+        }
+
         private static List<T> Allowed<T>(Player player, string aceNamespace, List<T> entries) where T : AddonEntry
         {
             var allowed = new List<T>();
@@ -357,6 +412,14 @@ namespace vMenuServer
             var eup = addons.eup;
             payload.eup.allowed = eup == null || !eup.enabled
                 || IsPlayerAceAllowed(player.Handle, string.IsNullOrWhiteSpace(eup.permission) ? "vMenu.PlayerAppearance.EUP" : eup.permission);
+
+            var whitelist = config.modelWhitelist ?? new ModelWhitelistSection();
+            payload.restricted = new RestrictedModels
+            {
+                vehicles = Restricted(player, "vMenu.VehicleSpawner.WhitelistedModels", whitelist.vehicles, null),
+                peds = Restricted(player, "vMenu.PlayerAppearance.WhitelistedModels", whitelist.peds, null),
+                weapons = Restricted(player, "vMenu.WeaponOptions.WhitelistedModels", whitelist.weapons, "weapon_"),
+            };
 
             player.TriggerEvent("vMenu:SetAddons", JsonConvert.SerializeObject(payload));
         }

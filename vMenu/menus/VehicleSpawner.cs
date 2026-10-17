@@ -301,7 +301,7 @@ namespace vMenuClient.menus
                     // Get the localized vehicle name, if it is "NULL" (no label found) then use the "properCasedModelName" created above.
                     var vehName = GetVehDisplayNameFromModel(veh) != "NULL" ? GetVehDisplayNameFromModel(veh) : properCasedModelName;
 
-                    var model = (uint)GetHashKey(veh);
+                    var model = Game.GenerateHashASCII(veh);
                     var exists = DoesModelExist(veh);
 
                     // Duplicate display names get a " (2)", " (3)", ... suffix.
@@ -347,6 +347,13 @@ namespace vMenuClient.menus
                             ItemData = entry,
                             RightIcon = MenuItem.Icon.LOCK
                         };
+
+                    if (exists && AddonsManager.IsVehicleRestricted(Game.GenerateHashASCII(veh)))
+                    {
+                        vehBtn.Enabled = false;
+                        vehBtn.LeftIcon = MenuItem.Icon.LOCK;
+                        vehBtn.Description = "Access to this vehicle has been restricted by the server owner.";
+                    }
 
                     vehicleClassMenu.AddMenuItem(vehBtn);
                 }

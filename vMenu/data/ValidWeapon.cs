@@ -192,6 +192,8 @@ namespace vMenuClient.data
                 var localizedName = weapon.Value;
                 if (realName == "weapon_unarmed") continue;
                 var hash = (uint)GetHashKey(realName);
+                // Whitelisted model this player lacks the ACE for: leave it out of every menu and loadout.
+                if (AddonsManager.IsWeaponRestricted(hash)) continue;
                 var componentHashes = new Dictionary<string, uint>();
                 foreach (var comp in componentHashCache)
                 {

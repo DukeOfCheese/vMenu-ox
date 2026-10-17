@@ -37,6 +37,7 @@ namespace vMenuShared
             vmenu_vehicle_codes,
             vmenu_loadout_codes,
             vmenu_vehicle_spawner_cooldown,
+            vmenu_delete_vehicle_distance,
             vmenu_using_custom_notify,
 
             // Vehicle Chameleon Colours
@@ -105,12 +106,12 @@ namespace vMenuShared
         /// </summary>
         /// <param name="setting"></param>
         /// <returns></returns>
-        public static int GetSettingsInt(Setting setting)
+        public static int GetSettingsInt(Setting setting, int defaultValue = -1)
         {
-            var convarInt = GetConvarInt(setting.ToString(), -1);
-            if (convarInt == -1)
+            var convarInt = GetConvarInt(setting.ToString(), defaultValue);
+            if (convarInt == defaultValue)
             {
-                if (int.TryParse(GetConvar(setting.ToString(), "-1"), out var convarIntAlt))
+                if (int.TryParse(GetConvar(setting.ToString(), defaultValue.ToString()), out var convarIntAlt))
                 {
                     return convarIntAlt;
                 }
@@ -123,13 +124,13 @@ namespace vMenuShared
         /// </summary>
         /// <param name="setting"></param>
         /// <returns></returns>
-        public static float GetSettingsFloat(Setting setting)
+        public static float GetSettingsFloat(Setting setting, float defaultValue = -1f)
         {
-            if (float.TryParse(GetConvar(setting.ToString(), "-1.0"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result))
+            if (float.TryParse(GetConvar(setting.ToString(), ""), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result))
             {
                 return result;
             }
-            return -1f;
+            return defaultValue;
         }
 
         /// <summary>

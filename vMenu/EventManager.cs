@@ -146,7 +146,7 @@ namespace vMenuClient
                     continue;
                 }
 
-                var modelHash = (uint)GetHashKey(model.Key);
+                var modelHash = Game.GenerateHashASCII(model.Key);
                 if (VehicleOptions.VehicleExtras.ContainsKey(modelHash))
                 {
                     Debug.WriteLine($"[vMenu] [Warning] Config.Extras has more than one entry for model '{model.Key}'; only the first is used.");

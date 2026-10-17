@@ -47,7 +47,7 @@ namespace vMenuClient
         /// <returns>true spawn was succesful</returns>
         public static async Task SpawnEntity(string model, Vector3 coords)
         {
-            await SpawnEntity((uint)GetHashKey(model), coords);
+            await SpawnEntity(Game.GenerateHashASCII(model), coords);
         }
 
         /// <summary>
