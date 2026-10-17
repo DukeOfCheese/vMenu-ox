@@ -102,8 +102,8 @@ namespace vMenuServer
         {
             get
             {
-                var value = GetSettingsString(Setting.vmenu_current_weather, "CLEAR");
-                if (!WeatherTypes.Contains(value.ToUpper()))
+                var value = GetSettingsString(Setting.vmenu_current_weather, "CLEAR")?.ToUpper();
+                if (value == null || !WeatherTypes.Contains(value))
                 {
                     return "CLEAR";
                 }
@@ -111,11 +111,9 @@ namespace vMenuServer
             }
             set
             {
-                if (string.IsNullOrEmpty(value) || !WeatherTypes.Contains(value.ToUpper()))
-                {
-                    SetConvarReplicated(Setting.vmenu_current_weather.ToString(), "CLEAR");
-                }
-                SetConvarReplicated(Setting.vmenu_current_weather.ToString(), value.ToUpper());
+                // Replicated to every client, which passes it straight to the weather natives, so only known types get through.
+                var weather = value?.ToUpper();
+                SetConvarReplicated(Setting.vmenu_current_weather.ToString(), weather != null && WeatherTypes.Contains(weather) ? weather : "CLEAR");
             }
         }
         private bool DynamicWeatherEnabled
@@ -292,7 +290,7 @@ namespace vMenuServer
                             var wtype = args[1].ToString().ToUpper();
                             if (WeatherTypes.Contains(wtype))
                             {
-                                TriggerEvent("vMenu:UpdateServerWeather", wtype, DynamicWeatherEnabled, ManualSnowEnabled);
+                                ApplyWeather(wtype, BlackoutEnabled, DynamicWeatherEnabled, ManualSnowEnabled);
                                 Debug.WriteLine($"[vMenu] Weather is now set to: {wtype}");
                             }
                             else if (wtype.ToLower() == "dynamic")
@@ -301,12 +299,12 @@ namespace vMenuServer
                                 {
                                     if ((args[2].ToString().ToLower() ?? $"{DynamicWeatherEnabled}") == "true")
                                     {
-                                        TriggerEvent("vMenu:UpdateServerWeather", CurrentWeather, true, ManualSnowEnabled);
+                                        ApplyWeather(CurrentWeather, BlackoutEnabled, true, ManualSnowEnabled);
                                         Debug.WriteLine("[vMenu] Dynamic weather is now turned on.");
                                     }
                                     else if ((args[2].ToString().ToLower() ?? $"{DynamicWeatherEnabled}") == "false")
                                     {
-                                        TriggerEvent("vMenu:UpdateServerWeather", CurrentWeather, false, ManualSnowEnabled);
+                                        ApplyWeather(CurrentWeather, BlackoutEnabled, false, ManualSnowEnabled);
                                         Debug.WriteLine("[vMenu] Dynamic weather is now turned off.");
                                     }
                                     else
@@ -332,7 +330,7 @@ namespace vMenuServer
                         {
                             if (args[1].ToString().ToLower() == "freeze")
                             {
-                                TriggerEvent("vMenu:UpdateServerTime", CurrentHours, CurrentMinutes, !FreezeTime);
+                                FreezeTime = !FreezeTime;
                                 Debug.WriteLine($"Time is now {(FreezeTime ? "frozen" : "not frozen")}.");
                             }
                             else
@@ -350,7 +348,7 @@ namespace vMenuServer
                                     {
                                         if (minute is >= 0 and < 60)
                                         {
-                                            TriggerEvent("vMenu:UpdateServerTime", hour, minute, FreezeTime);
+                                            var setTimeTask = SetTimeAsync(hour, minute);
                                             Debug.WriteLine($"Time is now {(hour < 10 ? ("0" + hour.ToString()) : hour.ToString())}:{(minute < 10 ? ("0" + minute.ToString()) : minute.ToString())}.");
                                         }
                                         else
@@ -523,6 +521,12 @@ namespace vMenuServer
 
             int vehicleHandle = vehicle.Handle;
 
+            // Only the player who spawned the vehicle (or is driving it) may empty it.
+            if (!IsVehicleOwnedOrDrivenBy(source, vehicleHandle, requireDriver: true))
+            {
+                return;
+            }
+
             for (int i = -1; i < 15; i++)
             {
                 int pedHandle = GetPedInVehicleSeat(vehicleHandle, i);
@@ -562,7 +566,7 @@ namespace vMenuServer
                 return;
             }
 
-            if (source?.Character == null)
+            if (source?.Character == null || RateLimiter.IsLimited(source, "ClearArea", 5000))
             {
                 return;
             }
@@ -698,12 +702,32 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerWeather")]
         internal void UpdateWeather([FromSource] Player source, string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
         {
-            if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOMenu, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source))
+            newWeather = newWeather?.ToUpper();
+            if (newWeather == null || !WeatherTypes.Contains(newWeather))
             {
-                BanManager.BanCheater(source);
                 return;
             }
 
+            // The menu sends every weather setting at once, so each one that actually changes needs its own permission.
+            if (source != null)
+            {
+                var allowed = PermissionsManager.IsAllowed(PermissionsManager.Permission.WOMenu, source)
+                    && (newWeather == CurrentWeather || PermissionsManager.IsAllowed(PermissionsManager.Permission.WOSetWeather, source))
+                    && (enableSnow == ManualSnowEnabled || PermissionsManager.IsAllowed(PermissionsManager.Permission.WOSetWeather, source))
+                    && (blackoutNew == BlackoutEnabled || PermissionsManager.IsAllowed(PermissionsManager.Permission.WOBlackout, source))
+                    && (dynamicWeatherNew == DynamicWeatherEnabled || PermissionsManager.IsAllowed(PermissionsManager.Permission.WODynamic, source));
+                if (!allowed)
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
+            }
+
+            ApplyWeather(newWeather, blackoutNew, dynamicWeatherNew, enableSnow);
+        }
+
+        private void ApplyWeather(string newWeather, bool blackoutNew, bool dynamicWeatherNew, bool enableSnow)
+        {
             // Automatically enable snow effects whenever one of the snow weather types is selected.
             if (newWeather is "XMAS" or "SNOWLIGHT" or "SNOW" or "BLIZZARD")
             {
@@ -751,17 +775,9 @@ namespace vMenuServer
         [EventHandler("vMenu:UpdateServerWeatherCloudsType")]
         internal void UpdateWeatherCloudsType([FromSource] Player source, bool removeClouds)
         {
-            if (source != null && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.RemoveClouds") && !IsPlayerAceAllowed(source.Handle, "vMenu.WeatherOptions.RandomizeClouds"))
-            {
-                BanManager.BanCheater(source);
-                return;
-            }
-
-            bool allWOPermissions = PermissionsManager.IsAllowed(PermissionsManager.Permission.WOAll, source);
-
             if (removeClouds)
             {
-                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORemoveClouds, source) && !allWOPermissions)
+                if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WORemoveClouds, source))
                 {
                     BanManager.BanCheater(source);
                     return;
@@ -771,7 +787,7 @@ namespace vMenuServer
             }
             else
             {
-                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.WORandomizeClouds, source) && !allWOPermissions)
+                if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.WORandomizeClouds, source))
                 {
                     BanManager.BanCheater(source);
                     return;
@@ -789,17 +805,67 @@ namespace vMenuServer
         /// <param name="newHours"></param>
         /// <param name="newMinutes"></param>
         [EventHandler("vMenu:UpdateServerTime")]
-        internal void UpdateTime([FromSource] Player source, int newHours, int newMinutes, bool freezeTimeNew)
+        internal async void UpdateTime([FromSource] Player source, int newHours, int newMinutes)
         {
-            if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOMenu, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
+            try
             {
-                BanManager.BanCheater(source);
-                return;
+                if (source != null && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOSetTime, source))
+                {
+                    BanManager.BanCheater(source);
+                    return;
+                }
+
+                await SetTimeAsync(newHours, newMinutes);
+            }
+            catch (Exception ex)
+            {
+                Log($"UpdateServerTime failed: {ex.Message}", LogLevel.error);
+            }
+        }
+
+        private int timeTransitionId = 0;
+        // The frozen state from before a smooth transition started; null when none is running.
+        private bool? frozenBeforeTransition = null;
+
+        /// <summary>
+        /// Sets the server time. With vmenu_smooth_time_transitions on, the clock is run forward to the new
+        /// time over about a second instead of jumping (port of upstream's smooth time transitions).
+        /// Leaves the frozen state as it was.
+        /// </summary>
+        private async Task SetTimeAsync(int newHours, int newMinutes)
+        {
+            newHours = MathUtil.Clamp(newHours, 0, 23);
+            newMinutes = MathUtil.Clamp(newMinutes, 0, 59);
+            var transitionId = ++timeTransitionId;
+
+            if (GetSettingsBool(Setting.vmenu_smooth_time_transitions))
+            {
+                frozenBeforeTransition ??= FreezeTime;
+                FreezeTime = true;
+
+                var current = CurrentHours * 60 + CurrentMinutes;
+                var target = newHours * 60 + newMinutes;
+                var minutesToGo = (target - current + 24 * 60) % (24 * 60);
+                const int steps = 30;
+                for (var i = 1; i <= steps && transitionId == timeTransitionId; i++)
+                {
+                    var t = (current + minutesToGo * i / steps) % (24 * 60);
+                    CurrentHours = t / 60;
+                    CurrentMinutes = t % 60;
+                    await Delay(33);
+                }
+
+                if (transitionId != timeTransitionId)
+                {
+                    // A newer time change took over and will restore the frozen state itself.
+                    return;
+                }
+                FreezeTime = frozenBeforeTransition ?? FreezeTime;
+                frozenBeforeTransition = null;
             }
 
             CurrentHours = newHours;
             CurrentMinutes = newMinutes;
-            FreezeTime = freezeTimeNew;
         }
 
         /// <summary>
@@ -810,12 +876,18 @@ namespace vMenuServer
         [EventHandler("vMenu:FreezeServerTime")]
         internal void FreezeServerTime([FromSource] Player source, bool freezeTime)
         {
-            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOFreezeTime, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.TOAll, source))
+            if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.TOFreezeTime, source))
             {
                 BanManager.BanCheater(source);
                 return;
             }
 
+            if (frozenBeforeTransition != null)
+            {
+                // Applied when the running smooth time transition finishes.
+                frozenBeforeTransition = freezeTime;
+                return;
+            }
             FreezeTime = freezeTime;
         }
         #endregion
@@ -850,6 +922,7 @@ namespace vMenuServer
                 return;
             }
 
+            kickReason = BanManager.SanitizeReason(kickReason, "You have been kicked from the server.");
             KickLog($"Player: {source.Name} has kicked: {targetPlayer.Name} for: {kickReason}.");
 
             source.TriggerEvent("vMenu:Notify", $"The target player (<C>{targetPlayer.Name}</C>) has been kicked.");
@@ -998,6 +1071,12 @@ namespace vMenuServer
                 return;
             }
 
+            if (RateLimiter.IsLimited(source, "SendMessageToPlayer", 1000))
+            {
+                source.TriggerEvent("vMenu:Notify", "You are sending private messages too quickly.");
+                return;
+            }
+
             // Cap the relayed message length (it is forwarded to the target and to the staff log).
             if (string.IsNullOrEmpty(message) || message.Length > 512)
             {
@@ -1025,15 +1104,15 @@ namespace vMenuServer
 
             if (targetPmsDisabled)
             {
-                source.TriggerEvent("vMenu:Notify", $"Sorry, your private message to <C>{source.Name}</C>~s~ could not be delivered because they have private messages disabled.");
+                source.TriggerEvent("vMenu:Notify", $"Sorry, your private message to <C>{targetPlayer.Name}</C>~s~ could not be delivered because they have private messages disabled.");
                 return;
             }
 
             targetPlayer.TriggerEvent("vMenu:PrivateMessage", source.Handle, message);
 
-            foreach (string playerHandle in joinedPlayers)
+            foreach (string playerHandle in joinedPlayers.ToList())
             {
-                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSeePrivateMessages, playerHandle) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, playerHandle))
+                if (!playerNotifyFlags.TryGetValue(playerHandle, out var flags) || !flags.SeesPrivateMessages)
                 {
                     continue;
                 }
@@ -1076,12 +1155,21 @@ namespace vMenuServer
         [EventHandler("vMenu:RequestPlayerList")]
         internal void RequestPlayerListFromPlayer([FromSource] Player player)
         {
-            player.TriggerEvent("vMenu:ReceivePlayerList", Players.Select(p => new
+            // Clients ask for this whenever a player list is shown, so build it at most once a second.
+            if (cachedPlayerList == null || GetGameTimer() - cachedPlayerListTime > 1000)
             {
-                n = p.Name,
-                s = int.Parse(p.Handle),
-            }));
+                cachedPlayerList = Players.Select(p => new
+                {
+                    n = p.Name,
+                    s = int.Parse(p.Handle),
+                }).ToList<object>();
+                cachedPlayerListTime = GetGameTimer();
+            }
+            player.TriggerEvent("vMenu:ReceivePlayerList", cachedPlayerList);
         }
+
+        private List<object> cachedPlayerList = null;
+        private long cachedPlayerListTime = 0;
 
         [EventHandler("vMenu:GetPlayerCoords")]
         internal void GetPlayerCoords([FromSource] Player source, long rpcId, int playerId, NetworkCallbackDelegate callback)
@@ -1137,6 +1225,24 @@ namespace vMenuServer
         #region Player join/quit
         private readonly HashSet<string> joinedPlayers = new();
 
+        private sealed class NotifyFlags
+        {
+            public bool SeesJoinQuit;
+            public bool SeesPrivateMessages;
+        }
+
+        // Worked out once per player when they join, instead of two ACE checks per player on every join, drop or PM.
+        private readonly Dictionary<string, NotifyFlags> playerNotifyFlags = new();
+
+        private void CachePlayerNotifyFlags(Player player)
+        {
+            playerNotifyFlags[player.Handle] = new NotifyFlags
+            {
+                SeesJoinQuit = PermissionsManager.IsAllowed(PermissionsManager.Permission.MSJoinQuitNotifs, player),
+                SeesPrivateMessages = PermissionsManager.IsAllowed(PermissionsManager.Permission.OPSeePrivateMessages, player),
+            };
+        }
+
         private IEnumerable<Player> GetJoinQuitNotifPlayers()
         {
             List<Player> players = [];
@@ -1144,7 +1250,7 @@ namespace vMenuServer
             // Iterate a snapshot: other handlers (playerJoining/playerDropped) mutate joinedPlayers.
             foreach (string playerHandle in joinedPlayers.ToList())
             {
-                if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.MSJoinQuitNotifs, playerHandle) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.MSAll, playerHandle))
+                if (!playerNotifyFlags.TryGetValue(playerHandle, out var flags) || !flags.SeesJoinQuit)
                 {
                     continue;
                 }
@@ -1172,15 +1278,21 @@ namespace vMenuServer
                 joinedPlayers.Add(player.Handle);
 
                 PermissionsManager.SetPermissionsForPlayer(player);
+                CachePlayerNotifyFlags(player);
             }
         }
         
         [EventHandler("playerJoining")]
         internal void OnPlayerJoining([FromSource] Player sourcePlayer)
         {
-            joinedPlayers.Add(sourcePlayer.Handle);
+            // Only once per player; a repeat would just be a fake join notification.
+            if (sourcePlayer == null || !joinedPlayers.Add(sourcePlayer.Handle))
+            {
+                return;
+            }
 
             PermissionsManager.SetPermissionsForPlayer(sourcePlayer);
+            CachePlayerNotifyFlags(sourcePlayer);
 
             string sourcePlayerName = sourcePlayer.Name;
 
@@ -1199,8 +1311,11 @@ namespace vMenuServer
             }
 
             joinedPlayers.Remove(sourcePlayer.Handle);
+            playerNotifyFlags.Remove(sourcePlayer.Handle);
+            RateLimiter.Forget(sourcePlayer);
 
             string sourcePlayerName = sourcePlayer.Name;
+            reason = BanManager.SanitizeReason(reason, null);
             
             foreach (Player notifPlayer in GetJoinQuitNotifPlayers())
             {
@@ -1218,6 +1333,66 @@ namespace vMenuServer
             }
 
             return GetPlayerFromServerId(serverIdInt);
+        }
+
+        /// <summary>
+        /// Whether the player spawned this vehicle, or sits in it (in the driver's seat when requireDriver is set).
+        /// </summary>
+        private static bool IsVehicleOwnedOrDrivenBy(Player player, int vehicleHandle, bool requireDriver)
+        {
+            if (player == null || vehicleHandle == 0 || !DoesEntityExist(vehicleHandle) || GetEntityType(vehicleHandle) != 2)
+            {
+                return false;
+            }
+
+            if (int.TryParse(player.Handle, out var serverId) && NetworkGetFirstEntityOwner(vehicleHandle) == serverId)
+            {
+                return true;
+            }
+
+            var ped = player.Character?.Handle ?? 0;
+            if (ped == 0)
+            {
+                return false;
+            }
+            return requireDriver ? GetPedInVehicleSeat(vehicleHandle, -1) == ped : GetVehiclePedIsIn(ped, false) == vehicleHandle;
+        }
+
+        /// <summary>
+        /// A minimum interval per player and action, for events that fan out to every client or do real work.
+        /// </summary>
+        internal static class RateLimiter
+        {
+            private static readonly Dictionary<string, long> lastCalls = new();
+
+            public static bool IsLimited(Player player, string action, int intervalMs)
+            {
+                if (player == null)
+                {
+                    return false;
+                }
+                var key = player.Handle + ":" + action;
+                var now = GetGameTimer();
+                if (lastCalls.TryGetValue(key, out var last) && now - last < intervalMs)
+                {
+                    return true;
+                }
+                lastCalls[key] = now;
+                return false;
+            }
+
+            public static void Forget(Player player)
+            {
+                if (player == null)
+                {
+                    return;
+                }
+                var prefix = player.Handle + ":";
+                foreach (var key in lastCalls.Keys.Where(k => k.StartsWith(prefix)).ToList())
+                {
+                    lastCalls.Remove(key);
+                }
+            }
         }
 
         private Player GetPlayerFromServerId(int serverId)
@@ -1252,6 +1427,13 @@ namespace vMenuServer
 
             Vehicle veh = new Vehicle(NetworkGetEntityFromNetworkId(vehicle));
             if (veh == null || !DoesEntityExist(veh.Handle))
+            {
+                return;
+            }
+
+            // Only a vehicle the player is in or spawned, and only a sound this player was offered.
+            if (!IsVehicleOwnedOrDrivenBy(source, veh.Handle, requireDriver: false)
+                || (engineSound != "resetenginesound" && !AddonsConfig.IsEngineSoundAllowed(source, engineSound)))
             {
                 return;
             }

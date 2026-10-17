@@ -403,6 +403,7 @@ namespace vMenuShared
         public static bool IsAllowed(Permission permission, bool checkAnyway = false) => IsAllowedClient(permission, checkAnyway);
 
         private static readonly Dictionary<Permission, bool> allowedPerms = new();
+        private static bool staffOnly = false;
         /// <summary>
         /// Private function that handles client side permission requests.
         /// </summary>
@@ -418,7 +419,7 @@ namespace vMenuShared
                     Permissions.ContainsKey(Permission.Everything) && Permissions[Permission.Everything]
                 );
                 // Return false immediately if the staff only convar is set and the user is not a staff member.
-                if (ConfigManager.GetSettingsBool(ConfigManager.Setting.vmenu_menu_staff_only) && !staffPermissionAllowed)
+                if (staffOnly && !staffPermissionAllowed)
                 {
                     return false;
                 }
@@ -475,8 +476,55 @@ namespace vMenuShared
                 return false;
             }
 
+            // Mirror what the client was told in SetPermissionsForPlayer, so a menu option the client
+            // shows is never rejected (and auto-banned) by the server, and vice versa.
+            if (!ConfigManager.GetSettingsBool(ConfigManager.Setting.vmenu_use_permissions))
+            {
+                return !permissionsDeniedWhenIgnored.Contains(permission);
+            }
+
+            if (ConfigManager.GetSettingsBool(ConfigManager.Setting.vmenu_menu_staff_only)
+                && !IsAceAllowedExact(playerHandle, Permission.Staff)
+                && !IsAceAllowedExact(playerHandle, Permission.Everything))
+            {
+                return false;
+            }
+
+            // Same parent resolution as the client: vMenu.Everything and the menu's .All permission
+            // both grant the specific one.
+            foreach (var p in GetPermissionAndParentPermissions(permission))
+            {
+                if (IsAceAllowedExact(playerHandle, p))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The raw ACE check for a single permission, without parent permissions or convars.
+        /// </summary>
+        private static bool IsAceAllowedExact(string playerHandle, Permission permission)
+        {
             return IsPlayerAceAllowed(playerHandle, GetAceName(permission));
         }
+
+        /// <summary>
+        /// Permissions that are never granted when vmenu_use_permissions is false.
+        /// </summary>
+        private static readonly HashSet<Permission> permissionsDeniedWhenIgnored = new()
+        {
+            Permission.Everything,
+            Permission.OPAll,
+            Permission.OPKick,
+            Permission.OPKill,
+            Permission.OPPermBan,
+            Permission.OPTempBan,
+            Permission.OPUnban,
+            Permission.OPIdentifiers,
+            Permission.OPViewBannedPlayers,
+        };
 #endif
 
         private static readonly Dictionary<Permission, List<Permission>> parentPermissions = new();
@@ -528,48 +576,27 @@ namespace vMenuShared
 
             var perms = new Dictionary<Permission, bool>();
 
-            // If enabled in the permissions.cfg (disabled by default) then this will give me (only me) the option to trigger some debug commands and 
-            // try out menu options. This only works if I'm in-game on your server, and you have enabled server debugging mode, this way I will never
-            // be able to do something without you actually allowing it.
-            if (player.Identifiers.ToList().Any(id => id == "4510587c13e0b645eb8d24bc104601792277ab98") && IsPlayerAceAllowed(player.Handle, "vMenu.Dev") && ConfigManager.DebugMode)
-            {
-                perms.Add(Permission.Everything, true);
-            }
-
             if (!ConfigManager.GetSettingsBool(ConfigManager.Setting.vmenu_use_permissions))
             {
                 foreach (var p in Enum.GetValues(typeof(Permission)))
                 {
                     var permission = (Permission)p;
-                    switch (permission)
+                    if (!permissionsDeniedWhenIgnored.Contains(permission))
                     {
-                        // don't allow any of the following permissions if perms are ignored.
-                        case Permission.Everything:
-                        case Permission.OPAll:
-                        case Permission.OPKick:
-                        case Permission.OPKill:
-                        case Permission.OPPermBan:
-                        case Permission.OPTempBan:
-                        case Permission.OPUnban:
-                        case Permission.OPIdentifiers:
-                        case Permission.OPViewBannedPlayers:
-                            break;
-                        // do allow the rest
-                        default:
-                            perms.Add(permission, true);
-                            break;
+                        perms.Add(permission, true);
                     }
                 }
             }
             else
             {
-                // Loop through all permissions and check if they're allowed.
+                // Send the raw ACE result for each permission; the client applies the parent permissions
+                // and the staff-only convar itself (see IsAllowedClient).
                 foreach (var p in Enum.GetValues(typeof(Permission)))
                 {
                     var permission = (Permission)p;
                     if (!perms.ContainsKey(permission))
                     {
-                        perms.Add(permission, IsAllowed(permission, player)); // triggers IsAllowedServer
+                        perms.Add(permission, IsAceAllowedExact(player.Handle, permission));
                     }
                 }
             }
@@ -590,6 +617,10 @@ namespace vMenuShared
         public static void SetPermissions(string permissions)
         {
             Permissions = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<Permission, bool>>(permissions);
+            // Results cached under the previous permission set must not survive a permission refresh.
+            allowedPerms.Clear();
+            // Read once here instead of on every IsAllowed call; tick handlers call IsAllowed many times a frame.
+            staffOnly = ConfigManager.GetSettingsBool(ConfigManager.Setting.vmenu_menu_staff_only);
             // if debug logging.
             if (GetResourceMetadata(GetCurrentResourceName(), "client_debug_mode", 0) == "true")
             {

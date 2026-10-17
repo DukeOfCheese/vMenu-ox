@@ -361,6 +361,15 @@ namespace vMenuServer
             player.TriggerEvent("vMenu:SetAddons", JsonConvert.SerializeObject(payload));
         }
 
+        /// <summary>
+        /// Whether this player may put the given engine sound on a vehicle (the same ACE check as the menu payload).
+        /// </summary>
+        internal static bool IsEngineSoundAllowed(Player player, string engineSound)
+        {
+            return Allowed(player, "vMenu.VehicleOptions", config.addons?.engineSounds)
+                .Any(e => string.Equals(e.spawn.Trim(), engineSound, StringComparison.OrdinalIgnoreCase));
+        }
+
         private static PayloadItem Project(AddonEntry entry) => new PayloadItem { spawn = entry.spawn.Trim(), label = Label(entry) };
 
         /// <summary>Falls back to the spawn name so an entry without a label is still usable.</summary>
@@ -372,16 +381,27 @@ namespace vMenuServer
         #endregion
 
         #region Teleport locations (authored in Lua, runtime additions in KVP)
+        private const int MaxSavedLocations = 200;
+
+        // Read from KVP once and kept in memory; every addon request merges these in.
+        private static List<TeleportLocation> savedLocationsCache = null;
+
         private static List<TeleportLocation> GetSavedLocations()
         {
+            if (savedLocationsCache != null)
+            {
+                return new List<TeleportLocation>(savedLocationsCache);
+            }
             var stored = GetResourceKvpString(LocationsKvpKey);
             if (string.IsNullOrEmpty(stored))
             {
+                savedLocationsCache = new List<TeleportLocation>();
                 return new List<TeleportLocation>();
             }
             try
             {
-                return JsonConvert.DeserializeObject<List<TeleportLocation>>(stored) ?? new List<TeleportLocation>();
+                savedLocationsCache = JsonConvert.DeserializeObject<List<TeleportLocation>>(stored) ?? new List<TeleportLocation>();
+                return new List<TeleportLocation>(savedLocationsCache);
             }
             catch (Exception ex)
             {
@@ -418,9 +438,10 @@ namespace vMenuServer
                 }
             }
 
+            var names = new HashSet<string>(locations.teleports.Select(t => t.name));
             foreach (var saved in GetSavedLocations())
             {
-                if (!locations.teleports.Any(t => t.name == saved.name))
+                if (names.Add(saved.name))
                 {
                     locations.teleports.Add(saved);
                 }
@@ -467,8 +488,14 @@ namespace vMenuServer
             }
 
             var saved = GetSavedLocations();
+            if (saved.Count >= MaxSavedLocations)
+            {
+                source.TriggerEvent("vMenu:Notify", $"~r~This server already has {MaxSavedLocations} saved teleport locations, remove some before adding more.");
+                return;
+            }
             saved.Add(location);
             SetResourceKvp(LocationsKvpKey, JsonConvert.SerializeObject(saved));
+            savedLocationsCache = saved;
 
             merged.teleports.Add(location);
             TriggerClientEvent("vMenu:UpdateTeleportLocations", JsonConvert.SerializeObject(merged.teleports));

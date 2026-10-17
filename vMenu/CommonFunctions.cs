@@ -2267,6 +2267,7 @@ namespace vMenuClient
             {
                 realMinutes = 0;
             }
+            // The frozen state is left alone; it has its own event (FreezeServerTime).
             TriggerServerEvent("vMenu:UpdateServerTime", realHours, realMinutes);
         }
 

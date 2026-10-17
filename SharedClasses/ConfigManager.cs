@@ -75,6 +75,7 @@ namespace vMenuShared
             vmenu_current_hour,
             vmenu_current_minute,
             vmenu_sync_to_machine_time,
+            vmenu_smooth_time_transitions,
             // Key Mapping
             vmenu_keymapping_id,
 
@@ -117,7 +118,7 @@ namespace vMenuShared
         /// <returns></returns>
         public static float GetSettingsFloat(Setting setting)
         {
-            if (float.TryParse(GetConvar(setting.ToString(), "-1.0"), out var result))
+            if (float.TryParse(GetConvar(setting.ToString(), "-1.0"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result))
             {
                 return result;
             }
@@ -150,7 +151,7 @@ namespace vMenuShared
         /// <returns></returns>
         public static bool IsServerDebugModeEnabled()
         {
-            return GetResourceMetadata("vMenu", "server_debug_mode", 0).ToLower() == "true";
+            return (GetResourceMetadata(GetCurrentResourceName(), "server_debug_mode", 0) ?? "").ToLower() == "true";
         }
 
         /// <summary>
@@ -159,7 +160,7 @@ namespace vMenuShared
         /// <returns></returns>
         public static bool IsClientDebugModeEnabled()
         {
-            return GetResourceMetadata("vMenu", "client_debug_mode", 0).ToLower() == "true";
+            return (GetResourceMetadata(GetCurrentResourceName(), "client_debug_mode", 0) ?? "").ToLower() == "true";
         }
 
         #region Location data structures
