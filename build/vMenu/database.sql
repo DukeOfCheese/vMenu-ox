@@ -3,10 +3,13 @@
 --
 -- Upgrading from an older vMenu-ox? CREATE TABLE IF NOT EXISTS leaves existing tables alone, so run these
 -- once as well. They make `data` large enough for big loadouts and add the index the daily code limit uses.
---   ALTER TABLE `vmenu_outfits`  MODIFY `data` mediumtext DEFAULT NULL, ADD INDEX `idx_discord` (`discord_id`);
---   ALTER TABLE `vmenu_vehicles` MODIFY `data` mediumtext DEFAULT NULL, ADD INDEX `idx_discord` (`discord_id`);
---   ALTER TABLE `vmenu_loadouts` MODIFY `data` mediumtext DEFAULT NULL, ADD INDEX `idx_discord` (`discord_id`);
--- (If MySQL reports "Duplicate key name 'idx_discord'", the index already exists and only the MODIFY was needed.)
+--   ALTER TABLE `vmenu_outfits`  MODIFY `data` mediumtext DEFAULT NULL;
+--   ALTER TABLE `vmenu_vehicles` MODIFY `data` mediumtext DEFAULT NULL;
+--   ALTER TABLE `vmenu_loadouts` MODIFY `data` mediumtext DEFAULT NULL;
+--   ALTER TABLE `vmenu_outfits`  ADD INDEX `idx_discord` (`discord_id`);
+--   ALTER TABLE `vmenu_vehicles` ADD INDEX `idx_discord` (`discord_id`);
+--   ALTER TABLE `vmenu_loadouts` ADD INDEX `idx_discord` (`discord_id`);
+-- (An ADD INDEX that fails with "Duplicate key name 'idx_discord'" just means that table already has it.)
 --
 -- Codes are sequential ids and anyone who knows one can load it; that is by design, codes are meant to be shared.
 

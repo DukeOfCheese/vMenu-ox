@@ -144,9 +144,11 @@ namespace vMenuClient.menus
 
         public MpPedCustomization()
         {
-            Exports.Add("GetMpCharacterData", new Func<string>(GetMpCharacterData));
+            // The runtime creates this BaseScript itself, and MainMenu creates the instance the menus actually use, so
+            // the exports (only live on the runtime's instance) forward to MainMenu's, which holds the loaded character.
+            Exports.Add("GetMpCharacterData", new Func<string>(() => (MainMenu.MpPedCustomizationMenu ?? this).GetMpCharacterData()));
             // Used by client/outfitCodes.lua. Both return an empty string on success or the message to show.
-            Exports.Add("ImportSharedOutfit", new Func<object, object, string>((saveName, json) => ImportSharedOutfit(saveName as string, json as string)));
+            Exports.Add("ImportSharedOutfit", new Func<object, object, string>((saveName, json) => (MainMenu.MpPedCustomizationMenu ?? this).ImportSharedOutfit(saveName as string, json as string)));
             Exports.Add("ApplySharedOutfit", new Func<object, string>(json => ApplySharedOutfit(json as string)));
         }
         
