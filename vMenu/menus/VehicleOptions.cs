@@ -619,7 +619,7 @@ namespace vMenuClient.menus
 
             #region Handle button presses
             // Manage button presses.
-            menu.OnItemSelect += (sender, item, index) =>
+            menu.OnItemSelect += async (sender, item, index) =>
             {
                 if (item == deleteBtn) // reset the index so that "no" / "cancel" will always be selected by default.
                 {
@@ -637,7 +637,7 @@ namespace vMenuClient.menus
                         // Repair vehicle.
                         if (item == fixVehicle)
                         {
-                            vehicle.Repair();
+                            await RepairVehicleAsync(vehicle);
                         }
                         // Clean vehicle.
                         else if (item == cleanVehicle)

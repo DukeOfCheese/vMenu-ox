@@ -41,6 +41,7 @@ namespace vMenuClient
             EventHandlers.Add("vMenu:SetAddons", new Action<string>(SetAddons));
             EventHandlers.Add("vMenu:SetPermissions", new Action<string>(MainMenu.SetPermissions));
             EventHandlers.Add("vMenu:KillMe", new Action<string>(KillMe));
+            EventHandlers.Add("vMenu:ForceOutOfVehicle", new Action<int>(ForceOutOfVehicle));
             EventHandlers.Add("vMenu:Notify", new Action<string>(NotifyPlayer));
             EventHandlers.Add("vMenu:SetClouds", new Action<float, string>(SetClouds));
             EventHandlers.Add("vMenu:GoodBye", new Action(GoodBye));
@@ -295,6 +296,49 @@ namespace vMenuClient
             }
             Notify.Alert($"You have been killed by <C>{GetSafePlayerName(sourceName)}</C>~s~ using the ~r~Kill Player~s~ option in vMenu.");
             SetEntityHealth(Game.PlayerPed.Handle, 0);
+        }
+
+        // TaskLeaveVehicle flags: resume if interrupted (1), don't wait for the vehicle to stop (64),
+        // don't close the door (256) and jump out (4096). Flag 16 alone (warp out) was often ignored.
+        private const int ForceOutOfVehicleFlags = 1 | 64 | 256 | 4096;
+
+        /// <summary>
+        /// The owner of the personal vehicle this player is sitting in has kicked everyone out of it.
+        /// </summary>
+        private async void ForceOutOfVehicle(int vehicleNetId)
+        {
+            try
+            {
+                var vehicle = NetworkGetEntityFromNetworkId(vehicleNetId);
+                var ped = Game.PlayerPed.Handle;
+
+                if (vehicle == 0 || !DoesEntityExist(vehicle) || GetVehiclePedIsIn(ped, false) != vehicle)
+                {
+                    return;
+                }
+
+                TaskLeaveVehicle(ped, vehicle, ForceOutOfVehicleFlags);
+                NotifyPlayer("The owner of the vehicle threw you out of it.");
+
+                // Give the leave task a second, then pull the ped out and stand them beside the vehicle.
+                for (var check = 0; check < 10; check++)
+                {
+                    await Delay(100);
+
+                    if (!DoesEntityExist(vehicle) || GetVehiclePedIsIn(ped, false) != vehicle)
+                    {
+                        return;
+                    }
+                }
+
+                var beside = GetOffsetFromEntityInWorldCoords(vehicle, 2.5f, 0f, 0f);
+                ClearPedTasksImmediately(ped);
+                SetEntityCoords(ped, beside.X, beside.Y, beside.Z, false, false, false, true);
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"[vMenu] Failed to leave the personal vehicle: {e.Message}");
+            }
         }
 
         /// <summary>

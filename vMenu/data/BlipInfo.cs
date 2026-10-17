@@ -6,6 +6,43 @@ namespace vMenuClient.data
 {
     public static class BlipInfo
     {
+        // Sprites that still make sense turned to face the player's heading: the on-foot dot, the generic
+        // car vMenu gives any unlisted vehicle (225), planes, boats and submarines. The rest are drawn
+        // upright or are already turned by the game, and rotating them makes them spin or jitter.
+        private static readonly HashSet<int> rotatingSprites = new() { 1, 225, 423, 427, 760 };
+        private static readonly Dictionary<uint, bool> rotatesByModel = new();
+
+        /// <summary>
+        /// Whether a player blip with this sprite should follow the player's heading. Model 0 means on foot.
+        /// </summary>
+        public static bool ShouldRotateBlip(int sprite, uint model)
+        {
+            if (!rotatingSprites.Contains(sprite))
+            {
+                return false;
+            }
+
+            if (model == 0)
+            {
+                return true;
+            }
+
+            if (rotatesByModel.TryGetValue(model, out var wanted))
+            {
+                return wanted;
+            }
+
+            // Motorcycles (class 8), bicycles (class 13) and quads: the game already orients those itself.
+            var vehicleClass = GetVehicleClassFromName(model);
+            wanted = vehicleClass != 8
+                && vehicleClass != 13
+                && !IsThisModelAQuadbike(model)
+                && !IsThisModelAnAmphibiousQuadbike(unchecked((int)model));
+
+            rotatesByModel[model] = wanted;
+            return wanted;
+        }
+
         public static int GetBlipSpriteForVehicle(int vehicle)
         {
             var model = (uint)GetEntityModel(vehicle);

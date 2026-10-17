@@ -57,6 +57,10 @@ namespace vMenuShared
             vmenu_log_ban_actions,
             vmenu_log_kick_actions,
 
+            // Online players action rate limit
+            vmenu_online_players_action_limit,
+            vmenu_online_players_action_limit_seconds,
+
             // Weather settings
             vmenu_enable_weather_sync,
             vmenu_enable_dynamic_weather,

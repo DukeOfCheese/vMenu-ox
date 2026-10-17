@@ -1099,6 +1099,12 @@ namespace vMenuClient
                 {
                     // get the player position and make a cam to ensure they load in
                     var playerPos = await MainMenu.RequestPlayerCoordinates(player.ServerId);
+                    if (playerPos == Vector3.Zero)
+                    {
+                        // No permission, rate limited, or the player left.
+                        Notify.Error("Could not retrieve the coordinates of the specified player.");
+                        return;
+                    }
 
                     DoScreenFadeOut(500);
                     while (IsScreenFadingOut())
@@ -3022,14 +3028,17 @@ namespace vMenuClient
                 }
             }
 
-            await GiveWeaponLoadoutAsync(loadout, appendWeapons, ignoreSettingsAndPerms, saveName == "vmenu_temp_weapons_loadout_before_respawn" || dontNotify);
+            var isRespawnRestore = saveName == "vmenu_temp_weapons_loadout_before_respawn";
+            await GiveWeaponLoadoutAsync(loadout, appendWeapons, ignoreSettingsAndPerms, isRespawnRestore || dontNotify, keepSavedAmmo: isRespawnRestore);
         }
 
         /// <summary>
         /// Gives the player the weapons in a loadout. Each weapon's permission is checked against the current
         /// weapon list unless ignoreSettingsAndPerms is set (only for restoring the player's own weapons).
         /// </summary>
-        public static async Task GiveWeaponLoadoutAsync(List<ValidWeapon> loadout, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify)
+        /// <param name="keepSavedAmmo">Give back the saved ammo count instead of a full weapon. Used when restoring
+        /// weapons after death, so dying is not a free refill.</param>
+        public static async Task GiveWeaponLoadoutAsync(List<ValidWeapon> loadout, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify, bool keepSavedAmmo = false)
         {
             Log(JsonConvert.SerializeObject(loadout));
             if (loadout.Count > 0)
@@ -3054,7 +3063,8 @@ namespace vMenuClient
 
                     if (ignoreSettingsAndPerms || IsLoadoutWeaponAllowed(w))
                     {
-                        GiveWeaponToPed(Game.PlayerPed.Handle, w.Hash, w.CurrentAmmo > -1 ? w.CurrentAmmo : w.GetMaxAmmo, false, false);
+                        // Handed over loaded: components asked of an empty weapon are the ones that go missing.
+                        GiveWeaponToPed(Game.PlayerPed.Handle, w.Hash, w.GetMaxAmmo, false, false);
 
                         if (w.Components.Count > 0)
                         {
@@ -3079,30 +3089,32 @@ namespace vMenuClient
 
                         SetPedWeaponTintIndex(Game.PlayerPed.Handle, w.Hash, w.CurrentTint);
 
-                        if (w.CurrentAmmo > 0)
+                        // Every weapon is filled to the top rather than to the saved count: MK2 weapons loaded
+                        // with special ammo never come back right at a saved count. Melee weapons have no maximum.
+                        var ammo = w.GetMaxAmmo;
+                        if (keepSavedAmmo && w.CurrentAmmo >= 0)
                         {
-                            var ammo = w.CurrentAmmo;
-                            if (w.CurrentAmmo > w.GetMaxAmmo)
+                            ammo = Math.Min(w.CurrentAmmo, ammo);
+                        }
+                        if (ammo > 0)
+                        {
+                            SetAmmoInClip(Game.PlayerPed.Handle, w.Hash, GetMaxAmmoInClip(Game.PlayerPed.Handle, w.Hash, false));
+                            SetPedAmmo(Game.PlayerPed.Handle, w.Hash, ammo);
+
+                            // Setting cannot create special MK2 rounds the ped owns none of yet, only adding can.
+                            var missing = ammo - GetAmmoInPedWeapon(Game.PlayerPed.Handle, w.Hash);
+                            if (missing > 0)
                             {
-                                ammo = w.GetMaxAmmo;
+                                AddAmmoToPedByType(Game.PlayerPed.Handle, GetPedAmmoTypeFromWeapon(Game.PlayerPed.Handle, w.Hash), missing);
                             }
-                            var doIt = false;
+
                             var ammoTimer = GetGameTimer();
                             // Some weapons never report the requested ammo; give up after a second rather than spin forever.
-                            while (GetAmmoInPedWeapon(Game.PlayerPed.Handle, w.Hash) != ammo && w.CurrentAmmo != -1 && GetGameTimer() - ammoTimer < 1000)
+                            // More than asked for is fine and is left alone, so this only draws the weapons that really fell short.
+                            while (GetAmmoInPedWeapon(Game.PlayerPed.Handle, w.Hash) < ammo && GetGameTimer() - ammoTimer < 1000)
                             {
-                                if (doIt)
-                                {
-                                    SetCurrentPedWeapon(Game.PlayerPed.Handle, w.Hash, true);
-                                }
-                                doIt = true;
-                                var ammoInClip = GetMaxAmmoInClip(Game.PlayerPed.Handle, w.Hash, false);
-                                if (ammoInClip > ammo)
-                                {
-                                    ammoInClip = ammo;
-                                }
-                                SetAmmoInClip(Game.PlayerPed.Handle, w.Hash, ammoInClip);
-                                SetPedAmmo(Game.PlayerPed.Handle, w.Hash, ammo > -1 ? ammo : w.GetMaxAmmo);
+                                SetCurrentPedWeapon(Game.PlayerPed.Handle, w.Hash, true);
+                                SetPedAmmo(Game.PlayerPed.Handle, w.Hash, ammo);
                                 Log($"waiting for ammo in {w.Name}");
                                 await Delay(0);
                             }
@@ -3330,6 +3342,31 @@ namespace vMenuClient
                 Game.DisableControlThisFrame(0, Control.NextCamera);
                 Game.DisableControlThisFrame(0, Control.VehicleFlyAttackCamera);
                 Game.DisableControlThisFrame(0, Control.VehicleCinCam);
+            }
+        }
+        #endregion
+
+        #region Repair Vehicle
+        /// <summary>
+        /// Repairs the vehicle twice, 100 ms apart. The game applies some damage a moment after it is dealt,
+        /// so a single pass leaves windows that were already on their way to breaking bursting again just after.
+        /// </summary>
+        /// <param name="vehicle"></param>
+        public static async Task RepairVehicleAsync(Vehicle vehicle)
+        {
+            if (vehicle == null || !vehicle.Exists())
+            {
+                return;
+            }
+
+            vehicle.Repair();
+
+            await Delay(100);
+
+            // Checked again, the vehicle may have been deleted during the wait.
+            if (vehicle.Exists())
+            {
+                vehicle.Repair();
             }
         }
         #endregion

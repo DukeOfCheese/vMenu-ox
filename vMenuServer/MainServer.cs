@@ -542,11 +542,9 @@ namespace vMenuServer
                     continue;
                 }
 
-                int warpOutFlag = 16;
-
-                TaskLeaveVehicle(pedHandle, vehicleHandle, warpOutFlag);
-
-                player.TriggerEvent("vMenu:Notify", "The owner of the vehicle has kicked you out.");
+                // The occupant's own client throws them out: it owns its ped, so it can force them out
+                // if the leave task alone does not get them out of the seat.
+                player.TriggerEvent("vMenu:ForceOutOfVehicle", vehicleNetId);
             }
         }
         #endregion
@@ -906,6 +904,11 @@ namespace vMenuServer
                 return;
             }
 
+            if (RateLimiter.IsOnlinePlayerActionLimited(source))
+            {
+                return;
+            }
+
             Player targetPlayer = GetPlayerFromServerId(target);
 
             if (targetPlayer is null)
@@ -939,6 +942,11 @@ namespace vMenuServer
             if (!PermissionsManager.IsAllowed(PermissionsManager.Permission.OPKill, source) && !PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
             {
                 BanManager.BanCheater(source);
+                return;
+            }
+
+            if (RateLimiter.IsOnlinePlayerActionLimited(source))
+            {
                 return;
             }
 
@@ -988,6 +996,11 @@ namespace vMenuServer
                 return;
             }
 
+            if (RateLimiter.IsOnlinePlayerActionLimited(source))
+            {
+                return;
+            }
+
             Player targetPlayer = GetPlayerFromServerId(target);
 
             if (targetPlayer is null)
@@ -1010,7 +1023,20 @@ namespace vMenuServer
 
             if (sourcePedVehicle == 0)
             {
+                // Nothing to do when they are already standing right next to the summoner.
+                if (sourcePed.Position.DistanceToSquared(targetPed.Position) <= 5f * 5f)
+                {
+                    source.TriggerEvent("vMenu:Notify", $"<C>{targetPlayer.Name}</C>~s~ is already standing right next to you.");
+                    return;
+                }
+
                 targetPed.Position = sourcePed.Position;
+                return;
+            }
+
+            if (GetVehiclePedIsIn(targetPedHandle, false) == sourcePedVehicle)
+            {
+                source.TriggerEvent("vMenu:Notify", $"<C>{targetPlayer.Name}</C>~s~ is already in your vehicle.");
                 return;
             }
 
@@ -1072,6 +1098,11 @@ namespace vMenuServer
             if (RateLimiter.IsLimited(source, "SendMessageToPlayer", 1000))
             {
                 source.TriggerEvent("vMenu:Notify", "You are sending private messages too quickly.");
+                return;
+            }
+
+            if (RateLimiter.IsOnlinePlayerActionLimited(source))
+            {
                 return;
             }
 
@@ -1174,7 +1205,9 @@ namespace vMenuServer
         {
             var coords = Vector3.Zero;
 
-            if (PermissionsManager.IsAllowed(PermissionsManager.Permission.OPTeleport, source) || PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
+            // A refused request still gets its reply, with zero coords, which the callers already treat as a failure.
+            if ((PermissionsManager.IsAllowed(PermissionsManager.Permission.OPTeleport, source) || PermissionsManager.IsAllowed(PermissionsManager.Permission.OPAll, source))
+                && !RateLimiter.IsOnlinePlayerActionLimited(source))
             {
                 Player targetPlayer = GetPlayerFromServerId(playerId);
 
@@ -1361,7 +1394,15 @@ namespace vMenuServer
         /// </summary>
         internal static class RateLimiter
         {
+            private const int DefaultOnlinePlayersLimit = 8;
+            private const int DefaultOnlinePlayersWindowSeconds = 10;
+
             private static readonly Dictionary<string, long> lastCalls = new();
+
+            // Allowances shared by a group of actions: the times of the calls still inside the window,
+            // and when the player was last logged for going over, so the console hears about it once per window.
+            private static readonly Dictionary<string, List<long>> recentCalls = new();
+            private static readonly Dictionary<string, long> reportedAt = new();
 
             public static bool IsLimited(Player player, string action, int intervalMs)
             {
@@ -1379,6 +1420,72 @@ namespace vMenuServer
                 return false;
             }
 
+            /// <summary>
+            /// The shared allowance for every Online Players action aimed at another player. Tells the player
+            /// how long to wait when they are over it.
+            /// </summary>
+            public static bool IsOnlinePlayerActionLimited(Player player)
+            {
+                // A missing convar reads as -1 and gets the default; only an explicit 0 turns the limit off.
+                var limit = GetSettingsInt(Setting.vmenu_online_players_action_limit);
+                var windowSeconds = GetSettingsInt(Setting.vmenu_online_players_action_limit_seconds);
+                limit = limit < 0 ? DefaultOnlinePlayersLimit : limit;
+                windowSeconds = windowSeconds < 0 ? DefaultOnlinePlayersWindowSeconds : windowSeconds;
+
+                if (!IsOverAllowance(player, "OnlinePlayers", limit, windowSeconds * 1000, out var retryAfterSeconds))
+                {
+                    return false;
+                }
+
+                player.TriggerEvent("vMenu:Notify", $"You are doing that too quickly. Try again in ~y~{retryAfterSeconds}~s~ second(s).");
+                return true;
+            }
+
+            /// <summary>
+            /// At most <paramref name="limit"/> calls per <paramref name="windowMs"/>, counted across every action
+            /// that shares the <paramref name="group"/>. A limit or window of 0 or less means no limit.
+            /// </summary>
+            public static bool IsOverAllowance(Player player, string group, int limit, int windowMs, out int retryAfterSeconds)
+            {
+                retryAfterSeconds = 0;
+
+                if (player == null || limit <= 0 || windowMs <= 0)
+                {
+                    return false;
+                }
+
+                var key = player.Handle + ":" + group;
+                var now = GetGameTimer();
+
+                if (!recentCalls.TryGetValue(key, out var stamps))
+                {
+                    stamps = new List<long>();
+                    recentCalls[key] = stamps;
+                }
+
+                // Drop the calls that have aged out of the window.
+                while (stamps.Count > 0 && now - stamps[0] >= windowMs)
+                {
+                    stamps.RemoveAt(0);
+                }
+
+                if (stamps.Count < limit)
+                {
+                    stamps.Add(now);
+                    return false;
+                }
+
+                retryAfterSeconds = Math.Max(1, (int)Math.Ceiling((windowMs - (now - stamps[0])) / 1000f));
+
+                if (!reportedAt.TryGetValue(key, out var lastReport) || now - lastReport >= windowMs)
+                {
+                    reportedAt[key] = now;
+                    Debug.WriteLine($"^3[vMenu] [WARNING]^7 {player.Name} ({player.Handle}) is over the {group} limit of {limit} action(s) per {windowMs / 1000}s. Refusing for another {retryAfterSeconds}s.");
+                }
+
+                return true;
+            }
+
             public static void Forget(Player player)
             {
                 if (player == null)
@@ -1389,6 +1496,14 @@ namespace vMenuServer
                 foreach (var key in lastCalls.Keys.Where(k => k.StartsWith(prefix)).ToList())
                 {
                     lastCalls.Remove(key);
+                }
+                foreach (var key in recentCalls.Keys.Where(k => k.StartsWith(prefix)).ToList())
+                {
+                    recentCalls.Remove(key);
+                }
+                foreach (var key in reportedAt.Keys.Where(k => k.StartsWith(prefix)).ToList())
+                {
+                    reportedAt.Remove(key);
                 }
             }
         }

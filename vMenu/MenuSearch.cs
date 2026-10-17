@@ -177,8 +177,10 @@ namespace vMenuClient
                         continue;
                     }
 
+                    var restore = category.Menu.GetCurrentMenuItem();
+                    var offset = category.Menu.ViewIndexOffset;
                     category.Menu.ResetFilter();
-                    category.Menu.RefreshIndex();
+                    RefreshKeepingPosition(category.Menu, restore, offset);
                     Restore(category);
                 }
 
@@ -224,8 +226,10 @@ namespace vMenuClient
                         continue;
                     }
 
+                    var restore = category.Menu.GetCurrentMenuItem();
+                    var offset = category.Menu.ViewIndexOffset;
                     category.Menu.FilterMenuItems(mi => ContainsIgnoreCase(mi.Text, term) || ContainsIgnoreCase(mi.Label, term));
-                    category.Menu.RefreshIndex();
+                    RefreshKeepingPosition(category.Menu, restore, offset);
 
                     var count = category.Menu.Size;
                     matched += count;
@@ -281,10 +285,13 @@ namespace vMenuClient
             {
                 var input = await GetUserInput(windowTitle: "Filter this list (leave empty to reset the filter)", defaultText: "", maxInputLength: 100);
 
+                var restore = m.GetCurrentMenuItem();
+                var offset = m.ViewIndexOffset;
+
                 if (string.IsNullOrWhiteSpace(input))
                 {
                     m.ResetFilter();
-                    m.RefreshIndex();
+                    RefreshKeepingPosition(m, restore, offset);
                     Subtitle.Custom("Filter cleared.");
                     return;
                 }
@@ -300,7 +307,7 @@ namespace vMenuClient
                     m.FilterMenuItems(item => ContainsIgnoreCase(item.Text, term) || ContainsIgnoreCase(item.Label, term));
                 }
 
-                m.RefreshIndex();
+                RefreshKeepingPosition(m, restore, offset);
 
                 if (m.Size == 0)
                 {
@@ -367,6 +374,32 @@ namespace vMenuClient
             };
 
             return searchButton;
+        }
+
+        /// <summary>
+        /// Puts the highlight back on the item that was highlighted before the filter changed, and keeps
+        /// the list scrolled where it was, as long as that item is still in the list. Filtering otherwise
+        /// always sends the player back to the top.
+        /// </summary>
+        /// <param name="menu">The menu that was just filtered or reset.</param>
+        /// <param name="restore">The highlighted item, captured before filtering.</param>
+        /// <param name="offset">The ViewIndexOffset, captured before filtering.</param>
+        private static void RefreshKeepingPosition(Menu menu, MenuItem restore, int offset)
+        {
+            var index = restore == null ? -1 : menu.GetMenuItems().IndexOf(restore);
+
+            if (index < 0)
+            {
+                menu.RefreshIndex(0, 0);
+                return;
+            }
+
+            // Keep the old scroll position where it can, but never past the end, and always with the item on screen.
+            var max = menu.MaxItemsOnScreen;
+            offset = Math.Min(offset, Math.Max(menu.Size - max, 0));
+            offset = MathUtil.Clamp(offset, Math.Max(index - max + 1, 0), index);
+
+            menu.RefreshIndex(index, offset);
         }
     }
 }

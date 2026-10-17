@@ -378,7 +378,13 @@ namespace vMenuClient
 
                     if (autoRepairGod && IsVehicleDamaged(veh.Handle))
                     {
-                        veh.Repair();
+                        await RepairVehicleAsync(veh);
+
+                        // The vehicle may be gone after the second repair pass.
+                        if (!veh.Exists())
+                        {
+                            return;
+                        }
                     }
 
                     veh.CanBeVisiblyDamaged = !visualGod;
@@ -997,6 +1003,9 @@ namespace vMenuClient
             }
             if (MainMenu.MiscSettingsMenu.KbPointKeys)
             {
+                // The pointing move network fights the aiming animation, so pointing only works with empty hands.
+                static bool IsPedArmedForPointing() => GetSelectedPedWeapon(Game.PlayerPed.Handle) != GetHashKey("weapon_unarmed");
+
                 static async Task TogglePointing()
                 {
                     if (IsPedPointing(Game.PlayerPed.Handle))
@@ -1005,6 +1014,10 @@ namespace vMenuClient
                     }
                     else
                     {
+                        if (IsPedArmedForPointing())
+                        {
+                            return;
+                        }
                         if (!HasAnimDictLoaded("anim@mp_point"))
                         {
                             RequestAnimDict("anim@mp_point");
@@ -1045,7 +1058,7 @@ namespace vMenuClient
                 // Set pitch, heading, blocking, first person and speed properties on animation.
                 if (IsPedPointing(Game.PlayerPed.Handle))
                 {
-                    if (Game.PlayerPed.IsInVehicle())
+                    if (Game.PlayerPed.IsInVehicle() || IsPedArmedForPointing())
                     {
                         ClearPedSecondaryTask(Game.PlayerPed.Handle);
                     }
@@ -2150,43 +2163,31 @@ namespace vMenuClient
                                         // (re)set the blip color in case something changed it.
                                         SetBlipColour(blip, 0);
 
+                                        int blipSprite;
+
                                         // if the decorator exists on this player, use the decorator value to determine what the blip sprite should be.
                                         if (DecorExistOn(p.Character.Handle, "vmenu_player_blip_sprite_id"))
                                         {
-                                            var decorSprite = DecorGetInt(p.Character.Handle, "vmenu_player_blip_sprite_id");
+                                            blipSprite = DecorGetInt(p.Character.Handle, "vmenu_player_blip_sprite_id");
                                             // set the sprite according to the decorator value.
-                                            SetBlipSprite(blip, decorSprite);
-
-                                            // show heading on blip only if the player is on foot (blip sprite 1)
-                                            ShowHeadingIndicatorOnBlip(blip, decorSprite == 1);
-
-                                            // set the blip rotation if the player is not in a helicopter (sprite 422).
-                                            if (decorSprite != 422)
-                                            {
-                                                SetBlipRotation(blip, (int)GetEntityHeading(ped));
-                                            }
+                                            SetBlipSprite(blip, blipSprite);
                                         }
                                         else // backup method for when the decorator value is not found.
                                         {
                                             // set the blip sprite using the backup method in case decorators failed.
                                             SetCorrectBlipSprite(ped, blip);
-
-                                            // only show the heading indicator if the player is NOT in a vehicle.
-                                            if (!IsPedInAnyVehicle(ped, false))
-                                            {
-                                                ShowHeadingIndicatorOnBlip(blip, true);
-                                            }
-                                            else
-                                            {
-                                                ShowHeadingIndicatorOnBlip(blip, false);
-
-                                                // If the player is not in a helicopter, set the blip rotation.
-                                                if (!p.Character.IsInHeli)
-                                                {
-                                                    SetBlipRotation(blip, (int)GetEntityHeading(ped));
-                                                }
-                                            }
+                                            blipSprite = GetBlipSprite(blip);
                                         }
+
+                                        // Only rotate sprites that make sense turned, and never for bikes or quads.
+                                        var model = IsPedInAnyVehicle(ped, false) ? (uint)GetEntityModel(GetVehiclePedIsIn(ped, false)) : 0u;
+                                        var rotates = BlipInfo.ShouldRotateBlip(blipSprite, model);
+
+                                        // show heading on blip only if the player is on foot (blip sprite 1)
+                                        ShowHeadingIndicatorOnBlip(blip, blipSprite == 1 && rotates);
+
+                                        // Put it back upright when it does not rotate, or the last heading sticks after the sprite changes.
+                                        SetBlipRotation(blip, rotates ? (int)GetEntityHeading(ped) : 0);
 
                                         // set the player name.
                                         SetBlipNameToPlayerName(blip, p.Handle);
@@ -2550,21 +2551,25 @@ namespace vMenuClient
                 if (Game.IsControlPressed(0, Control.SwitchVisor))
                 {
                     var timer = GetGameTimer();
+                    // The headlight button doubles as the visor button on bikes, so it is only taken away
+                    // when holding it is actually going to move the visor.
+                    var suppressHeadlight = false;
                     while (!(MenuController.IsAnyMenuOpen() || MainMenu.DontOpenMenus || !Fading.IsFadedIn || Game.IsPaused || IsPlayerSwitchInProgress() || Game.PlayerPed.IsDead) && Game.IsControlPressed(0, Control.SwitchVisor))
                     {
                         await Delay(0);
                         var veh = GetVehicle();
                         var inVeh = veh != null && (veh.Model.IsBike || veh.Model.IsBicycle || veh.Model.IsQuadbike);
-                        if (GetGameTimer() - timer > 380 && inVeh)
+                        if (GetGameTimer() - timer > 380 && inVeh && CanSwitchHelmet())
                         {
                             Game.DisableControlThisFrame(2, Control.VehicleHeadlight);
                         }
                         if (GetGameTimer() - timer > 400)
                         {
+                            suppressHeadlight = inVeh && CanSwitchHelmet();
                             var t = SwitchHelmetOnce();
                             while (!t.IsCompleted && !t.IsCanceled && !t.IsFaulted)
                             {
-                                if (inVeh)
+                                if (suppressHeadlight)
                                 {
                                     Game.DisableControlThisFrame(2, Control.VehicleHeadlight);
                                 }
@@ -2575,6 +2580,11 @@ namespace vMenuClient
                     }
                     while (Game.IsControlPressed(0, Control.SwitchVisor))
                     {
+                        // Still held after the visor moved: letting go must not flip the headlights either.
+                        if (suppressHeadlight)
+                        {
+                            Game.DisableControlThisFrame(2, Control.VehicleHeadlight);
+                        }
                         await Delay(0);
                     }
                 }
@@ -2673,7 +2683,9 @@ namespace vMenuClient
                         {
                             var netOwnerLocalId = NetworkGetEntityOwner(v.Handle);
 
-                            if (netOwnerLocalId != 0)
+                            // -1 is nobody (every map prop), and handing it to the player natives logs "Player ID -1 is invalid!"
+                            // for each one. Index 0 is a real player; a server ID of 0 means a stale index.
+                            if (netOwnerLocalId >= 0 && GetPlayerServerId(netOwnerLocalId) != 0)
                             {
                                 var playerServerId = GetPlayerServerId(netOwnerLocalId);
                                 var playerName = GetPlayerName(netOwnerLocalId);
@@ -2719,7 +2731,9 @@ namespace vMenuClient
                         {
                             var netOwnerLocalId = NetworkGetEntityOwner(p.Handle);
 
-                            if (netOwnerLocalId != 0)
+                            // -1 is nobody (every map prop), and handing it to the player natives logs "Player ID -1 is invalid!"
+                            // for each one. Index 0 is a real player; a server ID of 0 means a stale index.
+                            if (netOwnerLocalId >= 0 && GetPlayerServerId(netOwnerLocalId) != 0)
                             {
                                 var playerServerId = GetPlayerServerId(netOwnerLocalId);
                                 var playerName = GetPlayerName(netOwnerLocalId);
@@ -2765,7 +2779,9 @@ namespace vMenuClient
                         {
                             var netOwnerLocalId = NetworkGetEntityOwner(p.Handle);
 
-                            if (netOwnerLocalId != 0)
+                            // -1 is nobody (every map prop), and handing it to the player natives logs "Player ID -1 is invalid!"
+                            // for each one. Index 0 is a real player; a server ID of 0 means a stale index.
+                            if (netOwnerLocalId >= 0 && GetPlayerServerId(netOwnerLocalId) != 0)
                             {
                                 var playerServerId = GetPlayerServerId(netOwnerLocalId);
                                 var playerName = GetPlayerName(netOwnerLocalId);
@@ -2973,6 +2989,28 @@ namespace vMenuClient
             (uint)GetHashKey("VINDICATOR"),
             (uint)GetHashKey("WOLFSBANE"),
         };
+
+        /// <summary>
+        /// Whether <see cref="SwitchHelmetOnce"/> would actually move the visor right now. Mirrors its early-outs.
+        /// </summary>
+        private bool CanSwitchHelmet()
+        {
+            if (!MainMenu.PermissionsSetupComplete)
+            {
+                return false;
+            }
+
+            var component = GetPedPropIndex(Game.PlayerPed.Handle, 0);
+            var texture = GetPedPropTextureIndex(Game.PlayerPed.Handle, 0);
+            if (GetShopPedApparelVariantPropCount((uint)GetHashNameForProp(Game.PlayerPed.Handle, 0, component, texture)) <= 0)
+            {
+                return false; // helmet has no visor.
+            }
+
+            // Goggles can not be toggled in a vehicle, except in first person where the visor animation is used.
+            var goggles = Game.PlayerPed.Model == PedHash.FreemodeFemale01 ? component is >= 115 and <= 118 : component is >= 116 and <= 119;
+            return !(goggles && Game.PlayerPed.IsInVehicle() && GetFollowPedCamViewMode() != 4);
+        }
 
         /// <summary>
         /// This triggers a helmet visor/goggles toggle if available.

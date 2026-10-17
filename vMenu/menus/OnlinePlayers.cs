@@ -232,6 +232,12 @@ namespace vMenuClient.menus
                                 if (!PlayerCoordWaypoints.TryGetValue(currentPlayer.ServerId, out blip))
                                 {
                                     var coords = await MainMenu.RequestPlayerCoordinates(currentPlayer.ServerId);
+                                    if (coords == Vector3.Zero)
+                                    {
+                                        // No permission, rate limited, or the player left.
+                                        Notify.Error("Could not retrieve the coordinates of the specified player.");
+                                        return;
+                                    }
                                     blip = AddBlipForCoord(coords.X, coords.Y, coords.Z);
                                     PlayerCoordWaypoints[currentPlayer.ServerId] = blip;
                                 }
