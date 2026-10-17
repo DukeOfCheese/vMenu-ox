@@ -167,6 +167,7 @@ namespace vMenuClient.menus
         }
 
         #region Shared outfit codes
+#pragma warning disable CS0649 // Set by the JSON deserializer.
         private sealed class SharedOutfitItem
         {
             public int Item;
@@ -178,6 +179,7 @@ namespace vMenuClient.menus
             public Dictionary<string, SharedOutfitItem> Clothes;
             public Dictionary<string, SharedOutfitItem> Props;
         }
+#pragma warning restore CS0649
 
         /// <summary>
         /// Reads a shared outfit and keeps only what fits the given ped: drawables and textures that exist, and

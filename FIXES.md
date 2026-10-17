@@ -1,5 +1,7 @@
 # vMenu-ox — Code Review Fix Plan (Handoff)
 
+> **Status (2026-10-17):** superseded by [REVIEW.md](REVIEW.md). Batches 1–6 were applied on 2026-06-23 (the checkboxes below were never ticked). The October review found that several Batch 6 items were only partly done and finished them (share codes rebuilt in `server/lib/codes.lua` / `client/lib/codes.lua`, which also covers the optional Batch 7 Lua refactor), fixed a Batch 1 regression (`vMenu:UpdateServerTime` unfroze time), and fixed the `MpPedCustomization` index dispatch left over from HIGH-9. Kept as a historical record.
+
 > **Purpose:** This is a work plan for a Claude Code session running on **Windows** (where `msbuild`/VS2022 is available) to apply a reviewed set of security, correctness, performance, and refactoring fixes. It was produced on a macOS session that had **no build toolchain**, so nothing here was compile-verified. The Windows session is the verification authority.
 
 ## How to use this document

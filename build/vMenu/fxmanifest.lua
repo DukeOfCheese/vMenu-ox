@@ -3,7 +3,7 @@ fx_version 'cerulean'
 games { 'gta5' }
 
 description 'vMenu Fork - github.com/DukeOfCheese/vMenu-ox'
-version '3.0.0'
+version '3.1.0'
 author 'Tom Grobbe (vMenu), Gravxd & DukeOfCheese (vMenu-ox)'
 -- MenuAPI draws the menus on this NUI page.
 ui_page 'index.html'

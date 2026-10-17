@@ -25,6 +25,25 @@ Support for this repository going forward can be found below!
 
 # Fork Features/Changes
 
+### October 2026 update
+
+A full review: security fixes, performance work, and an up-to-date sync with TomGrobbe's legacy vMenu (v3.9.2), plus fixes from vMenu Enhanced that apply to this codebase. See [REVIEW.md](REVIEW.md) for the complete security and performance tables, new settings, and the in-game checklist. Highlights:
+
+- **Security**
+  - Clients can no longer reach the internal ban or config handlers. The Lua bridge now calls C# exports.
+  - Server permission checks match the client's.
+  - Share codes are rebuilt and checked before use.
+  - Rate limits on actions against other players.
+- **MenuAPI 4.0.1** menus drawn in NUI. `setr vmenu_theme "custom"` gives a dark theme.
+- **New content and options**
+  - Vehicles, peds and the newspaper weapon up to the mp2026_01 DLC.
+  - Tattoos and badges up to 2026, hair tattoos, and server-defined tattoos (`Config.Addons.tattoos`).
+  - Extra blendable faces (`Config.Addons.extraBlendableFaces`) with per-parent skin selection.
+  - Paint finish, custom headlight / tyre smoke / underglow RGB.
+  - Default radio override toggle, `vMenu:DV`, Ctrl+Enter to type a clothing ID.
+- **`Config.ModelWhitelist`** locks base-game vehicles, peds and weapons behind their own ACE (`vMenu.<Menu>.WhitelistedModels.<model>`).
+- **Upgrading:** if you use the share codes, run the `ALTER TABLE` statements at the top of `database.sql` once.
+
 ### Core/UI
 
 - Input Dialog Replace
