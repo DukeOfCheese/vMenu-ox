@@ -229,7 +229,7 @@ end)
 | 22 | Add a model to `Config.ModelWhitelist` (e.g. `vehicles = { 'rhino' }`), restart vMenu | Locked for a normal player; usable with `vMenu.VehicleSpawner.WhitelistedModels.rhino` |
 | 23 | Weapon Options → Spawn Weapon By Name with an addon weapon the player isn't allowed | "not available to you" |
 | 24 | Weapon Loadouts: spawn a saved loadout containing a weapon the player isn't allowed | That weapon is skipped with a notice; the rest arrive with full ammo |
-| 25 | Die with weapons, then respawn (with weapon restore on) | Weapons come back with the ammo you had, not full |
+| 25 | Die with weapons, then respawn (with weapon restore on) | Weapons come back, refilled to full ammo |
 | 26 | Online Players: GPS route / spectate / teleport to a player | Works; after more than 8 actions in 10 s you're told to try again in a few seconds |
 | 27 | Personal Vehicle → Kick Passengers with someone in your car | They're removed, even if they resist exiting |
 | 28 | Misc Settings → overhead names on, with a second player | Names show at the configured distance; when the player leaves their tag disappears |

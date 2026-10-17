@@ -3243,17 +3243,14 @@ namespace vMenuClient
                 }
             }
 
-            var isRespawnRestore = saveName == "vmenu_temp_weapons_loadout_before_respawn";
-            await GiveWeaponLoadoutAsync(loadout, appendWeapons, ignoreSettingsAndPerms, isRespawnRestore || dontNotify, keepSavedAmmo: isRespawnRestore);
+            await GiveWeaponLoadoutAsync(loadout, appendWeapons, ignoreSettingsAndPerms, saveName == "vmenu_temp_weapons_loadout_before_respawn" || dontNotify);
         }
 
         /// <summary>
         /// Gives the player the weapons in a loadout. Each weapon's permission is checked against the current
         /// weapon list unless ignoreSettingsAndPerms is set (only for restoring the player's own weapons).
         /// </summary>
-        /// <param name="keepSavedAmmo">Give back the saved ammo count instead of a full weapon. Used when restoring
-        /// weapons after death, so dying is not a free refill.</param>
-        public static async Task GiveWeaponLoadoutAsync(List<ValidWeapon> loadout, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify, bool keepSavedAmmo = false)
+        public static async Task GiveWeaponLoadoutAsync(List<ValidWeapon> loadout, bool appendWeapons, bool ignoreSettingsAndPerms, bool dontNotify)
         {
             Log(JsonConvert.SerializeObject(loadout));
             if (loadout.Count > 0)
@@ -3307,10 +3304,6 @@ namespace vMenuClient
                         // Every weapon is filled to the top rather than to the saved count: MK2 weapons loaded
                         // with special ammo never come back right at a saved count. Melee weapons have no maximum.
                         var ammo = w.GetMaxAmmo;
-                        if (keepSavedAmmo && w.CurrentAmmo >= 0)
-                        {
-                            ammo = Math.Min(w.CurrentAmmo, ammo);
-                        }
                         if (ammo > 0)
                         {
                             SetAmmoInClip(Game.PlayerPed.Handle, w.Hash, GetMaxAmmoInClip(Game.PlayerPed.Handle, w.Hash, false));

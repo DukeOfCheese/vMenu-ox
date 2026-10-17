@@ -90,8 +90,7 @@ Checked and found clean: SQL (all queries parameterised), `load`/`loadstring` (n
 - **Ban check at connect fails open.** If the C# ban check errors, the player is let in and the error is logged.
 - **Loading an outfit code** needs the target MP character to be spawned. The outfit is saved as a copy of that character.
 - **Saved loadouts:**
-  - Loadouts load with full ammo.
-  - Restoring weapons after death keeps the saved count.
+  - Loadouts load with full ammo, including weapons restored after death.
   - Weapons the player isn't allowed are skipped, with a notice.
 - **Spawn-by-name for weapons** only accepts weapons in the player's own weapon list.
 - **`clearlayouts`** now asks for confirmation. `clearloadouts` was added as the correctly spelled name.
